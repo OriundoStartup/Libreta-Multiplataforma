@@ -1,11 +1,16 @@
 package com.tuapp.libreta.di
 
+import com.tuapp.libreta.data.remote.SupabaseAttendanceDataSource
+import com.tuapp.libreta.data.remote.SupabaseConfig
 import com.tuapp.libreta.data.repository.*
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
 import com.tuapp.libreta.domain.repository.*
 import com.tuapp.libreta.domain.usecase.*
 import com.tuapp.libreta.presentation.*
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import org.koin.dsl.module
 
 val appModule = module {
@@ -15,11 +20,24 @@ val appModule = module {
     single { get<LibretaAppDatabase>().libretaAppQueries }
     single { DataSeeder(get()) }
 
-    // ── Repositories ──────────────────────────────────────────────────────────
+    // ── Supabase ──────────────────────────────────────────────────────────────
+    single {
+        createSupabaseClient(
+            supabaseUrl = SupabaseConfig.URL,
+            supabaseKey = SupabaseConfig.ANON_KEY
+        ) {
+            install(Postgrest)
+            install(Auth)
+        }
+    }
+    // Remote data source — intercambiable con el local sin tocar UseCases ni tests
+    single<AttendanceRepository> { SupabaseAttendanceDataSource(get()) }
+
+    // ── Repositories (local SQLDelight) ──────────────────────────────────────
     single<ProfileRepository>       { ProfileRepositoryImpl(get()) }
     single<ClassRoomRepository>     { ClassRoomRepositoryImpl(get()) }
     single<StudentRepository>       { StudentRepositoryImpl(get()) }
-    single<AttendanceRepository>    { AttendanceRepositoryImpl(get()) }
+    // AttendanceRepository → bound above to SupabaseAttendanceDataSource
     single<JustificationRepository> { JustificationRepositoryImpl(get()) }
     single<MessageRepository>       { MessageRepositoryImpl(get()) }
 
