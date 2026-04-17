@@ -1,0 +1,53 @@
+# ── Gradle ────────────────────────────────────────────────────────────────────
+.gradle/
+build/
+**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# ── Android Studio / IntelliJ ─────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+captures/
+.navigation/
+*.hprof
+
+# ── Android ───────────────────────────────────────────────────────────────────
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ── Kotlin / KMP ──────────────────────────────────────────────────────────────
+.kotlin/
+.konan/
+kotlin-js-store/
+
+# ── iOS / Xcode ───────────────────────────────────────────────────────────────
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.ipa
+Pods/
+.xcode.env.local
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+*.env
+google-services.json
+GoogleService-Info.plist

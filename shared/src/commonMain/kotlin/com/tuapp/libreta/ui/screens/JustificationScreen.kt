@@ -1,0 +1,184 @@
+package com.tuapp.libreta.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
+import com.tuapp.libreta.presentation.JustificationFormState
+import com.tuapp.libreta.presentation.JustificationReason
+import com.tuapp.libreta.presentation.JustificationScreenModel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+data class JustificationScreen(
+    val studentId: String,
+    val parentId: String,
+    val teacherId: String
+) : Screen {
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        val model: JustificationScreenModel = koinScreenModel()
+        val formState by model.formState.collectAsState()
+
+        // Form state
+        var selectedReason by remember { mutableStateOf(JustificationReason.HEALTH) }
+        var description    by remember { mutableStateOf("") }
+        var showDatePicker by remember { mutableStateOf(false) }
+        var selectedDateMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+        var reasonExpanded by remember { mutableStateOf(false) }
+
+        // Navigate back on success
+        LaunchedEffect(formState) {
+            if (formState is JustificationFormState.Sent) navigator.pop()
+        }
+
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMs)
+
+        if (showDatePicker) {
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton    = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDateMs = it }
+                        showDatePicker = false
+                    }) { Text("Aceptar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    navigationIcon = { IconButton(onClick = { navigator.pop() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }},
+                    title  = { Text("Justificar Inasistencia", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // ── Fecha ─────────────────────────────────────────────────────
+                SectionLabel("Fecha de inasistencia")
+                OutlinedButton(
+                    onClick  = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp))
+                    val dt = kotlinx.datetime.Instant.fromEpochMilliseconds(selectedDateMs)
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                    Text("${dt.dayOfMonth}/${dt.monthNumber}/${dt.year}")
+                }
+
+                // ── Motivo ────────────────────────────────────────────────────
+                SectionLabel("Motivo")
+                ExposedDropdownMenuBox(
+                    expanded         = reasonExpanded,
+                    onExpandedChange = { reasonExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value         = selectedReason.label,
+                        onValueChange = {},
+                        readOnly      = true,
+                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonExpanded) },
+                        modifier      = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded         = reasonExpanded,
+                        onDismissRequest = { reasonExpanded = false }
+                    ) {
+                        JustificationReason.entries.forEach { reason ->
+                            DropdownMenuItem(
+                                text    = { Text(reason.label) },
+                                onClick = { selectedReason = reason; reasonExpanded = false }
+                            )
+                        }
+                    }
+                }
+
+                // ── Descripción ───────────────────────────────────────────────
+                SectionLabel("Descripción")
+                OutlinedTextField(
+                    value         = description,
+                    onValueChange = { description = it },
+                    modifier      = Modifier.fillMaxWidth().height(120.dp),
+                    placeholder   = { Text("Describe brevemente el motivo...") },
+                    maxLines      = 5
+                )
+
+                // ── Adjunto (placeholder) ─────────────────────────────────────
+                OutlinedButton(
+                    onClick  = { /* TODO: file picker */ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp))
+                    Text("Adjuntar certificado médico (opcional)")
+                }
+
+                // ── Enviar ────────────────────────────────────────────────────
+                val isSending = formState is JustificationFormState.Sending
+                Button(
+                    onClick  = {
+                        model.submitJustification(
+                            studentId   = studentId,
+                            parentId    = parentId,
+                            teacherId   = teacherId,
+                            dateEpoch   = selectedDateMs,
+                            reason      = selectedReason,
+                            description = description
+                        )
+                    },
+                    enabled  = description.isNotBlank() && !isSending,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    if (isSending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary)
+                    else Text("Enviar Justificación", style = MaterialTheme.typography.labelLarge)
+                }
+
+                if (formState is JustificationFormState.Error) {
+                    Text(
+                        text  = (formState as JustificationFormState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
