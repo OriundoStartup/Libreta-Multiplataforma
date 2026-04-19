@@ -2,8 +2,8 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
-import com.tuapp.libreta.data.remote.SupabaseCoursesRepository
 import com.tuapp.libreta.data.remote.dto.CourseDto
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.data.util.UuidString
@@ -26,7 +26,7 @@ sealed interface TeacherDashboardUiState {
 
 class TeacherDashboardScreenModel(
     private val authService: SupabaseAuthService,
-    private val coursesRepo: SupabaseCoursesRepository,
+    private val coursesRepo: CoursesRepository,
     private val dataSeeder: DataSeeder,
     private val supabase: SupabaseClient
 ) : ScreenModel {
