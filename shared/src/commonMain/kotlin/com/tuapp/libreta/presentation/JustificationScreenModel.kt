@@ -2,7 +2,9 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.Justification
+import com.tuapp.libreta.domain.repository.StudentRepository
 import com.tuapp.libreta.domain.usecase.GetPendingJustificationsUseCase
 import com.tuapp.libreta.domain.usecase.ReviewJustificationUseCase
 import com.tuapp.libreta.domain.usecase.SubmitJustificationUseCase
@@ -29,7 +31,8 @@ sealed interface JustificationReviewState {
 class JustificationScreenModel(
     private val submitUseCase: SubmitJustificationUseCase,
     private val getPendingUseCase: GetPendingJustificationsUseCase,
-    private val reviewUseCase: ReviewJustificationUseCase
+    private val reviewUseCase: ReviewJustificationUseCase,
+    private val studentRepo: StudentRepository
 ) : ScreenModel {
 
     private val _formState = MutableStateFlow<JustificationFormState>(JustificationFormState.Idle)
@@ -40,34 +43,60 @@ class JustificationScreenModel(
 
     fun submitJustification(studentId: String, parentId: String, teacherId: String,
                             dateEpoch: Long, reason: JustificationReason, description: String) {
+        val studentUuid = studentId.toUuidOrNull() ?: run {
+            _formState.value = JustificationFormState.Error("ID de estudiante inválido")
+            return
+        }
+
         screenModelScope.launch {
             _formState.value = JustificationFormState.Sending
-            runCatching { submitUseCase(studentId, dateEpoch, "${reason.label}: $description") }
+            runCatching { submitUseCase(studentUuid, dateEpoch, "${reason.label}: $description") }
                 .onSuccess { _formState.value = JustificationFormState.Sent }
                 .onFailure { e -> _formState.value = JustificationFormState.Error(e.message ?: "Error") }
         }
     }
 
-    fun loadPending(studentId: String) {
-        getPendingUseCase(studentId)
-            .onStart { _reviewState.value = JustificationReviewState.Loading }
-            .onEach  { list ->
-                _reviewState.value = if (list.isEmpty()) JustificationReviewState.Empty
-                                     else JustificationReviewState.Success(list)
-            }
-            .catch   { _reviewState.value = JustificationReviewState.Empty }
-            .launchIn(screenModelScope)
+    // Used by teacher: loads pending justifications for ALL students in a course
+    fun loadPending(classId: String) {
+        val classUuid = classId.toUuidOrNull() ?: return
+
+        screenModelScope.launch {
+            _reviewState.value = JustificationReviewState.Loading
+            runCatching {
+                val students = studentRepo.getStudentsByClass(classUuid).first()
+                val pending = students.flatMap { student ->
+                    getPendingUseCase(student.id).first()
+                }
+                _reviewState.value = if (pending.isEmpty()) JustificationReviewState.Empty
+                                     else JustificationReviewState.Success(pending)
+            }.onFailure { _reviewState.value = JustificationReviewState.Empty }
+        }
     }
 
     fun approve(justification: Justification, parentId: String) {
+        val parentUuid = parentId.toUuidOrNull() ?: return
         screenModelScope.launch {
-            runCatching { reviewUseCase(justification, approved = true, parentId = parentId) }
+            runCatching { reviewUseCase(justification, approved = true, parentId = parentUuid) }
+            // Refresh after review
+            val current = _reviewState.value
+            if (current is JustificationReviewState.Success) {
+                val updated = current.pending.filter { it.id != justification.id }
+                _reviewState.value = if (updated.isEmpty()) JustificationReviewState.Empty
+                                     else JustificationReviewState.Success(updated)
+            }
         }
     }
 
     fun reject(justification: Justification, parentId: String) {
+        val parentUuid = parentId.toUuidOrNull() ?: return
         screenModelScope.launch {
-            runCatching { reviewUseCase(justification, approved = false, parentId = parentId) }
+            runCatching { reviewUseCase(justification, approved = false, parentId = parentUuid) }
+            val current = _reviewState.value
+            if (current is JustificationReviewState.Success) {
+                val updated = current.pending.filter { it.id != justification.id }
+                _reviewState.value = if (updated.isEmpty()) JustificationReviewState.Empty
+                                     else JustificationReviewState.Success(updated)
+            }
         }
     }
 }

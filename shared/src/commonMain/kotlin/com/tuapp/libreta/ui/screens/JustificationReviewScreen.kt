@@ -28,7 +28,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 data class JustificationReviewScreen(
-    val studentId: String,
+    val classId: String,
     val parentId: String   // para enviar notificación silenciosa
 ) : Screen {
 
@@ -39,7 +39,7 @@ data class JustificationReviewScreen(
         val model: JustificationScreenModel = koinScreenModel()
         val state by model.reviewState.collectAsState()
 
-        LaunchedEffect(studentId) { model.loadPending(studentId) }
+        LaunchedEffect(classId) { model.loadPending(classId) }
 
         Scaffold(
             topBar = {
@@ -77,7 +77,7 @@ data class JustificationReviewScreen(
                     contentPadding      = PaddingValues(16.dp).plus(padding),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(s.pending, key = { it.id }) { justification ->
+                    items(s.pending, key = { it.id?.value ?: it.hashCode() }) { justification ->
                         JustificationCard(
                             justification = justification,
                             onApprove     = { model.approve(justification, parentId) },

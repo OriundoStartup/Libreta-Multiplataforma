@@ -1,0 +1,41 @@
+name: UUID Safety & Data Integrity CI
+
+on:
+  push:
+    branches: [ main, master, 'feature/**' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+
+      - name: Run UUID Domain Tests
+        run: ./gradlew :shared:testDebugUnitTest --tests "com.tuapp.libreta.data.util.UuidStringTest"
+
+      - name: Run DTO Serialization Safety Tests
+        run: ./gradlew :shared:testDebugUnitTest --tests "com.tuapp.libreta.data.remote.dto.DtoSerializationTest"
+
+      - name: Run Supabase Integration Flow Tests
+        run: ./gradlew :shared:testDebugUnitTest --tests "com.tuapp.libreta.data.remote.SupabaseIntegrationTest"
+
+      - name: Run All Shared Tests (Full Coverage)
+        run: ./gradlew :shared:allTests
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-test-results
+          path: '**/build/test-results/**/*.xml'

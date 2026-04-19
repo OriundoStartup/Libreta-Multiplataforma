@@ -1,16 +1,11 @@
 package com.tuapp.libreta.navigation
 
 import cafe.adriel.voyager.core.screen.Screen
+import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.domain.model.UserRole
 import com.tuapp.libreta.ui.screens.*
 
-// ── Rol activo — cambiar aquí para alternar entre vistas ─────────────────────
-// En el futuro esto vendrá de Supabase Auth
-enum class AppRole { TEACHER, PARENT }
-
 object AppConfig {
-    val activeRole: AppRole = AppRole.TEACHER   // ← único punto de cambio
-
-    // Demo IDs — se reemplazarán con Auth session
     const val CURRENT_USER_ID = "user-current"
     const val DEMO_CLASS_ID   = "clase-demo"
     const val DEMO_CLASS_NAME = "4° Básico A"
@@ -19,35 +14,39 @@ object AppConfig {
     const val DEMO_TEACHER_ID = "teacher-demo"
 }
 
-// ── Screen factories — toda la navegación pasa por aquí ──────────────────────
-
 object AppNavigation {
 
-    fun initialScreen(): Screen = when (AppConfig.activeRole) {
-        AppRole.TEACHER -> teacherDashboard()
-        AppRole.PARENT  -> parentDashboard()
+    fun startDestination(): Screen = LoginScreen
+
+    fun initialScreen(role: UserRole = UserRole.TEACHER, userId: String = AppConfig.DEMO_PARENT_ID): Screen = when (role) {
+        UserRole.TEACHER -> teacherDashboard()
+        UserRole.PARENT  -> parentDashboard(userId)
     }
 
-    fun teacherDashboard(): Screen =
-        StudentListScreen(classId = AppConfig.DEMO_CLASS_ID, className = AppConfig.DEMO_CLASS_NAME)
+    fun teacherDashboard(): Screen = TeacherDashboardScreen
 
-    fun parentDashboard(): Screen = ParentDashboardScreen(parentId = AppConfig.DEMO_PARENT_ID)
+    fun parentDashboard(userId: String = AppConfig.DEMO_PARENT_ID): Screen =
+        ParentDashboardScreen(parentId = userId)
 
     fun messages(): Screen = MessageListScreen
 
-    fun messageDetail(contactId: String, contactName: String): Screen =
+    fun messageDetail(contactId: UuidString, contactName: String): Screen =
         MessageDetailScreen(contactId = contactId, contactName = contactName)
 
-    fun justificationForm(): Screen =
+    fun justificationForm(parentId: String = AppConfig.CURRENT_USER_ID, studentId: String = AppConfig.DEMO_STUDENT_ID): Screen =
         JustificationScreen(
-            studentId = AppConfig.DEMO_STUDENT_ID,
-            parentId  = AppConfig.CURRENT_USER_ID,
+            studentId = studentId,
+            parentId  = parentId,
             teacherId = AppConfig.DEMO_TEACHER_ID
         )
 
-    fun justificationReview(studentId: String = AppConfig.DEMO_STUDENT_ID): Screen =
-        JustificationReviewScreen(studentId = studentId, parentId = AppConfig.DEMO_PARENT_ID)
+    fun justificationReview(classId: String = AppConfig.DEMO_CLASS_ID): Screen =
+        JustificationReviewScreen(classId = classId, parentId = AppConfig.DEMO_PARENT_ID)
 
-    fun courseStats(): Screen =
-        CourseStatsScreen(classId = AppConfig.DEMO_CLASS_ID, className = AppConfig.DEMO_CLASS_NAME)
+    fun courseStats(classId: String = AppConfig.DEMO_CLASS_ID, className: String = AppConfig.DEMO_CLASS_NAME): Screen =
+        CourseStatsScreen(classId = classId, className = className)
+
+    fun composeNotice(): Screen = ComposeNoticeScreen
+
+    fun profile(): Screen = ProfileScreen
 }

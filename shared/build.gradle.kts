@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.buildkonfig)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -28,9 +29,10 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
+            implementation(compose.components.resources)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
-            implementation(libs.kotlinx.datetime)
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
             implementation(libs.koin.core)
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.screenmodel)
@@ -39,8 +41,10 @@ kotlin {
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
             implementation(libs.ktor.client.core)
+            implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
+            implementation(libs.compose.uiToolingPreview)
             implementation(libs.sqldelight.android)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.cio)

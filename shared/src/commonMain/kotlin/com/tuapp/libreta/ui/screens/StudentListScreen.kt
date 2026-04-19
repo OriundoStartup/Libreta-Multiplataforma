@@ -20,12 +20,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AssignmentLate
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
@@ -41,6 +41,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -91,8 +92,8 @@ data class StudentListScreen(
             drawerContent = { AppDrawer(
             onClose          = { scope.launch { drawerState.close() } },
             onMessages       = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.messages()) },
-            onJustifications = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.justificationReview()) },
-            onStats          = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.courseStats()) }
+            onJustifications = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.justificationReview(classId)) },
+            onStats          = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.courseStats(classId, className)) }
         ) }
         ) {
             Scaffold(
@@ -117,7 +118,7 @@ data class StudentListScreen(
                             }
                         },
                         actions = {
-                            IconButton(onClick = { }) {
+                            IconButton(onClick = { navigator.push(AppNavigation.profile()) }) {
                                 Icon(Icons.Default.AccountCircle, contentDescription = "Perfil",
                                     modifier = Modifier.size(28.dp))
                             }
@@ -133,13 +134,21 @@ data class StudentListScreen(
                         enter   = fadeIn() + scaleIn(),
                         exit    = fadeOut() + scaleOut()
                     ) {
-                        ExtendedFloatingActionButton(
-                            onClick   = { /* TODO: pasar asistencia */ },
-                            expanded  = fabExpanded,
-                            icon      = { Icon(Icons.Default.HowToReg, contentDescription = null) },
-                            text      = { Text("Pasar Asistencia") },
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SmallFloatingActionButton(
+                                onClick        = { navigator.push(AppNavigation.composeNotice()) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Icon(Icons.Default.MailOutline, contentDescription = "Enviar comunicación")
+                            }
+                            ExtendedFloatingActionButton(
+                                onClick        = { /* TODO: pasar asistencia */ },
+                                expanded       = fabExpanded,
+                                icon           = { Icon(Icons.Default.HowToReg, contentDescription = null) },
+                                text           = { Text("Pasar Asistencia") },
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
@@ -150,9 +159,6 @@ data class StudentListScreen(
                         StudentListUiState.Empty   -> EmptyState()
 
                         is StudentListUiState.Success -> {
-                            LaunchedEffect(Unit) {
-                                model.onEvent(StudentListEvent.LoadClass(classId))
-                            }
                             LazyColumn(
                                 state               = listState,
                                 contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -242,7 +248,7 @@ private fun AppDrawer(onClose: () -> Unit, onMessages: () -> Unit, onJustificati
         Spacer(Modifier.weight(1f))
         HorizontalDivider()
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.error) },
+            icon    = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
             label   = { Text("Cerrar Sesión", color = MaterialTheme.colorScheme.error) },
             selected = false,
             onClick  = onClose,
@@ -288,3 +294,4 @@ private fun EmptyState() {
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+

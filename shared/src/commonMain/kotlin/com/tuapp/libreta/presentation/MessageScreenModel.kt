@@ -2,6 +2,9 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.remote.SupabaseAuthService
+import com.tuapp.libreta.data.util.AppLogger
+import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.domain.usecase.GetConversationUseCase
 import com.tuapp.libreta.domain.usecase.GetInboxUseCase
@@ -25,8 +28,11 @@ class MessageScreenModel(
     private val getInbox: GetInboxUseCase,
     private val getConversation: GetConversationUseCase,
     private val sendMessage: SendMessageUseCase,
-    private val currentUserId: String = "user-current"
+    private val authService: SupabaseAuthService
 ) : ScreenModel {
+
+    private val currentUserId: UuidString?
+        get() = authService.currentUserId()
 
     private val _inbox = MutableStateFlow<InboxUiState>(InboxUiState.Loading)
     val inbox: StateFlow<InboxUiState> = _inbox.asStateFlow()
@@ -38,28 +44,44 @@ class MessageScreenModel(
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
     fun loadInbox() {
-        getInbox(currentUserId)
+        val uid = currentUserId ?: run { 
+            AppLogger.e("MessageScreenModel", "Cannot load inbox: currentUserId is null or invalid")
+            _inbox.value = InboxUiState.Empty; return 
+        }
+        getInbox(uid)
             .onStart { _inbox.value = InboxUiState.Loading }
             .onEach  { threads ->
                 _inbox.value = if (threads.isEmpty()) InboxUiState.Empty
                                else InboxUiState.Success(threads)
             }
-            .catch   { _inbox.value = InboxUiState.Empty }
+            .catch   { 
+                AppLogger.e("MessageScreenModel", "Error loading inbox", it)
+                _inbox.value = InboxUiState.Empty 
+            }
             .launchIn(screenModelScope)
     }
 
-    fun loadConversation(contactId: String) {
-        getConversation(currentUserId, contactId)
+    fun loadConversation(contactId: UuidString) {
+        val uid = currentUserId ?: return
+        val cId = contactId.toUuidOrNull()
+        
+        getConversation(uid, cId)
             .onStart { _conversation.value = ConversationUiState.Loading }
             .onEach  { _conversation.value = ConversationUiState.Success(it) }
-            .catch   { _conversation.value = ConversationUiState.Success(emptyList()) }
+            .catch   { 
+                AppLogger.e("MessageScreenModel", "Error loading conversation", it)
+                _conversation.value = ConversationUiState.Success(emptyList()) 
+            }
             .launchIn(screenModelScope)
     }
 
-    fun sendMessage(receiverId: String, content: String) {
+    fun sendMessage(receiverId: UuidString, content: String) {
+        val uid = currentUserId ?: return
+        val rId = receiverId.toUuidOrNull()
+        
         screenModelScope.launch {
             _sending.value = true
-            runCatching { sendMessage(currentUserId, receiverId, content) }
+            runCatching { sendMessage(uid, rId, content) }
             _sending.value = false
         }
     }

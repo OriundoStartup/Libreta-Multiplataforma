@@ -1,12 +1,10 @@
--- LibretaApp.sq — Offline-First schema | SQLite dialect
+-- LibretaApp.sq — schema normalizado según Supabase real
 
 -- ── PROFILE ──────────────────────────────────────────────────────────────────
 CREATE TABLE ProfileEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
     role        TEXT    NOT NULL,
-    first_name  TEXT    NOT NULL,
-    last_name   TEXT    NOT NULL,
-    email       TEXT    NOT NULL,
+    full_name   TEXT    NOT NULL DEFAULT '',
     sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
@@ -16,7 +14,7 @@ getAllProfiles:
 SELECT * FROM ProfileEntity WHERE sync_status != 'PENDING_DELETE';
 
 insertOrReplaceProfile:
-INSERT OR REPLACE INTO ProfileEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO ProfileEntity VALUES (?, ?, ?, ?, ?, ?);
 
 markProfileAsPendingDelete:
 UPDATE ProfileEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
@@ -51,25 +49,26 @@ SELECT * FROM ClassEntity WHERE sync_status != 'SYNCED';
 
 -- ── STUDENT ───────────────────────────────────────────────────────────────────
 CREATE TABLE StudentEntity (
-    id          TEXT    NOT NULL PRIMARY KEY,
-    rut         TEXT    NOT NULL,
-    first_name  TEXT    NOT NULL,
-    last_name   TEXT    NOT NULL,
-    parent_id   TEXT    NOT NULL,
-    class_id    TEXT    NOT NULL,
-    sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
-    created_at  INTEGER NOT NULL,
-    updated_at  INTEGER NOT NULL
+    id                   TEXT    NOT NULL PRIMARY KEY,
+    full_name            TEXT    NOT NULL DEFAULT '',
+    course_id            TEXT    NOT NULL DEFAULT '',
+    parent_id            TEXT    NOT NULL DEFAULT '',
+    sync_status          TEXT    NOT NULL DEFAULT 'SYNCED',
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL
 );
 
 getAllStudents:
 SELECT * FROM StudentEntity WHERE sync_status != 'PENDING_DELETE';
 
 getStudentsByClass:
-SELECT * FROM StudentEntity WHERE class_id = ? AND sync_status != 'PENDING_DELETE';
+SELECT * FROM StudentEntity WHERE course_id = ? AND sync_status != 'PENDING_DELETE';
+
+getStudentsByParent:
+SELECT * FROM StudentEntity WHERE parent_id = ? AND sync_status != 'PENDING_DELETE';
 
 insertOrReplaceStudent:
-INSERT OR REPLACE INTO StudentEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO StudentEntity VALUES (?, ?, ?, ?, ?, ?, ?);
 
 markStudentAsPendingDelete:
 UPDATE StudentEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
@@ -80,13 +79,14 @@ SELECT * FROM StudentEntity WHERE sync_status != 'SYNCED';
 
 -- ── ATTENDANCE ────────────────────────────────────────────────────────────────
 CREATE TABLE AttendanceEntity (
-    id          TEXT    NOT NULL PRIMARY KEY,
-    student_id  TEXT    NOT NULL,
-    date        INTEGER NOT NULL,
-    status      TEXT    NOT NULL,
-    sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
-    created_at  INTEGER NOT NULL,
-    updated_at  INTEGER NOT NULL
+    id               TEXT    NOT NULL PRIMARY KEY,
+    student_id       TEXT    NOT NULL,
+    date             TEXT    NOT NULL,
+    status           TEXT    NOT NULL,
+    justification_id TEXT,
+    sync_status      TEXT    NOT NULL DEFAULT 'SYNCED',
+    created_at       INTEGER NOT NULL,
+    updated_at       INTEGER NOT NULL
 );
 
 getAllAttendances:
@@ -96,7 +96,7 @@ getAttendanceByStudent:
 SELECT * FROM AttendanceEntity WHERE student_id = ? AND sync_status != 'PENDING_DELETE';
 
 insertOrReplaceAttendance:
-INSERT OR REPLACE INTO AttendanceEntity VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO AttendanceEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 markAttendanceAsPendingDelete:
 UPDATE AttendanceEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;

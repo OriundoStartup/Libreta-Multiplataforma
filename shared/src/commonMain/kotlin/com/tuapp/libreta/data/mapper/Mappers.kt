@@ -1,25 +1,21 @@
 package com.tuapp.libreta.data.mapper
 
-import com.tuapp.libreta.db.*
+import com.tuapp.libreta.data.util.currentEpochMs
+import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.data.util.toUuidOrNull
+import com.tuapp.libreta.db.AttendanceEntity
+import com.tuapp.libreta.db.ClassEntity
+import com.tuapp.libreta.db.JustificationEntity
+import com.tuapp.libreta.db.MessageEntity
+import com.tuapp.libreta.db.ProfileEntity
+import com.tuapp.libreta.db.StudentEntity
 import com.tuapp.libreta.domain.model.*
-import kotlinx.datetime.Clock
 
-fun now() = Clock.System.now().toEpochMilliseconds()
+fun now(): Long = currentEpochMs()
 
-// ── Profile ───────────────────────────────────────────────────────────────────
-fun ProfileEntity.toDomain() = Profile(id, UserRole.valueOf(role), first_name, last_name, email)
-
-// ── ClassRoom ─────────────────────────────────────────────────────────────────
-fun ClassEntity.toDomain() = ClassRoom(id, class_code, name, teacher_id)
-
-// ── Student ───────────────────────────────────────────────────────────────────
-fun StudentEntity.toDomain() = Student(id, rut, first_name, last_name, parent_id, class_id)
-
-// ── Attendance ────────────────────────────────────────────────────────────────
-fun AttendanceEntity.toDomain() = Attendance(id, student_id, date, AttendanceStatus.valueOf(status))
-
-// ── Justification ─────────────────────────────────────────────────────────────
-fun JustificationEntity.toDomain() = Justification(id, student_id, date, reason, JustificationStatus.valueOf(status))
-
-// ── Message ───────────────────────────────────────────────────────────────────
-fun MessageEntity.toDomain() = Message(id, sender_id, receiver_id, content)
+fun ProfileEntity.toDomain()       = Profile(UuidString(id), UserRole.valueOf(role), full_name)
+fun ClassEntity.toDomain()         = ClassRoom(UuidString(id), class_code, name, UuidString(teacher_id))
+fun StudentEntity.toDomain()       = Student(UuidString(id), full_name, UuidString(course_id), UuidString(parent_id))
+fun AttendanceEntity.toDomain()    = Attendance(id.toUuidOrNull(), UuidString(student_id), date, AttendanceStatus.valueOf(status), justification_id.toUuidOrNull())
+fun JustificationEntity.toDomain() = Justification(id.toUuidOrNull(), UuidString(student_id), date, reason, JustificationStatus.valueOf(status))
+fun MessageEntity.toDomain()       = Message(id.toUuidOrNull(), UuidString(sender_id), receiver_id.toUuidOrNull(), content)

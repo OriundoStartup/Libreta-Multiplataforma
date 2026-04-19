@@ -273,7 +273,7 @@ private fun AtRiskCard(sa: StudentAbsences) {
             Icon(Icons.Default.Warning, contentDescription = null,
                 tint = ColorAbsent, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("${sa.student.firstName} ${sa.student.lastName}",
+                Text("${sa.student.fullName}",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                 Text("${sa.absenceCount} inasistencias registradas",
                     style = MaterialTheme.typography.bodySmall, color = ColorAbsent)
@@ -295,11 +295,11 @@ private fun AbsenteeRow(sa: StudentAbsences) {
             Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.errorContainer),
             contentAlignment = Alignment.Center
         ) {
-            Text(sa.student.firstName.first().uppercaseChar().toString(),
+            Text(sa.student.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onErrorContainer)
         }
-        Text("${sa.student.firstName} ${sa.student.lastName}",
+        Text("${sa.student.fullName}",
             style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFEBEE)) {
             Text("${sa.absenceCount} faltas",

@@ -4,7 +4,6 @@ import com.tuapp.libreta.domain.model.JustificationStatus
 import com.tuapp.libreta.test.FakeJustificationRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,7 +15,7 @@ class SubmitJustificationUseCaseTest {
 
     @Test
     fun `justification is saved with PENDING status`() = runTest {
-        val pastDate = Clock.System.now().toEpochMilliseconds() - 86_400_000L // ayer
+        val pastDate = kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - 86_400_000L // ayer
 
         useCase("s1", pastDate, "Salud: fiebre")
 
@@ -39,7 +38,7 @@ class SubmitJustificationUseCaseTest {
 
     @Test
     fun `multiple justifications for same student are all saved`() = runTest {
-        val date = Clock.System.now().toEpochMilliseconds()
+        val date = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
         useCase("s1", date - 86_400_000L, "Salud: fiebre")
         useCase("s1", date - 172_800_000L, "Personal: viaje familiar")
 

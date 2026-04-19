@@ -16,12 +16,10 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.presentation.JustificationFormState
 import com.tuapp.libreta.presentation.JustificationReason
 import com.tuapp.libreta.presentation.JustificationScreenModel
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 data class JustificationScreen(
     val studentId: String,
@@ -36,14 +34,12 @@ data class JustificationScreen(
         val model: JustificationScreenModel = koinScreenModel()
         val formState by model.formState.collectAsState()
 
-        // Form state
         var selectedReason by remember { mutableStateOf(JustificationReason.HEALTH) }
         var description    by remember { mutableStateOf("") }
         var showDatePicker by remember { mutableStateOf(false) }
-        var selectedDateMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+        var selectedDateMs by remember { mutableStateOf(currentEpochMs()) }
         var reasonExpanded by remember { mutableStateOf(false) }
 
-        // Navigate back on success
         LaunchedEffect(formState) {
             if (formState is JustificationFormState.Sent) navigator.pop()
         }
@@ -53,18 +49,14 @@ data class JustificationScreen(
         if (showDatePicker) {
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
-                confirmButton    = {
+                confirmButton = {
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { selectedDateMs = it }
                         showDatePicker = false
                     }) { Text("Aceptar") }
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
-                }
-            ) {
-                DatePicker(state = datePickerState)
-            }
+                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") } }
+            ) { DatePicker(state = datePickerState) }
         }
 
         Scaffold(
@@ -73,91 +65,57 @@ data class JustificationScreen(
                     navigationIcon = { IconButton(onClick = { navigator.pop() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }},
-                    title  = { Text("Justificar Inasistencia", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                    title = { Text("Justificar Inasistencia",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
             }
         ) { padding ->
             Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                modifier = Modifier.padding(padding).padding(horizontal = 20.dp, vertical = 16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // ── Fecha ─────────────────────────────────────────────────────
                 SectionLabel("Fecha de inasistencia")
-                OutlinedButton(
-                    onClick  = { showDatePicker = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp))
-                    val dt = kotlinx.datetime.Instant.fromEpochMilliseconds(selectedDateMs)
-                        .toLocalDateTime(TimeZone.currentSystemDefault())
-                    Text("${dt.dayOfMonth}/${dt.monthNumber}/${dt.year}")
+                OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.padding(end = 8.dp))
+                    Text("Seleccionar fecha (ms: $selectedDateMs)")
                 }
 
-                // ── Motivo ────────────────────────────────────────────────────
                 SectionLabel("Motivo")
-                ExposedDropdownMenuBox(
-                    expanded         = reasonExpanded,
-                    onExpandedChange = { reasonExpanded = it }
-                ) {
+                ExposedDropdownMenuBox(expanded = reasonExpanded, onExpandedChange = { reasonExpanded = it }) {
                     OutlinedTextField(
-                        value         = selectedReason.label,
-                        onValueChange = {},
-                        readOnly      = true,
-                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonExpanded) },
-                        modifier      = Modifier.menuAnchor().fillMaxWidth()
+                        value = selectedReason.label, onValueChange = {}, readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonExpanded) },
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                     )
-                    ExposedDropdownMenu(
-                        expanded         = reasonExpanded,
-                        onDismissRequest = { reasonExpanded = false }
-                    ) {
+                    ExposedDropdownMenu(expanded = reasonExpanded, onDismissRequest = { reasonExpanded = false }) {
                         JustificationReason.entries.forEach { reason ->
-                            DropdownMenuItem(
-                                text    = { Text(reason.label) },
-                                onClick = { selectedReason = reason; reasonExpanded = false }
-                            )
+                            DropdownMenuItem(text = { Text(reason.label) },
+                                onClick = { selectedReason = reason; reasonExpanded = false })
                         }
                     }
                 }
 
-                // ── Descripción ───────────────────────────────────────────────
                 SectionLabel("Descripción")
                 OutlinedTextField(
-                    value         = description,
-                    onValueChange = { description = it },
-                    modifier      = Modifier.fillMaxWidth().height(120.dp),
-                    placeholder   = { Text("Describe brevemente el motivo...") },
-                    maxLines      = 5
+                    value = description, onValueChange = { description = it },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    placeholder = { Text("Describe brevemente el motivo...") }, maxLines = 5
                 )
 
-                // ── Adjunto (placeholder) ─────────────────────────────────────
-                OutlinedButton(
-                    onClick  = { /* TODO: file picker */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.AttachFile, contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp))
+                OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.AttachFile, null, modifier = Modifier.padding(end = 8.dp))
                     Text("Adjuntar certificado médico (opcional)")
                 }
 
-                // ── Enviar ────────────────────────────────────────────────────
                 val isSending = formState is JustificationFormState.Sending
                 Button(
-                    onClick  = {
-                        model.submitJustification(
-                            studentId   = studentId,
-                            parentId    = parentId,
-                            teacherId   = teacherId,
-                            dateEpoch   = selectedDateMs,
-                            reason      = selectedReason,
-                            description = description
-                        )
+                    onClick = {
+                        model.submitJustification(studentId, parentId, teacherId,
+                            selectedDateMs, selectedReason, description)
                     },
-                    enabled  = description.isNotBlank() && !isSending,
+                    enabled = description.isNotBlank() && !isSending,
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
                     if (isSending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp,
@@ -166,11 +124,9 @@ data class JustificationScreen(
                 }
 
                 if (formState is JustificationFormState.Error) {
-                    Text(
-                        text  = (formState as JustificationFormState.Error).message,
+                    Text((formState as JustificationFormState.Error).message,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                        style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

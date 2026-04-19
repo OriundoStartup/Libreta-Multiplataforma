@@ -27,6 +27,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
+            implementation(libs.supabase.auth)
+            implementation(libs.ktor.client.cio)
+            implementation("androidx.browser:browser:1.8.0")
         }
         commonMain.dependencies {
             implementation(project(":shared"))
@@ -39,7 +42,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.transitions)
-            implementation(libs.koin.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

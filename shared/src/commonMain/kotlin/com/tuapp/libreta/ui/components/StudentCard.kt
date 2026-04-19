@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Student
 
 // Paleta de avatares — Deep Blue / Slate profesional
@@ -36,8 +37,8 @@ private fun avatarColors(name: String): Pair<Color, Color> =
 fun StudentCard(
     student: Student,
     attendancePercent: Int = 100,
-    onMarkPresent: (String) -> Unit,
-    onMarkAbsent: (String) -> Unit,
+    onMarkPresent: (UuidString) -> Unit,
+    onMarkAbsent: (UuidString) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
@@ -86,7 +87,7 @@ private fun SwipeBackground(state: SwipeToDismissBoxState) {
 
 @Composable
 private fun StudentCardContent(student: Student, attendancePercent: Int) {
-    val (iconColor, bgColor) = avatarColors(student.firstName)
+    val (iconColor, bgColor) = avatarColors(student.fullName)
 
     OutlinedCard(
         shape  = RoundedCornerShape(16.dp),
@@ -106,7 +107,7 @@ private fun StudentCardContent(student: Student, attendancePercent: Int) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text  = student.firstName.first().uppercaseChar().toString(),
+                    text  = student.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = iconColor
                 )
@@ -115,12 +116,12 @@ private fun StudentCardContent(student: Student, attendancePercent: Int) {
             // Nombre + RUT
             Column(Modifier.weight(1f)) {
                 Text(
-                    text  = "${student.firstName} ${student.lastName}",
+                    text  = "${student.fullName}",
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text  = student.rut,
+                    text  = student.courseId.value,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,5 +1,6 @@
 package com.tuapp.libreta.domain.usecase
 
+import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.repository.AttendanceRepository
@@ -7,7 +8,7 @@ import com.tuapp.libreta.domain.repository.StudentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -33,7 +34,7 @@ class GetCourseAnalyticsUseCase(
     private val attendanceRepo: AttendanceRepository
 ) {
     // Single Flow from students — maps each emission to analytics synchronously
-    operator fun invoke(classId: String): Flow<CourseAnalytics> =
+    operator fun invoke(classId: UuidString): Flow<CourseAnalytics> =
         studentRepo.getStudentsByClass(classId).map { students ->
             // Use first() to get a single snapshot of attendance per student
             val allAttendance = students.flatMap { student ->
