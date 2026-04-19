@@ -2,6 +2,7 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.remote.dtos.CourseDto
 import com.tuapp.libreta.data.util.UuidString
@@ -62,7 +63,7 @@ data class LinkedStudentInfo(
 class ProfileScreenModel(
     private val authService: SupabaseAuthService,
     private val supabase: SupabaseClient,
-    private val courseRepo: CourseAssignmentRepository,
+    private val coursesRepo: CoursesRepository,
     private val studentRepo: StudentRepository
 ) : ScreenModel {
 
@@ -94,14 +95,16 @@ class ProfileScreenModel(
                 )
 
                 if (role == UserRole.TEACHER) {
-                    val assignments = courseRepo.getByTeacher(uid).first()
-                    val courses = assignments.map { a ->
+                    val teacherCoursesResult = coursesRepo.getTeacherCourses()
+                    val teacherCourses = teacherCoursesResult.getOrDefault(emptyList())
+                    
+                    val courses = teacherCourses.map { c ->
                         val count = try {
-                            studentRepo.getStudentsByClass(a.courseId).first().size
+                            studentRepo.getStudentsByClass(UuidString(c.id)).first().size
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) { 0 }
-                        TeacherCourseInfo(courseId = a.courseId, studentCount = count)
+                        TeacherCourseInfo(courseId = UuidString(c.id), studentCount = count)
                     }
                     _state.value = ProfileUiState.Success(uiData, teacherCourses = courses)
                 } else {

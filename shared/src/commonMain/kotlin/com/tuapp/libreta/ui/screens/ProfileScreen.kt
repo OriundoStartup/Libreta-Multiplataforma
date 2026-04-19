@@ -202,7 +202,7 @@ private fun ProfileContent(
                     )
                 }
             } else {
-                items(state.teacherCourses, key = { it.courseId }) { course ->
+                items(state.teacherCourses, key = { it.courseId.value }) { course ->
                     TeacherCourseCard(
                         course         = course,
                         onGenerateCode = { onGenerateCode(course.courseId.toString()) },
