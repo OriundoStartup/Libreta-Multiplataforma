@@ -45,7 +45,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
-        LaunchedEffect(parentId) { model.load(parentId) }
+        LaunchedEffect(Unit) { model.load() }
 
         LaunchedEffect(state.successMessage) {
             state.successMessage?.let { message ->
@@ -101,7 +101,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
             when (val s = uiState) {
                 ParentDashboardUiState.Loading    -> ParentShimmer(padding)
                 ParentDashboardUiState.NoStudents -> NoStudentsState(padding, { model.onAddStudentClick() }, { navigator.push(AppNavigation.profile()) })
-                is ParentDashboardUiState.Error   -> ErrorState(s.message, padding) { model.load(parentId) }
+                is ParentDashboardUiState.Error   -> ErrorState(s.message, padding) { model.load() }
                 is ParentDashboardUiState.Success -> {
                     val student = s.students[s.selectedIndex]
 

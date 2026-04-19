@@ -73,35 +73,29 @@ class ParentDashboardScreenModel(
     private val _uiState = MutableStateFlow<ParentDashboardUiState>(ParentDashboardUiState.Loading)
     val uiState: StateFlow<ParentDashboardUiState> = _uiState
 
-    private var currentParentId: String? = null
     private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
-        screenModelScope.launch {
-            val userId = authService.currentUserId()
-            println("DEBUG init: userId=$userId")
-            if (userId != null) {
-                load(userId.value)
-            } else {
-                println("DEBUG init: NO HAY SESIÓN - userId es null")
-                _uiState.value = ParentDashboardUiState.Error("No se encontró una sesión activa.")
-            }
-        }
+        println("DEBUG init: Iniciando ParentDashboardScreenModel")
+        load()
     }
 
-    fun load(parentId: String) {
-        currentParentId = parentId
+    fun load() {
         loadJob?.cancel()
+        val userId = authService.currentUserId()
+        println("DEBUG load: userId obtenido = $userId")
         
-        println("DEBUG load: iniciando con parentId=$parentId")
-        val parentUuid = parentId.toUuidOrNull() ?: run {
-            println("DEBUG load: parentId inválido")
+        if (userId == null) {
+            println("DEBUG load: NO HAY SESIÓN - userId es null")
+            _uiState.value = ParentDashboardUiState.Error("No se encontró una sesión activa.")
+            _state.update { it.copy(uiState = ParentDashboardUiState.Error("No hay sesión activa")) }
             return
         }
 
-        loadJob = studentRepo.getStudentsByParent(parentUuid)
+        println("DEBUG load: Llamando a getStudentsByParent con $userId")
+        loadJob = studentRepo.getStudentsByParent(userId)
             .onEach { students ->
-                println("DEBUG load: recibidos ${students.size} alumnos")
+                println("DEBUG load: Flow emitido con ${students.size} alumnos")
                 if (students.isEmpty()) {
                     _uiState.value = ParentDashboardUiState.NoStudents
                     _state.update { it.copy(uiState = ParentDashboardUiState.NoStudents) }
@@ -111,7 +105,7 @@ class ParentDashboardScreenModel(
                     val attendance = attendanceRepo.getByStudent(student.id).first()
                     val total   = attendance.size.coerceAtLeast(1)
                     val present = attendance.count { it.status == AttendanceStatus.PRESENT }
-                    val msgs    = messageRepo.getByReceiver(parentUuid).first().size
+                    val msgs    = messageRepo.getByReceiver(userId).first().size
                     StudentSummary(
                         id                = student.id,
                         name              = student.fullName,
@@ -123,13 +117,14 @@ class ParentDashboardScreenModel(
                 val successState = ParentDashboardUiState.Success(
                     students      = summaries,
                     selectedIndex = 0,
-                    timeline      = buildTimeline(students.first().id, parentUuid)
+                    timeline      = buildTimeline(students.first().id, userId)
                 )
                 _uiState.value = successState
                 _state.update { it.copy(uiState = successState) }
             }
             .catch { e -> 
                 println("ERROR load: ${e.message}")
+                e.printStackTrace()
                 val errorState = ParentDashboardUiState.Error(e.message ?: "Error")
                 _uiState.value = errorState
                 _state.update { it.copy(uiState = errorState) }
@@ -150,23 +145,15 @@ class ParentDashboardScreenModel(
     }
 
     fun enrollStudent(name: String, rut: String?) {
-        val parentId = currentParentId ?: return
+        val userId = authService.currentUserId() ?: return
         
         screenModelScope.launch {
             _state.update { it.copy(isActionLoading = true, error = null) }
             
             try {
-                // 1. Obtener el course_id. 
-                val parentUuid = parentId.toUuidOrNull() ?: throw Exception("ID de apoderado inválido")
-                val existingStudents = studentRepo.getStudentsByParent(parentUuid).first()
-                
-                val courseId: String = if (existingStudents.isNotEmpty()) {
-                    existingStudents.first().courseId.value
-                } else {
-                    // Si no tiene alumnos, buscamos el curso en el perfil.
-                    val profile = authService.getProfile(parentId)
-                    profile?.courseId ?: throw Exception("No se encontró un curso vinculado a su cuenta. Contacte al profesor.")
-                }
+                // 1. Obtener el course_id desde el perfil del usuario autenticado
+                val profile = authService.getProfile(userId.value)
+                val courseId = profile?.courseId ?: throw Exception("No se encontró un curso vinculado a su cuenta. Contacte al profesor.")
 
                 coursesRepo.enrollStudent(courseId, name, rut)
                     .onSuccess {
@@ -175,7 +162,7 @@ class ParentDashboardScreenModel(
                             isActionLoading = false,
                             successMessage = "¡${name} fue registrado exitosamente!"
                         ) }
-                        load(parentId) // Recargar lista
+                        load() // Recargar lista usando la sesión
                     }
                     .onFailure { e ->
                         _state.update { it.copy(isActionLoading = false, error = e.message) }
@@ -188,12 +175,12 @@ class ParentDashboardScreenModel(
 
     fun selectStudent(index: Int) {
         val current = _uiState.value as? ParentDashboardUiState.Success ?: return
-        val parentUuid = authService.currentUserId() ?: return
+        val userId = authService.currentUserId() ?: return
         
         screenModelScope.launch {
             _uiState.value = current.copy(
                 selectedIndex = index,
-                timeline      = buildTimeline(current.students[index].id, parentUuid)
+                timeline      = buildTimeline(current.students[index].id, userId)
             )
         }
     }
