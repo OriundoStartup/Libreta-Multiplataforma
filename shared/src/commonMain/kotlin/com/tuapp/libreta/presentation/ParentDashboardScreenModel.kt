@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 data class StudentSummary(
     val id: UuidString,
@@ -96,32 +97,43 @@ class ParentDashboardScreenModel(
                     return@onEach
                 }
 
-                // Procesar datos adicionales
-                val summaries = students.map { student ->
-                    val attendance = attendanceRepo.getByStudent(student.id).first()
-                    val total = attendance.size.coerceAtLeast(1)
-                    val present = attendance.count { it.status == AttendanceStatus.PRESENT }
-                    val msgs = messageRepo.getByReceiver(userId).first().size
-                    
-                    StudentSummary(
-                        id = student.id,
-                        name = student.fullName,
-                        attendancePercent = present * 100 / total,
-                        lastNote = "Sin anotaciones recientes",
-                        pendingMessages = msgs
-                    )
-                }
+                try {
+                    // Procesar datos adicionales
+                    val summaries = students.map { student ->
+                        val attendance = attendanceRepo.getByStudent(student.id).first()
+                        val total = attendance.size.coerceAtLeast(1)
+                        val present = attendance.count { it.status == AttendanceStatus.PRESENT }
+                        val msgs = messageRepo.getByReceiver(userId).first().size
+                        
+                        StudentSummary(
+                            id = student.id,
+                            name = student.fullName,
+                            attendancePercent = present * 100 / total,
+                            lastNote = "Sin anotaciones recientes",
+                            pendingMessages = msgs
+                        )
+                    }
 
-                val success = ParentDashboardUiState.Success(
-                    students = summaries,
-                    selectedIndex = 0,
-                    timeline = buildTimeline(students.first().id, userId)
-                )
-                
-                println("DEBUG load: Cambiando a estado SUCCESS con ${summaries.size} alumnos")
-                _state.update { it.copy(uiState = success) }
+                    val success = ParentDashboardUiState.Success(
+                        students = summaries,
+                        selectedIndex = 0,
+                        timeline = buildTimeline(students.first().id, userId)
+                    )
+                    
+                    println("DEBUG load: Cambiando a estado SUCCESS con ${summaries.size} alumnos")
+                    _state.update { it.copy(uiState = success) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    println("ERROR load processing: ${e.message}")
+                    _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error al procesar datos")) }
+                }
             }
             .catch { e ->
+                if (e is CancellationException) {
+                    println("DEBUG load: Flow cancelado correctamente")
+                    throw e
+                }
                 println("ERROR load: ${e.message}")
                 _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error desconocido")) }
             }
@@ -161,6 +173,8 @@ class ParentDashboardScreenModel(
                     .onFailure { e ->
                         _state.update { it.copy(isActionLoading = false, error = e.message) }
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isActionLoading = false, error = e.message) }
             }
@@ -172,11 +186,17 @@ class ParentDashboardScreenModel(
         val userId = authService.currentUserId() ?: return
         
         screenModelScope.launch {
-            val updatedSuccess = current.copy(
-                selectedIndex = index,
-                timeline = buildTimeline(current.students[index].id, userId)
-            )
-            _state.update { it.copy(uiState = updatedSuccess) }
+            try {
+                val updatedSuccess = current.copy(
+                    selectedIndex = index,
+                    timeline = buildTimeline(current.students[index].id, userId)
+                )
+                _state.update { it.copy(uiState = updatedSuccess) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("ERROR selectStudent: ${e.message}")
+            }
         }
     }
 

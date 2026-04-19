@@ -13,14 +13,22 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlin.coroutines.cancellation.CancellationException
 
 class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentRepository {
 
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> = flow {
-        val result = supabase.from("students")
-            .select { filter { eq("course_id", classId.value) } }
-            .decodeList<StudentDto>()
-        emit(result.map { it.toDomain() })
+        try {
+            val result = supabase.from("students")
+                .select { filter { eq("course_id", classId.value) } }
+                .decodeList<StudentDto>()
+            emit(result.map { it.toDomain() })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("ERROR getStudentsByClass: ${e.message}")
+            emit(emptyList())
+        }
     }
 
     override fun getStudentsByParent(parentId: UuidString): Flow<List<Student>> = flow {
@@ -45,6 +53,9 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
             
             emit(list.map { it.toStudentDomain() })
 
+        } catch (e: CancellationException) {
+            // Relanzar para que .first() funcione correctamente sin violar transparencia
+            throw e
         } catch (e: Exception) {
             println("ERROR getStudents: ${e.message}")
             e.printStackTrace()

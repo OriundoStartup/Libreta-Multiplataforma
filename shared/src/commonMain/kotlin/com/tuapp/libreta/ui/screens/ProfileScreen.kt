@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material3.*
@@ -40,10 +41,12 @@ object ProfileScreen : Screen {
         val model: ProfileScreenModel = koinScreenModel()
         val state by model.state.collectAsState()
 
-        // After sign-out the session flow in App.kt redirects to LoginScreen,
-        // but we also handle Saved state here to pop back.
         LaunchedEffect(state) {
-            if (state is ProfileUiState.Saved) navigator.pop()
+            if (state is ProfileUiState.Saved) {
+                // El model.load() ya se llamó en el ScreenModel tras guardar,
+                // pero si queremos volver atrás:
+                // navigator.pop() 
+            }
         }
 
         Scaffold(
@@ -77,7 +80,6 @@ object ProfileScreen : Screen {
                 }
 
                 is ProfileUiState.Success, is ProfileUiState.Saved -> {
-                    // Saved is transient; keep showing last Success while LaunchedEffect pops
                     val success = (s as? ProfileUiState.Success) ?: return@Scaffold
                     ProfileContent(
                         state   = success,
@@ -158,7 +160,21 @@ private fun ProfileContent(
             )
         }
 
-        // ── Email (read-only) — campo no disponible en este schema ───────────
+        // ── Email (read-only) ────────────────────────────────────────────────
+        item {
+            OutlinedTextField(
+                value = state.profile.email,
+                onValueChange = {},
+                label = { Text("Correo electrónico") },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.outline,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
+            )
+        }
 
         // ── Save button ───────────────────────────────────────────────────────
         item {
@@ -195,14 +211,19 @@ private fun ProfileContent(
                 }
             }
         } else {
+            // PRIORIDAD 3: Soporte multi-hijo
             item {
                 Text(
-                    "Mi Hijo/a",
+                    if (state.linkedStudents.size > 1) "Mis Hijos/as" else "Mi Hijo/a",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
             }
-            item {
-                ParentStudentCard(state.linkedStudent)
+            if (state.linkedStudents.isEmpty()) {
+                item { ParentStudentCard(null) }
+            } else {
+                items(state.linkedStudents) { student ->
+                    ParentStudentCard(student)
+                }
             }
         }
 
@@ -295,7 +316,7 @@ private fun TeacherCourseCard(
 @Composable
 private fun ParentStudentCard(linked: LinkedStudentInfo?) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         shape    = RoundedCornerShape(12.dp)
     ) {
         if (linked == null) {

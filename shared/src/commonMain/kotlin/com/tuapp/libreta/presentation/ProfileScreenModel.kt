@@ -3,6 +3,7 @@ package com.tuapp.libreta.presentation
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.SupabaseAuthService
+import com.tuapp.libreta.data.remote.dtos.CourseDto
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.data.util.currentEpochMs
@@ -19,17 +20,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.coroutines.cancellation.CancellationException
 
 @Serializable
 data class ProfileDto(
     val id: String,
     @SerialName("full_name") val fullName: String,
-    val role: String
+    val role: String,
+    val email: String? = null
 )
 
 data class ProfileUiData(
     val id: UuidString,
     val fullName: String,
+    val email: String,
     val role: UserRole
 )
 
@@ -38,7 +42,7 @@ sealed interface ProfileUiState {
     data class  Success(
         val profile: ProfileUiData,
         val teacherCourses: List<TeacherCourseInfo> = emptyList(),
-        val linkedStudent: LinkedStudentInfo? = null
+        val linkedStudents: List<LinkedStudentInfo> = emptyList()
     ) : ProfileUiState
     data class  Error(val message: String) : ProfileUiState
     data object Saved : ProfileUiState
@@ -70,39 +74,67 @@ class ProfileScreenModel(
     fun load() {
         screenModelScope.launch {
             _state.value = ProfileUiState.Loading
-            runCatching {
+            println("DEBUG Profile: Iniciando carga de perfil")
+            try {
                 val uid = authService.currentUserId() ?: error("No autenticado")
-                val profile = supabase.from("profiles")
+                
+                // 1. Obtener perfil y email de la sesión
+                val profileDto = supabase.from("profiles")
                     .select { filter { eq("id", uid.value) } }
                     .decodeSingle<ProfileDto>()
-                val role = if (profile.role == "PARENT") UserRole.PARENT else UserRole.TEACHER
+                
+                val userEmail = authService.currentUser()?.email ?: profileDto.email ?: "Sin email"
+                val role = if (profileDto.role == "PARENT") UserRole.PARENT else UserRole.TEACHER
+                
                 val uiData = ProfileUiData(
                     id       = uid,
-                    fullName = profile.fullName,
+                    fullName = profileDto.fullName,
+                    email    = userEmail,
                     role     = role
                 )
+
                 if (role == UserRole.TEACHER) {
                     val assignments = courseRepo.getByTeacher(uid).first()
                     val courses = assignments.map { a ->
-                        val count = runCatching {
+                        val count = try {
                             studentRepo.getStudentsByClass(a.courseId).first().size
-                        }.getOrElse { 0 }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) { 0 }
                         TeacherCourseInfo(courseId = a.courseId, studentCount = count)
                     }
                     _state.value = ProfileUiState.Success(uiData, teacherCourses = courses)
                 } else {
-                    val students = runCatching {
-                        studentRepo.getStudentsByClass(uid).first()
-                    }.getOrElse { emptyList() }
-                    val linked = students.firstOrNull()?.let { s ->
+                    // PRIORIDAD 1: Usar getStudentsByParent (enrollments table)
+                    val students = studentRepo.getStudentsByParent(uid).first()
+                    println("DEBUG profile: alumnos a mapear = ${students.size}")
+
+                    // PRIORIDAD 2 y 3: Mapeo multi-hijo con nombres de curso reales
+                    val linked = students.map { s ->
+                        // Obtener nombre del curso desde la tabla courses
+                        val courseName = try {
+                            supabase.from("courses")
+                                .select { filter { eq("id", s.courseId.value) } }
+                                .decodeSingle<CourseDto>()
+                                .name
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            println("WARN Profile: No se pudo obtener nombre del curso ${s.courseId.value}: ${e.message}")
+                            "Curso Desconocido"
+                        }
+
                         LinkedStudentInfo(
                             studentName = s.fullName,
-                            courseName  = s.courseId.value
+                            courseName  = courseName
                         )
                     }
-                    _state.value = ProfileUiState.Success(uiData, linkedStudent = linked)
+                    _state.value = ProfileUiState.Success(uiData, linkedStudents = linked)
                 }
-            }.onFailure { e ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("ERROR Profile: ${e.message}")
                 _state.value = ProfileUiState.Error(e.message ?: "Error al cargar perfil")
             }
         }
@@ -111,18 +143,18 @@ class ProfileScreenModel(
     fun saveName(newFullName: String) {
         val current = (_state.value as? ProfileUiState.Success) ?: return
         screenModelScope.launch {
-            runCatching {
+            try {
                 val uid = authService.currentUserId() ?: error("No autenticado")
                 supabase.from("profiles").update({
                     set("full_name", newFullName.trim())
                 }) { filter { eq("id", uid.value) } }
-                _state.value = ProfileUiState.Success(
-                    current.profile.copy(fullName = newFullName.trim()),
-                    teacherCourses = current.teacherCourses,
-                    linkedStudent  = current.linkedStudent
-                )
+                
                 _state.value = ProfileUiState.Saved
-            }.onFailure { e ->
+                // Recargar para actualizar UI
+                load()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _state.value = ProfileUiState.Error(e.message ?: "Error al guardar")
             }
         }
@@ -133,7 +165,7 @@ class ProfileScreenModel(
         val current = (_state.value as? ProfileUiState.Success) ?: return
         val uid = authService.currentUserId() ?: return
         screenModelScope.launch {
-            runCatching {
+            try {
                 val code = (1..8).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
                 supabase.from("invitation_codes").insert(mapOf(
                     "code"       to code,
@@ -145,7 +177,9 @@ class ProfileScreenModel(
                     if (it.courseId == uuid) it.copy(generatedCode = code) else it
                 }
                 _state.value = current.copy(teacherCourses = updatedCourses)
-            }.onFailure { e ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _state.value = ProfileUiState.Error(e.message ?: "Error al generar código")
             }
         }
