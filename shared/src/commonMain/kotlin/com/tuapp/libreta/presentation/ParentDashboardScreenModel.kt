@@ -11,13 +11,12 @@ import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.MessageRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -67,67 +66,64 @@ class ParentDashboardScreenModel(
 ) : ScreenModel {
 
     private val _state = MutableStateFlow(ParentDashboardState())
-    val state: StateFlow<ParentDashboardState> = _state
-        .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), ParentDashboardState())
-
-    private val _uiState = MutableStateFlow<ParentDashboardUiState>(ParentDashboardUiState.Loading)
-    val uiState: StateFlow<ParentDashboardUiState> = _uiState
+    val state: StateFlow<ParentDashboardState> = _state.asStateFlow()
 
     private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
-        println("DEBUG init: Iniciando ParentDashboardScreenModel")
+        println("DEBUG init: ParentDashboardScreenModel creado")
         load()
     }
 
     fun load() {
         loadJob?.cancel()
         val userId = authService.currentUserId()
-        println("DEBUG load: userId obtenido = $userId")
         
         if (userId == null) {
-            println("DEBUG load: NO HAY SESIÓN - userId es null")
-            _uiState.value = ParentDashboardUiState.Error("No se encontró una sesión activa.")
+            println("DEBUG load: Sesión nula")
             _state.update { it.copy(uiState = ParentDashboardUiState.Error("No hay sesión activa")) }
             return
         }
 
-        println("DEBUG load: Llamando a getStudentsByParent con $userId")
+        println("DEBUG load: Cargando alumnos para $userId")
         loadJob = studentRepo.getStudentsByParent(userId)
             .onEach { students ->
-                println("DEBUG load: Flow emitido con ${students.size} alumnos")
+                println("DEBUG load: Recibidos ${students.size} alumnos del repo")
+                
                 if (students.isEmpty()) {
-                    _uiState.value = ParentDashboardUiState.NoStudents
+                    println("DEBUG load: Cambiando a estado NoStudents")
                     _state.update { it.copy(uiState = ParentDashboardUiState.NoStudents) }
                     return@onEach
                 }
+
+                // Procesar datos adicionales
                 val summaries = students.map { student ->
                     val attendance = attendanceRepo.getByStudent(student.id).first()
-                    val total   = attendance.size.coerceAtLeast(1)
+                    val total = attendance.size.coerceAtLeast(1)
                     val present = attendance.count { it.status == AttendanceStatus.PRESENT }
-                    val msgs    = messageRepo.getByReceiver(userId).first().size
+                    val msgs = messageRepo.getByReceiver(userId).first().size
+                    
                     StudentSummary(
-                        id                = student.id,
-                        name              = student.fullName,
+                        id = student.id,
+                        name = student.fullName,
                         attendancePercent = present * 100 / total,
-                        lastNote          = "Sin anotaciones recientes",
-                        pendingMessages   = msgs
+                        lastNote = "Sin anotaciones recientes",
+                        pendingMessages = msgs
                     )
                 }
-                val successState = ParentDashboardUiState.Success(
-                    students      = summaries,
+
+                val success = ParentDashboardUiState.Success(
+                    students = summaries,
                     selectedIndex = 0,
-                    timeline      = buildTimeline(students.first().id, userId)
+                    timeline = buildTimeline(students.first().id, userId)
                 )
-                _uiState.value = successState
-                _state.update { it.copy(uiState = successState) }
+                
+                println("DEBUG load: Cambiando a estado SUCCESS con ${summaries.size} alumnos")
+                _state.update { it.copy(uiState = success) }
             }
-            .catch { e -> 
+            .catch { e ->
                 println("ERROR load: ${e.message}")
-                e.printStackTrace()
-                val errorState = ParentDashboardUiState.Error(e.message ?: "Error")
-                _uiState.value = errorState
-                _state.update { it.copy(uiState = errorState) }
+                _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error desconocido")) }
             }
             .launchIn(screenModelScope)
     }
@@ -149,20 +145,18 @@ class ParentDashboardScreenModel(
         
         screenModelScope.launch {
             _state.update { it.copy(isActionLoading = true, error = null) }
-            
             try {
-                // 1. Obtener el course_id desde el perfil del usuario autenticado
                 val profile = authService.getProfile(userId.value)
-                val courseId = profile?.courseId ?: throw Exception("No se encontró un curso vinculado a su cuenta. Contacte al profesor.")
+                val courseId = profile?.courseId ?: throw Exception("No se encontró curso vinculado")
 
                 coursesRepo.enrollStudent(courseId, name, rut)
                     .onSuccess {
                         _state.update { it.copy(
                             showAddStudentDialog = false, 
                             isActionLoading = false,
-                            successMessage = "¡${name} fue registrado exitosamente!"
+                            successMessage = "Registrado: $name"
                         ) }
-                        load() // Recargar lista usando la sesión
+                        load()
                     }
                     .onFailure { e ->
                         _state.update { it.copy(isActionLoading = false, error = e.message) }
@@ -174,14 +168,15 @@ class ParentDashboardScreenModel(
     }
 
     fun selectStudent(index: Int) {
-        val current = _uiState.value as? ParentDashboardUiState.Success ?: return
+        val current = _state.value.uiState as? ParentDashboardUiState.Success ?: return
         val userId = authService.currentUserId() ?: return
         
         screenModelScope.launch {
-            _uiState.value = current.copy(
+            val updatedSuccess = current.copy(
                 selectedIndex = index,
-                timeline      = buildTimeline(current.students[index].id, userId)
+                timeline = buildTimeline(current.students[index].id, userId)
             )
+            _state.update { it.copy(uiState = updatedSuccess) }
         }
     }
 
@@ -190,21 +185,21 @@ class ParentDashboardScreenModel(
             .takeLast(5).mapIndexed { i, record ->
                 val present = record.status == AttendanceStatus.PRESENT
                 TimelineEvent(
-                    id       = "att-$i",
-                    type     = if (present) TimelineEventType.ATTENDANCE_PRESENT else TimelineEventType.ATTENDANCE_ABSENT,
-                    title    = "Asistencia",
+                    id = "att-$i",
+                    type = if (present) TimelineEventType.ATTENDANCE_PRESENT else TimelineEventType.ATTENDANCE_ABSENT,
+                    title = "Asistencia",
                     subtitle = if (present) "Presente" else "Ausente",
-                    date     = "Registro ${i + 1}"
+                    date = "Registro ${i + 1}"
                 )
             }
         
         val messageEvents = messageRepo.getByReceiver(parentId).first().takeLast(3).mapIndexed { i, msg ->
             TimelineEvent(
-                id       = "msg-$i",
-                type     = TimelineEventType.MESSAGE,
-                title    = "Mensaje recibido",
-                subtitle = msg.content.take(60),
-                date     = "Mensaje ${i + 1}"
+                id = "msg-$i",
+                type = TimelineEventType.MESSAGE,
+                title = "Mensaje",
+                subtitle = msg.content.take(40),
+                date = "Recibido"
             )
         }
 
