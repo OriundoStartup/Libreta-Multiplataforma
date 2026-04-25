@@ -22,12 +22,15 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -38,7 +41,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -50,7 +55,6 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
-import com.tuapp.libreta.navigation.AppConfig
 import com.tuapp.libreta.presentation.ConversationUiState
 import com.tuapp.libreta.presentation.MessageScreenModel
 
@@ -67,9 +71,18 @@ data class MessageDetailScreen(
         val state   by model.conversation.collectAsState()
         val sending by model.sending.collectAsState()
         val listState = rememberLazyListState()
+        val snackbarHostState = remember { SnackbarHostState() }
         var input by remember { mutableStateOf("") }
+        var wasSending by remember { mutableStateOf(false) }
 
         LaunchedEffect(contactId) { model.loadConversation(contactId) }
+
+        LaunchedEffect(sending) {
+            if (wasSending && !sending) {
+                snackbarHostState.showSnackbar("Mensaje enviado")
+            }
+            wasSending = sending
+        }
 
         // Auto-scroll al último mensaje
         val messages = (state as? ConversationUiState.Success)?.messages ?: emptyList()
@@ -78,6 +91,7 @@ data class MessageDetailScreen(
         }
 
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     navigationIcon = {
@@ -119,7 +133,8 @@ data class MessageDetailScreen(
                         items(messages, key = { it.id?.value ?: it.hashCode() }) { message ->
                             ChatBubble(
                                 message   = message,
-                                isMine    = message.senderId.value != AppConfig.CURRENT_USER_ID     )
+                                isMine    = message.senderId.value == model.currentUserId?.value
+                            )
                         }
                     }
                 }

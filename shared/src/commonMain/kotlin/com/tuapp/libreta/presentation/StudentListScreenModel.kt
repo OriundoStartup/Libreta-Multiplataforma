@@ -9,17 +9,31 @@ import com.tuapp.libreta.data.util.random
 import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
-import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.model.Student
+import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.usecase.DeleteStudentUseCase
 import com.tuapp.libreta.domain.usecase.GetStudentsByClassUseCase
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 sealed interface StudentListUiState {
     data object Loading                              : StudentListUiState
     data object Empty                                : StudentListUiState
-    data class  Success(val students: List<Student>) : StudentListUiState
+    data class  Success(
+        val students: List<Student>,
+        val searchQuery: String = ""
+    ) : StudentListUiState {
+        val filteredStudents: List<Student>
+            get() = if (searchQuery.isBlank()) students
+                    else students.filter {
+                        it.fullName.contains(searchQuery, ignoreCase = true)
+                    }
+    }
     data class  Error(val message: String)           : StudentListUiState
 }
 
@@ -27,6 +41,7 @@ sealed interface StudentListEvent {
     data class LoadClass(val classId: String)    : StudentListEvent
     data class ToggleAttendance(val id: UuidString)  : StudentListEvent
     data class DeleteStudent(val id: UuidString)     : StudentListEvent
+    data class Search(val query: String)         : StudentListEvent
 }
 
 class StudentListScreenModel(
@@ -46,6 +61,14 @@ class StudentListScreenModel(
             is StudentListEvent.LoadClass        -> load(event.classId)
             is StudentListEvent.DeleteStudent    -> delete(event.id)
             is StudentListEvent.ToggleAttendance -> toggleAttendance(event.id)
+            is StudentListEvent.Search          -> search(event.query)
+        }
+    }
+
+    private fun search(query: String) {
+        val current = _uiState.value
+        if (current is StudentListUiState.Success) {
+            _uiState.value = current.copy(searchQuery = query)
         }
     }
 

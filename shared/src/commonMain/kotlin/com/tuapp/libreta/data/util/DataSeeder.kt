@@ -1,5 +1,6 @@
 package com.tuapp.libreta.data.util
 
+import com.tuapp.libreta.data.util.DataSeeder.Companion.REMOTE_SEEDING_ENABLED
 import com.tuapp.libreta.db.LibretaAppQueries
 import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.model.SyncStatus

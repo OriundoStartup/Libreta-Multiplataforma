@@ -1,8 +1,8 @@
 package com.tuapp.libreta.util
 
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.fail
-import java.io.File
 
 class UuidSafetyLintTest {
 

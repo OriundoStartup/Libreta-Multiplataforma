@@ -1,16 +1,14 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.ProfileDto
+import com.tuapp.libreta.data.remote.dto.ProfileSupabaseDto
 import com.tuapp.libreta.data.util.AppLogger
-import com.tuapp.libreta.data.util.AuditOrigin
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.data.util.currentEpochMs
+import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.UserRole
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
-import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
@@ -28,26 +26,42 @@ private data class InvitationCodeCheck(
     @kotlinx.serialization.SerialName("expires_at") val expiresAt: String = ""
 )
 
+sealed class SessionStatus {
+    data object NotAuthenticated : SessionStatus()
+    data object Loading : SessionStatus()
+    data class Authenticated(val user: UserInfo) : SessionStatus()
+}
+
 class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     private val jsonHelper = Json { ignoreUnknownKeys = true }
 
     val isLoggedInFlow: Flow<Boolean> = supabase.auth.sessionStatus
-        .map { it is SessionStatus.Authenticated }
+        .map { it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated }
 
-    val sessionStatusFlow: Flow<SessionStatus> = supabase.auth.sessionStatus
+    val sessionStatusFlow: Flow<SessionStatus> = supabase.auth.sessionStatus.map { status ->
+        when (status) {
+            is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> SessionStatus.NotAuthenticated
+            is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> SessionStatus.Loading
+            is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
+                val user = status.session.user
+                if (user != null) SessionStatus.Authenticated(user) else SessionStatus.NotAuthenticated
+            }
+            else -> SessionStatus.NotAuthenticated
+        }
+    }
 
     fun getGoogleOAuthUrl(): String = supabase.auth.getOAuthUrl(Google)
 
     suspend fun signInWithGoogle() = supabase.auth.signInWith(Google)
 
-    suspend fun getProfile(userId: String): ProfileDto? {
+    suspend fun getProfile(userId: String): ProfileSupabaseDto? {
         return try {
             supabase.postgrest["profiles"]
                 .select {
                     filter { eq("id", userId) }
                 }
-                .decodeSingleOrNull<ProfileDto>()
+                .decodeSingleOrNull<ProfileSupabaseDto>()
         } catch (e: Exception) {
             AppLogger.e("getProfile", "Error al obtener perfil para $userId: ${e.message}")
             null
@@ -116,9 +130,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         
         val check = result.first()
         val now = currentEpochMs()
-        val expiresMs = runCatching {
-            Instant.parse(check.expiresAt).toEpochMilliseconds()
-        }.getOrElse { Long.MAX_VALUE }
+        val expiresMs = runCatching { Instant.parse(check.expiresAt).toEpochMilliseconds() }.getOrElse { Long.MAX_VALUE }
         
         check.claimedBy == null && expiresMs > now
     }.getOrElse { false }

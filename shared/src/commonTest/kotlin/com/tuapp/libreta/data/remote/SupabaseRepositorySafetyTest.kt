@@ -3,11 +3,6 @@ package com.tuapp.libreta.data.remote
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
-import io.github.jan.supabase.SupabaseClient
-import io.mockative.Mock
-import io.mockative.any
-import io.mockative.mock
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 

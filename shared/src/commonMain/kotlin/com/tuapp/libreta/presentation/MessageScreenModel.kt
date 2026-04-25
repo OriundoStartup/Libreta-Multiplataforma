@@ -8,15 +8,28 @@ import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.domain.usecase.GetConversationUseCase
 import com.tuapp.libreta.domain.usecase.GetInboxUseCase
+import com.tuapp.libreta.domain.usecase.MarkAsReadUseCase
 import com.tuapp.libreta.domain.usecase.MessageThread
 import com.tuapp.libreta.domain.usecase.SendMessageUseCase
-import kotlinx.coroutines.flow.*
+import io.github.jan.supabase.SupabaseClient
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 sealed interface InboxUiState {
     data object Loading                                   : InboxUiState
     data object Empty                                     : InboxUiState
-    data class  Success(val threads: List<MessageThread>) : InboxUiState
+    data class  Success(
+        val threads: List<MessageThread>,
+        val searchQuery: String = ""
+    ) : InboxUiState {
+        val filteredThreads: List<MessageThread>
+            get() = if (searchQuery.isBlank()) threads
+                    else threads.filter {
+                        it.contactName.contains(searchQuery, ignoreCase = true)
+                    }
+    }
 }
 
 sealed interface ConversationUiState {
@@ -27,11 +40,13 @@ sealed interface ConversationUiState {
 class MessageScreenModel(
     private val getInbox: GetInboxUseCase,
     private val getConversation: GetConversationUseCase,
-    private val sendMessage: SendMessageUseCase,
-    private val authService: SupabaseAuthService
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val markAsRead: MarkAsReadUseCase,
+    private val authService: SupabaseAuthService,
+    private val supabase: SupabaseClient
 ) : ScreenModel {
 
-    private val currentUserId: UuidString?
+    val currentUserId: UuidString?
         get() = authService.currentUserId()
 
     private val _inbox = MutableStateFlow<InboxUiState>(InboxUiState.Loading)
@@ -44,45 +59,73 @@ class MessageScreenModel(
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
     fun loadInbox() {
-        val uid = currentUserId ?: run { 
-            AppLogger.e("MessageScreenModel", "Cannot load inbox: currentUserId is null or invalid")
-            _inbox.value = InboxUiState.Empty; return 
+        val uid = currentUserId ?: run {
+            _inbox.value = InboxUiState.Empty; return
         }
-        getInbox(uid)
-            .onStart { _inbox.value = InboxUiState.Loading }
-            .onEach  { threads ->
-                _inbox.value = if (threads.isEmpty()) InboxUiState.Empty
-                               else InboxUiState.Success(threads)
-            }
-            .catch   { 
-                AppLogger.e("MessageScreenModel", "Error loading inbox", it)
-                _inbox.value = InboxUiState.Empty 
-            }
-            .launchIn(screenModelScope)
+        screenModelScope.launch {
+            _inbox.value = InboxUiState.Loading
+            runCatching { getInbox(uid) }
+                .onSuccess { threads ->
+                    _inbox.value = if (threads.isEmpty()) InboxUiState.Empty
+                    else InboxUiState.Success(threads)
+                }
+                .onFailure {
+                    AppLogger.e("MessageScreenModel", "Error loading inbox", it)
+                    _inbox.value = InboxUiState.Empty
+                }
+        }
+    }
+
+    fun search(query: String) {
+        val current = _inbox.value
+        if (current is InboxUiState.Success) {
+            _inbox.value = current.copy(searchQuery = query)
+        }
+    }
+
+    fun openConversation(contactId: UuidString) {
+        val uid = currentUserId ?: return
+        
+        screenModelScope.launch {
+            // Carga inicial
+            loadConversation(contactId)
+            
+            // Marcar como leído
+            markAsRead(contactId, uid)
+
+            // Realtime暂时禁用 - 需要额外的supabase-realtime模块和正确配置
+            // TODO: 实现实时消息更新
+        }
     }
 
     fun loadConversation(contactId: UuidString) {
         val uid = currentUserId ?: return
-        val cId = contactId.toUuidOrNull()
-        
-        getConversation(uid, cId)
-            .onStart { _conversation.value = ConversationUiState.Loading }
-            .onEach  { _conversation.value = ConversationUiState.Success(it) }
-            .catch   { 
-                AppLogger.e("MessageScreenModel", "Error loading conversation", it)
-                _conversation.value = ConversationUiState.Success(emptyList()) 
-            }
-            .launchIn(screenModelScope)
+        screenModelScope.launch {
+            _conversation.value = ConversationUiState.Loading
+            runCatching { getConversation(uid, contactId) }
+                .onSuccess { _conversation.value = ConversationUiState.Success(it) }
+                .onFailure {
+                    AppLogger.e("MessageScreenModel", "Error loading conversation", it)
+                    _conversation.value = ConversationUiState.Success(emptyList())
+                }
+        }
     }
 
     fun sendMessage(receiverId: UuidString, content: String) {
-        val uid = currentUserId ?: return
-        val rId = receiverId.toUuidOrNull()
+        if (content.isBlank()) return
         
         screenModelScope.launch {
             _sending.value = true
-            runCatching { sendMessage(uid, rId, content) }
+            sendMessageUseCase(receiverId, content)
+                .onSuccess {
+                    loadConversation(receiverId)
+                }
             _sending.value = false
         }
+    }
+
+    override fun onDispose() {
+        // Cleanup if needed
+        super.onDispose()
     }
 }

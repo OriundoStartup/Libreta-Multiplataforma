@@ -1,20 +1,74 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LibretaMultiplataformAws</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LibretApp</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1976D2">
+    <meta name="description" content="LibretApp — Sistema de gestión educativa para docentes y apoderados">
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LibretApp">
+
+    <!-- Open Graph básico -->
+    <meta property="og:title" content="LibretApp">
+    <meta property="og:description" content="Gestión de asistencia y comunicación escolar">
+    <meta property="og:type" content="website">
+
     <link type="text/css" rel="stylesheet" href="styles.css">
+
+    <style>
+        #loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            gap: 16px;
+            font-family: sans-serif;
+            color: #555;
+        }
+        #loading-error {
+            display: none;
+            color: #c62828;
+            font-size: 14px;
+            max-width: 300px;
+            text-align: center;
+        }
+    </style>
 </head>
-<body style="text-align: center; align-content: center">
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation">
-    <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
-    <circle cx="25" cy="25" r="20" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"
-            stroke-dasharray="90 125">
-        <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                          repeatCount="indefinite"/>
-    </circle>
-</svg>
-<script type="application/javascript" src="composeApp.js"></script>
+<body>
+<div id="loading">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 50 50" role="presentation" aria-label="Cargando">
+        <circle cx="25" cy="25" r="20" stroke="#e0e0e0" stroke-width="4" fill="none"/>
+        <circle cx="25" cy="25" r="20" stroke="#1976D2" stroke-width="4" fill="none"
+                stroke-linecap="round" stroke-dasharray="90 125">
+            <animateTransform attributeName="transform" type="rotate"
+                              from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+        </circle>
+    </svg>
+    <span>Cargando LibretApp…</span>
+    <span id="loading-error">No se pudo cargar la aplicación. <br>
+        Por favor <a href="javascript:location.reload()">recarga la página</a> o verifica tu conexión.</span>
+</div>
+
+<script type="application/javascript">
+    // Muestra error si el módulo principal no carga en 30 segundos
+    var _loadTimeout = setTimeout(function () {
+        var el = document.getElementById('loading-error');
+        if (el) el.style.display = 'block';
+    }, 30000);
+</script>
+
+<!-- async para no bloquear el parser HTML -->
+<script type="application/javascript" src="composeApp.js" async
+        onload="clearTimeout(_loadTimeout); document.getElementById('loading').style.display='none';"
+        onerror="clearTimeout(_loadTimeout); document.getElementById('loading-error').style.display='block';">
+</script>
 </body>
 </html>

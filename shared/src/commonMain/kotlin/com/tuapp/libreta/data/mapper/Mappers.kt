@@ -1,7 +1,7 @@
 package com.tuapp.libreta.data.mapper
 
-import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.db.AttendanceEntity
 import com.tuapp.libreta.db.ClassEntity
@@ -9,7 +9,15 @@ import com.tuapp.libreta.db.JustificationEntity
 import com.tuapp.libreta.db.MessageEntity
 import com.tuapp.libreta.db.ProfileEntity
 import com.tuapp.libreta.db.StudentEntity
-import com.tuapp.libreta.domain.model.*
+import com.tuapp.libreta.domain.model.Attendance
+import com.tuapp.libreta.domain.model.AttendanceStatus
+import com.tuapp.libreta.domain.model.ClassRoom
+import com.tuapp.libreta.domain.model.Justification
+import com.tuapp.libreta.domain.model.JustificationStatus
+import com.tuapp.libreta.domain.model.Message
+import com.tuapp.libreta.domain.model.Profile
+import com.tuapp.libreta.domain.model.Student
+import com.tuapp.libreta.domain.model.UserRole
 
 fun now(): Long = currentEpochMs()
 

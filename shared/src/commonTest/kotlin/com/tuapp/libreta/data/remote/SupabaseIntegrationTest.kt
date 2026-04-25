@@ -4,9 +4,6 @@ import com.tuapp.libreta.data.remote.dto.AttendanceDto
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test

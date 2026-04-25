@@ -1,6 +1,8 @@
 package com.tuapp.libreta.domain.usecase
 
-import com.tuapp.libreta.domain.model.*
+import com.tuapp.libreta.domain.model.Attendance
+import com.tuapp.libreta.domain.model.AttendanceStatus
+import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.test.FakeAttendanceRepository
 import com.tuapp.libreta.test.FakeStudentRepository
 import kotlinx.coroutines.flow.first

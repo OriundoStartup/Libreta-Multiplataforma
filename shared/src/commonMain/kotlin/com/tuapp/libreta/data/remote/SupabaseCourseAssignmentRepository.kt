@@ -1,6 +1,6 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.CourseAssignmentDto
+import com.tuapp.libreta.data.remote.dto.CourseAssignmentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
@@ -24,23 +24,20 @@ class SupabaseCourseAssignmentRepository(private val supabase: SupabaseClient) :
     override fun getByTeacher(teacherId: UuidString): Flow<List<CourseAssignment>> = flow {
         emit(supabase.from("course_assignments")
             .select { filter { eq("teacher_id", teacherId.value) } }
-            .decodeList<CourseAssignmentDto>().map { it.toDomain() })
+            .decodeList<CourseAssignmentSupabaseDto>().map { it.toDomain() })
     }
 
     override suspend fun assign(assignment: CourseAssignment) {
         AppLogger.uuid("assign", "courseId", assignment.courseId.value, "VALID")
         val schoolId = assignment.schoolId
 
-        val dto = CourseAssignmentDto(
+        val dto = CourseAssignmentSupabaseDto(
             id            = assignment.id?.value,
             teacherId     = assignment.teacherId.value,
             courseId      = assignment.courseId.value,
-            schoolId      = schoolId.value,
-            isHeadTeacher = assignment.isHeadTeacher
+            schoolId      = schoolId.value
         )
-        supabase.from("course_assignments").upsert(dto) {
-            onConflict = "teacher_id,course_id,school_id"
-        }
+        supabase.from("course_assignments").upsert(dto)
     }
 
     override suspend fun generateColleagueInvite(courseId: UuidString, schoolId: UuidString, issuedByTeacherId: UuidString): String {

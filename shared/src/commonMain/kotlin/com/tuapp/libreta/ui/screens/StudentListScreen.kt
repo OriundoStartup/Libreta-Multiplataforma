@@ -10,6 +10,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
@@ -40,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Snackbar
@@ -51,7 +55,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +89,7 @@ data class StudentListScreen(
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val navigator = LocalNavigator.currentOrThrow
+        var searchQuery by remember { mutableStateOf("") }
 
         // FAB se encoge al hacer scroll
         val fabExpanded by remember { derivedStateOf { !listState.canScrollBackward } }
@@ -142,12 +149,18 @@ data class StudentListScreen(
                                 Icon(Icons.Default.MailOutline, contentDescription = "Enviar comunicación")
                             }
                             ExtendedFloatingActionButton(
-                                onClick        = { /* TODO: pasar asistencia */ },
+                                onClick        = { navigator.push(AppNavigation.attendance(classId, className)) },
                                 expanded       = fabExpanded,
                                 icon           = { Icon(Icons.Default.HowToReg, contentDescription = null) },
                                 text           = { Text("Pasar Asistencia") },
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
+                            SmallFloatingActionButton(
+                                onClick        = { navigator.push(AppNavigation.messages()) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Icon(Icons.Default.MailOutline, contentDescription = "Mensajes")
+                            }
                         }
                     }
                 },
@@ -159,20 +172,48 @@ data class StudentListScreen(
                         StudentListUiState.Empty   -> EmptyState()
 
                         is StudentListUiState.Success -> {
+                            val filteredStudents = state.filteredStudents
+
                             LazyColumn(
                                 state               = listState,
                                 contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 item {
+                                    OutlinedTextField(
+                                        value = searchQuery,
+                                        onValueChange = {
+                                            searchQuery = it
+                                            model.onEvent(StudentListEvent.Search(it))
+                                        },
+                                        placeholder = { Text("Buscar alumno...") },
+                                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                        singleLine = true
+                                    )
+                                }
+                                item {
                                     Text(
-                                        text     = "${state.students.size} alumnos registrados",
+                                        text     = "${filteredStudents.size} de ${state.students.size} alumnos",
                                         style    = MaterialTheme.typography.labelMedium,
                                         color    = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                                     )
                                 }
-                                items(state.students, key = { it.id }) { student ->
+                                if (filteredStudents.isEmpty() && searchQuery.isNotEmpty()) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "No se encontraron alumnos",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                                items(filteredStudents, key = { it.id }) { student ->
                                     AnimatedVisibility(
                                         visible = true,
                                         enter   = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 }
@@ -180,7 +221,8 @@ data class StudentListScreen(
                                         StudentCard(
                                             student        = student,
                                             onMarkPresent  = { model.onEvent(StudentListEvent.ToggleAttendance(it)) },
-                                            onMarkAbsent   = { model.onEvent(StudentListEvent.DeleteStudent(it)) }
+                                            onMarkAbsent   = { model.onEvent(StudentListEvent.DeleteStudent(it)) },
+                                            onClick        = { navigator.push(AppNavigation.studentDetail(student.id.value, student.fullName, student.courseId.value, student.parentId.value)) }
                                         )
                                     }
                                 }

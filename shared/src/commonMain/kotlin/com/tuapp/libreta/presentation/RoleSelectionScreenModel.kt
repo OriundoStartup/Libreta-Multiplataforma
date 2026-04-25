@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.data.util.nullIfInvalid
 import com.tuapp.libreta.domain.model.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

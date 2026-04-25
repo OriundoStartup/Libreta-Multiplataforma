@@ -1,9 +1,8 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.StudentDto
+import com.tuapp.libreta.data.remote.dto.EnrollmentSupabaseDto
+import com.tuapp.libreta.data.remote.dto.StudentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
-import com.tuapp.libreta.data.remote.dto.toDto
-import com.tuapp.libreta.data.remote.dtos.EnrollmentDto
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.repository.StudentRepository
@@ -19,10 +18,17 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
 
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> = flow {
         try {
-            val result = supabase.from("students")
+            val result = supabase.postgrest["enrollments"]
                 .select { filter { eq("course_id", classId.value) } }
-                .decodeList<StudentDto>()
-            emit(result.map { it.toDomain() })
+                .decodeList<EnrollmentSupabaseDto>()
+            emit(result.map { enrollment ->
+                Student(
+                    id = UuidString(enrollment.id ?: "${enrollment.courseId}-${enrollment.parentId}"),
+                    fullName = enrollment.studentName,
+                    courseId = classId,
+                    parentId = UuidString(enrollment.parentId)
+                )
+            })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -48,7 +54,7 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
                 }
             println("DEBUG getStudents: respuesta raw = ${result.data}")
 
-            val list = result.decodeList<EnrollmentDto>()
+            val list = result.decodeList<EnrollmentSupabaseDto>()
             println("DEBUG getStudents: registros decodificados = ${list.size}")
             
             emit(list.map { it.toStudentDomain() })
@@ -63,7 +69,7 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
         }
     }
 
-    private fun EnrollmentDto.toStudentDomain() = Student(
+    private fun EnrollmentSupabaseDto.toStudentDomain() = Student(
         id = UuidString(id ?: parentId),
         fullName = studentName,
         courseId = UuidString(courseId),
@@ -71,10 +77,18 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
     )
 
     override suspend fun saveStudent(student: Student) {
-        supabase.from("students").upsert(student.toDto())
+        supabase.from("students").upsert(
+            StudentSupabaseDto(
+                id = student.id.value,
+                firstName = student.fullName.split(" ").firstOrNull() ?: "",
+                lastName = student.fullName.substringAfter(" ").takeIf { it.isNotBlank() } ?: "",
+                classId = student.courseId.value,
+                parentId = student.parentId.value
+            )
+        )
     }
 
     override suspend fun deleteStudent(id: UuidString) {
-        supabase.from("students").delete { filter { eq("id", id.value) } }
+        supabase.postgrest["enrollments"].delete { filter { eq("id", id.value) } }
     }
 }

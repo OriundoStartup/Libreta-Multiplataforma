@@ -1,7 +1,16 @@
 package com.tuapp.libreta.domain.repository
 
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.domain.model.*
+import com.tuapp.libreta.domain.model.Attendance
+import com.tuapp.libreta.domain.model.ClassRoom
+import com.tuapp.libreta.domain.model.CourseAssignment
+import com.tuapp.libreta.domain.model.InvitationCode
+import com.tuapp.libreta.domain.model.Justification
+import com.tuapp.libreta.domain.model.Message
+import com.tuapp.libreta.domain.model.Profile
+import com.tuapp.libreta.domain.model.School
+import com.tuapp.libreta.domain.model.Student
+import com.tuapp.libreta.domain.usecase.MessageThread
 import kotlinx.coroutines.flow.Flow
 
 interface ProfileRepository {
@@ -36,9 +45,11 @@ interface JustificationRepository {
 }
 
 interface MessageRepository {
-    fun getByReceiver(receiverId: UuidString): Flow<List<Message>>
+    suspend fun getInbox(currentUserId: String): List<MessageThread>
+    suspend fun getConversation(currentUserId: String, contactId: String): List<Message>
+    suspend fun sendMessage(receiverId: String, content: String): Result<Unit>
+    suspend fun markAsRead(senderId: String, currentUserId: String)
     suspend fun save(message: Message)
-    suspend fun delete(id: UuidString)
 }
 
 interface InvitationCodeRepository {

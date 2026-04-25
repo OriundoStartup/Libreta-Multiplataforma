@@ -8,7 +8,10 @@ import com.tuapp.libreta.domain.repository.StudentRepository
 import com.tuapp.libreta.domain.usecase.GetPendingJustificationsUseCase
 import com.tuapp.libreta.domain.usecase.ReviewJustificationUseCase
 import com.tuapp.libreta.domain.usecase.SubmitJustificationUseCase
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 enum class JustificationReason(val label: String) {

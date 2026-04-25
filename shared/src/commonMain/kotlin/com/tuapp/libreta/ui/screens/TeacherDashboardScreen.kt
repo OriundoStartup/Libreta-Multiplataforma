@@ -22,7 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -91,11 +94,20 @@ object TeacherDashboardScreen : Screen {
                 )
             },
             floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    onClick = { showCreateDialog = true },
-                    icon    = { Icon(Icons.Default.Add, null) },
-                    text    = { Text("Nuevo Curso") }
-                )
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ExtendedFloatingActionButton(
+                        onClick = { navigator.push(AppNavigation.messages()) },
+                        icon    = { Icon(Icons.Default.MailOutline, null) },
+                        text    = { Text("Ver Mensajes") },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    ExtendedFloatingActionButton(
+                        onClick = { showCreateDialog = true },
+                        icon    = { Icon(Icons.Default.Add, null) },
+                        text    = { Text("Nuevo Curso") }
+                    )
+                }
             }
         ) { padding ->
             when (val s = state) {
@@ -124,8 +136,7 @@ object TeacherDashboardScreen : Screen {
                 ) {
                     item {
                         ProfileHeader(
-                            name = s.profile.name,
-                            role = "Profesor"
+                            name = s.profile.name
                         )
                     }
 
@@ -150,7 +161,17 @@ object TeacherDashboardScreen : Screen {
                                         StudentListScreen(classId = course.id, className = course.name)
                                     )
                                 },
-                                onGenerateCode = { model.generateInviteCodeForCourse(course) }
+                                onGenerateCode = { model.generateInviteCodeForCourse(course) },
+                                onTakeAttendance = {
+                                    navigator.push(
+                                        AppNavigation.attendance(courseId = course.id, courseName = course.name)
+                                    )
+                                },
+                                onEdit = {
+                                    navigator.push(
+                                        AppNavigation.courseEdit(courseId = course.id, courseName = course.name, course = course)
+                                    )
+                                }
                             )
                         }
                     }
@@ -164,7 +185,6 @@ object TeacherDashboardScreen : Screen {
                 onDismiss = { },
                 onCreate  = { name, grade, school ->
                     model.createCourse(name, grade, school)
-                    showCreateDialog = false
                 }
             )
         }
@@ -176,7 +196,7 @@ object TeacherDashboardScreen : Screen {
 }
 
 @Composable
-private fun ProfileHeader(name: String, role: String) {
+private fun ProfileHeader(name: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(16.dp),
@@ -207,7 +227,7 @@ private fun ProfileHeader(name: String, role: String) {
                     shape  = RoundedCornerShape(8.dp),
                     color  = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 ) {
-                    Text(role,
+                    Text("Profesor",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style    = MaterialTheme.typography.labelSmall,
                         color    = MaterialTheme.colorScheme.primary,
@@ -219,7 +239,13 @@ private fun ProfileHeader(name: String, role: String) {
 }
 
 @Composable
-private fun CourseCard(course: Course, onClick: () -> Unit, onGenerateCode: () -> Unit) {
+private fun CourseCard(
+    course: Course,
+    onClick: () -> Unit,
+    onGenerateCode: () -> Unit,
+    onTakeAttendance: () -> Unit,
+    onEdit: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape    = RoundedCornerShape(12.dp)
@@ -243,6 +269,14 @@ private fun CourseCard(course: Course, onClick: () -> Unit, onGenerateCode: () -
                 Text("Nivel: ${course.grade ?: "N/A"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onTakeAttendance) {
+                Icon(Icons.Default.HowToReg, contentDescription = "Tomar asistencia",
+                    tint = MaterialTheme.colorScheme.primary)
+            }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Editar curso",
+                    tint = MaterialTheme.colorScheme.secondary)
             }
             IconButton(onClick = onGenerateCode) {
                 Icon(Icons.Default.Add, contentDescription = "Ver código",

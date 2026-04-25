@@ -1,11 +1,8 @@
 package com.tuapp.libreta.domain.usecase
 
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.domain.repository.MessageRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 data class MessageThread(
     val contactId: UuidString,
@@ -15,22 +12,21 @@ data class MessageThread(
 )
 
 class GetInboxUseCase(private val repository: MessageRepository) {
-    operator fun invoke(userId: UuidString): Flow<List<MessageThread>> =
-        repository.getByReceiver(userId).map { messages ->
-            messages.groupBy { it.senderId }.map { (senderId, msgs) ->
-                MessageThread(senderId, "Contacto ${senderId.value.takeLast(4)}", msgs.maxBy { it.id?.value ?: "" }.content, true)
-            }
-        }
+    suspend operator fun invoke(userId: UuidString): List<MessageThread> =
+        repository.getInbox(userId.value)
 }
 
 class GetConversationUseCase(private val repository: MessageRepository) {
-    operator fun invoke(userId: UuidString, contactId: UuidString): Flow<List<Message>> =
-        repository.getByReceiver(userId).map { it.filter { m -> m.senderId == contactId } }
+    suspend operator fun invoke(userId: UuidString, contactId: UuidString): List<Message> =
+        repository.getConversation(userId.value, contactId.value)
 }
 
 class SendMessageUseCase(private val repository: MessageRepository) {
-    suspend operator fun invoke(senderId: UuidString, receiverId: UuidString, content: String) {
-        require(content.isNotBlank()) { "El mensaje no puede estar vacío" }
-        repository.save(Message(null, senderId, receiverId, content.trim()))
-    }
+    suspend operator fun invoke(receiverId: UuidString, content: String): Result<Unit> =
+        repository.sendMessage(receiverId.value, content)
+}
+
+class MarkAsReadUseCase(private val repository: MessageRepository) {
+    suspend operator fun invoke(senderId: UuidString, currentUserId: UuidString) =
+        repository.markAsRead(senderId.value, currentUserId.value)
 }

@@ -10,8 +10,7 @@ import com.tuapp.libreta.db.LibretaAppQueries
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.domain.repository.AttendanceRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -25,7 +24,7 @@ class AttendanceRepositoryImpl(private val queries: LibretaAppQueries) : Attenda
     override fun getByStudent(studentId: UuidString): Flow<List<Attendance>> =
         queries.getAttendanceByStudent(studentId.value)
             .asFlow()
-            .mapToList(Dispatchers.IO)
+            .mapToList(getIoDispatcher())
             .map { list -> list.map { it.toDomain() } }
             .catch { emit(emptyList()) }
 

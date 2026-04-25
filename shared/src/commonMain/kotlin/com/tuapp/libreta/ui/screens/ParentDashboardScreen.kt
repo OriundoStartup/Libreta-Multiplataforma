@@ -1,8 +1,23 @@
 package com.tuapp.libreta.ui.screens
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -10,9 +25,45 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,12 +128,12 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                 if (uiState is ParentDashboardUiState.Success || uiState is ParentDashboardUiState.NoStudents) {
                     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ExtendedFloatingActionButton(
-                            onClick        = { model.onAddStudentClick() },
+                            onClick        = { navigator.push(AppNavigation.enrollment()) },
                             expanded       = fabExpanded,
-                            icon           = { Icon(Icons.Default.Add, contentDescription = null) },
-                            text           = { Text("Añadir Alumno") },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            icon           = { Icon(Icons.Default.School, contentDescription = null) },
+                            text           = { Text("Inscribir Curso") },
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         if (uiState is ParentDashboardUiState.Success) {
                             ExtendedFloatingActionButton(
@@ -98,12 +149,17 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         ) { padding ->
-            when (val s = uiState) {
+            when (uiState) {
                 ParentDashboardUiState.Loading    -> ParentShimmer(padding)
-                ParentDashboardUiState.NoStudents -> NoStudentsState(padding, { model.onAddStudentClick() }, { navigator.push(AppNavigation.profile()) })
-                is ParentDashboardUiState.Error   -> ErrorState(s.message, padding) { model.load() }
+                ParentDashboardUiState.NoStudents -> NoStudentsState(padding) {
+                    navigator.push(
+                        AppNavigation.profile()
+                    )
+                }
+
+                is ParentDashboardUiState.Error   -> ErrorState(uiState.message, padding) { model.load() }
                 is ParentDashboardUiState.Success -> {
-                    val student = s.students[s.selectedIndex]
+                    val student = uiState.students[uiState.selectedIndex]
 
                     LazyColumn(
                         state               = listState,
@@ -115,17 +171,17 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // ── Selector de pupilo (tabs) ─────────────────────
-                        if (s.students.size > 1) {
+                        if (uiState.students.size > 1) {
                             item {
                                 ScrollableTabRow(
-                                    selectedTabIndex = s.selectedIndex,
+                                    selectedTabIndex = uiState.selectedIndex,
                                     edgePadding      = 0.dp,
                                     containerColor   = Color.Transparent,
                                     divider          = {}
                                 ) {
-                                    s.students.forEachIndexed { index, pupil ->
+                                    uiState.students.forEachIndexed { index, pupil ->
                                         Tab(
-                                            selected = index == s.selectedIndex,
+                                            selected = index == uiState.selectedIndex,
                                             onClick  = { model.selectStudent(index) },
                                             text     = { Text(pupil.name.split(" ").first()) }
                                         )
@@ -136,7 +192,14 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
 
                         // ── Header del estudiante ─────────────────────────
                         item {
-                            StudentHeader(name = student.name, percent = student.attendancePercent)
+                            StudentHeader(
+                                name = student.name,
+                                percent = student.attendancePercent,
+                                studentId = student.id.value,
+                                onViewHistory = {
+                                    navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
+                                }
+                            )
                         }
 
                         // ── Status cards ──────────────────────────────────
@@ -160,11 +223,13 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 )
                                 StatusCard(
                                     icon           = Icons.Default.EditNote,
-                                    value          = "1",
-                                    label          = "Anotaciones",
+                                    value          = "Avisos",
+                                    label          = "Ver circulares",
                                     containerColor = Color(0xFFFFF8E1),
                                     contentColor   = Color(0xFFF57F17),
-                                    modifier       = Modifier.weight(1f)
+                                    modifier       = Modifier.weight(1f).clickable { 
+                                        navigator.push(AppNavigation.noticeList(student.courseId)) 
+                                    }
                                 )
                             }
                         }
@@ -202,10 +267,10 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                             )
                         }
 
-                        itemsIndexed(s.timeline, key = { _, e -> e.id }) { index, event ->
+                        itemsIndexed(uiState.timeline, key = { _, e -> e.id }) { index, event ->
                             TimelineItem(
                                 event    = event,
-                                isLast   = index == s.timeline.lastIndex,
+                                isLast   = index == uiState.timeline.lastIndex,
                                 onJustify = { navigator.push(AppNavigation.justificationForm(parentId = parentId)) }
                             )
                         }
@@ -283,7 +348,7 @@ fun AddStudentDialog(
 // ── Student header ────────────────────────────────────────────────────────────
 
 @Composable
-private fun StudentHeader(name: String, percent: Int) {
+private fun StudentHeader(name: String, percent: Int, studentId: String, onViewHistory: () -> Unit) {
     Row(
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -299,7 +364,7 @@ private fun StudentHeader(name: String, percent: Int) {
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             LinearProgressIndicator(
                 progress       = { percent / 100f },
@@ -315,6 +380,13 @@ private fun StudentHeader(name: String, percent: Int) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp))
+        }
+        IconButton(onClick = onViewHistory) {
+            Icon(
+                Icons.Default.History,
+                contentDescription = "Ver historial",
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -360,7 +432,7 @@ private fun ShimmerBox(height: Int, widthFraction: Float = 1f, modifier: Modifie
 // -- No students state -------------------------------------------------------
 
 @Composable
-private fun NoStudentsState(padding: PaddingValues, onAddStudent: () -> Unit, onGoToProfile: () -> Unit) {
+private fun NoStudentsState(padding: PaddingValues, onGoToProfile: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
             Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))

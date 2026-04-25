@@ -1,13 +1,11 @@
 package com.tuapp.libreta.data.remote
 
 import com.tuapp.libreta.data.remote.dto.AttendanceDto
-import com.tuapp.libreta.data.util.UuidString
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.Ignore
 import kotlin.test.assertNotNull
 
 /**

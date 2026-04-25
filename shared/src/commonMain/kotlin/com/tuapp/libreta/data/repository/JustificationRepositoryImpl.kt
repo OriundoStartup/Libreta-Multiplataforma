@@ -10,8 +10,7 @@ import com.tuapp.libreta.db.LibretaAppQueries
 import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.domain.repository.JustificationRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -19,7 +18,7 @@ import kotlinx.coroutines.flow.map
 class JustificationRepositoryImpl(private val queries: LibretaAppQueries) : JustificationRepository {
 
     override fun getByStudent(studentId: UuidString): Flow<List<Justification>> =
-        queries.getJustificationsByStudent(studentId.value).asFlow().mapToList(Dispatchers.IO)
+        queries.getJustificationsByStudent(studentId.value).asFlow().mapToList(getIoDispatcher())
             .map { list -> list.map { it.toDomain() } }.catch { emit(emptyList()) }
 
     override suspend fun save(justification: Justification) {

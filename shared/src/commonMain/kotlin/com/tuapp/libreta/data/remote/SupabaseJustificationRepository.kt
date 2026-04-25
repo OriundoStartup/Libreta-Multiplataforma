@@ -23,7 +23,7 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
             JustificationSupabaseDto(
                 id        = justification.id?.value,
                 studentId = justification.studentId.value,
-                date      = justification.date,
+                date      = justification.date.toString(),
                 reason    = justification.reason,
                 status    = justification.status.name
             )

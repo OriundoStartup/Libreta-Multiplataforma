@@ -6,13 +6,11 @@ import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.usecase.CourseAnalytics
 import com.tuapp.libreta.domain.usecase.GetCourseAnalyticsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 
 sealed interface StatsUiState {
     data object Loading                            : StatsUiState

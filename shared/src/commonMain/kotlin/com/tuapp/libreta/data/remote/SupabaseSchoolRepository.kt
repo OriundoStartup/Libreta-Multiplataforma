@@ -1,7 +1,7 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.CourseAssignmentDto
-import com.tuapp.libreta.data.remote.dto.SchoolDto
+import com.tuapp.libreta.data.remote.dto.CourseAssignmentSupabaseDto
+import com.tuapp.libreta.data.remote.dto.SchoolSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.School
@@ -16,14 +16,14 @@ class SupabaseSchoolRepository(private val supabase: SupabaseClient) : SchoolRep
     override fun getByTeacher(teacherId: UuidString): Flow<List<School>> = flow {
         val assignments = supabase.from("course_assignments")
             .select { filter { eq("teacher_id", teacherId.value) } }
-            .decodeList<CourseAssignmentDto>()
+            .decodeList<CourseAssignmentSupabaseDto>()
 
-        val schoolIds = assignments.map { it.schoolId }.distinct()
+        val schoolIds = assignments.mapNotNull { it.schoolId }.distinct()
         if (schoolIds.isEmpty()) { emit(emptyList()); return@flow }
 
         val schools = supabase.from("schools")
             .select { filter { isIn("id", schoolIds) } }
-            .decodeList<SchoolDto>()
+            .decodeList<SchoolSupabaseDto>()
 
         emit(schools.map { it.toDomain() })
     }

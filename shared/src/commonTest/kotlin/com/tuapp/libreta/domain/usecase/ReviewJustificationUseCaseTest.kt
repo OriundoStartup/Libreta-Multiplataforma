@@ -4,7 +4,6 @@ import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.model.JustificationStatus
 import com.tuapp.libreta.test.FakeJustificationRepository
 import com.tuapp.libreta.test.FakeMessageRepository
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

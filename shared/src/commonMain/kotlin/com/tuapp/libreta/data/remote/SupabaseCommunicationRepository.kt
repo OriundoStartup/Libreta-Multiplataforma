@@ -1,6 +1,6 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.CommunicationDto
+import com.tuapp.libreta.data.remote.dto.CommunicationSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
@@ -14,11 +14,11 @@ class SupabaseCommunicationRepository(private val supabase: SupabaseClient) : Co
 
     override suspend fun sendGeneralNotice(senderId: UuidString, classId: UuidString, content: String) {
         supabase.from("communications").insert(
-            CommunicationDto(
+            CommunicationSupabaseDto(
                 senderId    = senderId.value,
                 courseId    = classId.value,
                 messageText = content,
-                category    = "AVISO_GENERAL",
+                category    = "INFO",
                 isInternal  = false
             )
         )
@@ -27,7 +27,7 @@ class SupabaseCommunicationRepository(private val supabase: SupabaseClient) : Co
     override fun getByClass(classId: UuidString): Flow<List<Message>> = flow {
         emit(supabase.from("communications")
             .select { filter { eq("course_id", classId.value) } }
-            .decodeList<CommunicationDto>()
+            .decodeList<CommunicationSupabaseDto>()
             .map { it.toDomain() })
     }
 }

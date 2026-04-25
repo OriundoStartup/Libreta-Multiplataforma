@@ -4,7 +4,7 @@ import android.content.Intent
 
 actual object ShareHelper {
     actual fun shareText(text: String) {
-        val ctx = AndroidContextHolder.context ?: return
+        val ctx = AppContextHolder.appContext
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, text)

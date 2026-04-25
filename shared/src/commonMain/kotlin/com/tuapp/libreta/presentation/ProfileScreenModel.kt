@@ -4,13 +4,13 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
-import com.tuapp.libreta.data.remote.dtos.CourseDto
+import com.tuapp.libreta.data.remote.dto.CourseSupabaseDto
+import com.tuapp.libreta.data.remote.dto.ProfileSupabaseDto
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.data.util.epochMsToIso
+import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.UserRole
-import com.tuapp.libreta.domain.repository.CourseAssignmentRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -19,17 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlin.coroutines.cancellation.CancellationException
-
-@Serializable
-data class ProfileDto(
-    val id: String,
-    @SerialName("full_name") val fullName: String,
-    val role: String,
-    val email: String? = null
-)
 
 data class ProfileUiData(
     val id: UuidString,
@@ -82,14 +72,14 @@ class ProfileScreenModel(
                 // 1. Obtener perfil y email de la sesión
                 val profileDto = supabase.from("profiles")
                     .select { filter { eq("id", uid.value) } }
-                    .decodeSingle<ProfileDto>()
+                    .decodeSingle<ProfileSupabaseDto>()
                 
                 val userEmail = authService.currentUser()?.email ?: profileDto.email ?: "Sin email"
                 val role = if (profileDto.role == "PARENT") UserRole.PARENT else UserRole.TEACHER
                 
                 val uiData = ProfileUiData(
                     id       = uid,
-                    fullName = profileDto.fullName,
+                    fullName = profileDto.fullName ?: "Sin nombre",
                     email    = userEmail,
                     role     = role
                 )
@@ -118,7 +108,7 @@ class ProfileScreenModel(
                         val courseName = try {
                             supabase.from("courses")
                                 .select { filter { eq("id", s.courseId.value) } }
-                                .decodeSingle<CourseDto>()
+                                .decodeSingle<CourseSupabaseDto>()
                                 .name
                         } catch (e: CancellationException) {
                             throw e

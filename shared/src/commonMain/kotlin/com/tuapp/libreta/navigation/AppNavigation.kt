@@ -2,8 +2,26 @@ package com.tuapp.libreta.navigation
 
 import cafe.adriel.voyager.core.screen.Screen
 import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.model.UserRole
-import com.tuapp.libreta.ui.screens.*
+import com.tuapp.libreta.ui.screens.AttendanceHistoryScreen
+import com.tuapp.libreta.ui.screens.AttendanceScreen
+import com.tuapp.libreta.ui.screens.ComposeNoticeScreen
+import com.tuapp.libreta.ui.screens.CourseEditScreen
+import com.tuapp.libreta.ui.screens.CourseStatsScreen
+import com.tuapp.libreta.ui.screens.EnrollmentScreen
+import com.tuapp.libreta.ui.screens.JustificationReviewScreen
+import com.tuapp.libreta.ui.screens.JustificationScreen
+import com.tuapp.libreta.ui.screens.LoginScreen
+import com.tuapp.libreta.ui.screens.MessageDetailScreen
+import com.tuapp.libreta.ui.screens.MessageListScreen
+import com.tuapp.libreta.ui.screens.NewMessageScreen
+import com.tuapp.libreta.ui.screens.NoticeListScreen
+import com.tuapp.libreta.ui.screens.ParentDashboardScreen
+import com.tuapp.libreta.ui.screens.ProfileScreen
+import com.tuapp.libreta.ui.screens.StudentDetailScreen
+import com.tuapp.libreta.ui.screens.StudentListScreen
+import com.tuapp.libreta.ui.screens.TeacherDashboardScreen
 
 object AppConfig {
     const val CURRENT_USER_ID = "user-current"
@@ -30,6 +48,8 @@ object AppNavigation {
 
     fun messages(): Screen = MessageListScreen
 
+    fun newMessage(): Screen = NewMessageScreen
+
     fun messageDetail(contactId: UuidString, contactName: String): Screen =
         MessageDetailScreen(contactId = contactId, contactName = contactName)
 
@@ -48,5 +68,23 @@ object AppNavigation {
 
     fun composeNotice(): Screen = ComposeNoticeScreen
 
+    fun noticeList(classId: UuidString): Screen = NoticeListScreen(classId = classId)
+
+    fun attendance(courseId: String, courseName: String): Screen = 
+        AttendanceScreen(courseId = courseId, courseName = courseName)
+
     fun profile(): Screen = ProfileScreen
+
+    fun studentList(classId: String): Screen = StudentListScreen(classId = classId)
+
+    fun attendanceHistory(studentId: String, studentName: String): Screen =
+        AttendanceHistoryScreen(studentId = studentId, studentName = studentName)
+
+    fun studentDetail(studentId: String, studentName: String, courseId: String, parentId: String): Screen =
+        StudentDetailScreen(studentId = studentId, studentName = studentName, courseId = courseId, parentId = parentId)
+
+    fun enrollment(): Screen = EnrollmentScreen
+
+    fun courseEdit(courseId: String, courseName: String, course: Course): Screen =
+        CourseEditScreen(courseId = courseId, courseName = courseName, course = course)
 }

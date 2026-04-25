@@ -6,7 +6,6 @@ import com.tuapp.libreta.domain.model.Course
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.rpc
 
 interface CoursesRepository {
     suspend fun createCourse(
@@ -19,6 +18,13 @@ interface CoursesRepository {
     suspend fun getTeacherCourses(): Result<List<Course>>
     suspend fun getCourseByInviteCode(code: String): Result<Course?>
     suspend fun enrollStudent(courseId: String, studentName: String, studentRut: String? = null): Result<Unit>
+    suspend fun updateCourse(
+        courseId: String,
+        name: String,
+        description: String?,
+        subject: String?,
+        grade: String?
+    ): Result<Course>
 }
 
 class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesRepository {
@@ -75,6 +81,29 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
             .select { filter { eq("invite_code", code.uppercase()) } }
             .decodeSingleOrNull<CourseDto>()
             ?.toDomain()
+    }
+
+    override suspend fun updateCourse(
+        courseId: String,
+        name: String,
+        description: String?,
+        subject: String?,
+        grade: String?
+    ): Result<Course> = runCatching {
+        supabase.postgrest["courses"].update({
+            set("name", name)
+            set("description", description)
+            set("subject", subject)
+            set("grade", grade)
+        }) { filter { eq("id", courseId) } }
+        getCourseById(courseId).getOrThrow()
+    }
+
+    private suspend fun getCourseById(courseId: String): Result<Course> = runCatching {
+        supabase.postgrest["courses"]
+            .select { filter { eq("id", courseId) } }
+            .decodeSingle<CourseDto>()
+            .toDomain()
     }
 
     override suspend fun enrollStudent(courseId: String, studentName: String, studentRut: String?): Result<Unit> = runCatching {

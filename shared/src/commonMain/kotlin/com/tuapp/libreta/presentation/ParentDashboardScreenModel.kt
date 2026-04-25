@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.MessageRepository
@@ -23,6 +22,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 data class StudentSummary(
     val id: UuidString,
+    val courseId: UuidString,
     val name: String,
     val attendancePercent: Int,
     val lastNote: String,
@@ -103,10 +103,12 @@ class ParentDashboardScreenModel(
                         val attendance = attendanceRepo.getByStudent(student.id).first()
                         val total = attendance.size.coerceAtLeast(1)
                         val present = attendance.count { it.status == AttendanceStatus.PRESENT }
-                        val msgs = messageRepo.getByReceiver(userId).first().size
+                        val msgs = messageRepo.getInbox(userId.value)
+                            .count { it.unread }
                         
                         StudentSummary(
                             id = student.id,
+                            courseId = student.courseId,
                             name = student.fullName,
                             attendancePercent = present * 100 / total,
                             lastNote = "Sin anotaciones recientes",
@@ -213,13 +215,14 @@ class ParentDashboardScreenModel(
                 )
             }
         
-        val messageEvents = messageRepo.getByReceiver(parentId).first().takeLast(3).mapIndexed { i, msg ->
+        val inbox = messageRepo.getInbox(parentId.value)
+        val messageEvents = inbox.take(3).mapIndexed { i, thread ->
             TimelineEvent(
                 id = "msg-$i",
                 type = TimelineEventType.MESSAGE,
-                title = "Mensaje",
-                subtitle = msg.content.take(40),
-                date = "Recibido"
+                title = "Mensaje de ${thread.contactName}",
+                subtitle = thread.lastMessage.take(40),
+                date = if (thread.unread) "Sin leer" else "Leído"
             )
         }
 

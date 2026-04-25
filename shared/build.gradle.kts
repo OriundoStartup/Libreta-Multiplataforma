@@ -1,5 +1,5 @@
-import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -21,6 +21,10 @@ kotlin {
             isStatic = true
         }
     }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -32,30 +36,35 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+            implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)
+            implementation(libs.koin.compose)
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.screenmodel)
             implementation(libs.voyager.transitions)
             implementation(libs.voyager.koin)
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
+            implementation(libs.supabase.realtime)
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
             implementation(libs.sqldelight.android)
-            implementation(libs.koin.android)
-            implementation(libs.ktor.client.cio)
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.browser)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native)
-            implementation(libs.ktor.client.darwin)
         }
-        commonTest.dependencies {
+        wasmJsMain.dependencies {
+            implementation(libs.ktor.client.js)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.browser)
+        }
+        wasmJsTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

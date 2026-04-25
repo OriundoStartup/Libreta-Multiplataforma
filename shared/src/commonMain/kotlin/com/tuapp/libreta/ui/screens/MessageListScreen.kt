@@ -5,9 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,12 +17,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +39,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,10 +65,19 @@ object MessageListScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val model: MessageScreenModel = koinScreenModel()
         val state by model.inbox.collectAsState()
+        var searchQuery by remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) { model.loadInbox() }
 
         Scaffold(
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = { navigator.push(AppNavigation.newMessage()) },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                    text = { Text("Nuevo Mensaje") },
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            },
             topBar = {
                 TopAppBar(
                     navigationIcon = {
@@ -85,20 +103,58 @@ object MessageListScreen : Screen {
                         Text("💬", style = MaterialTheme.typography.displayMedium)
                         Spacer(Modifier.height(12.dp))
                         Text("Sin mensajes aún", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Usa el botón flotante para enviar un mensaje",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
-                is InboxUiState.Success -> LazyColumn(
-                    contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp).plus(padding),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(s.threads, key = { it.contactId }) { thread ->
-                        ThreadRow(thread = thread, onClick = {
-                            navigator.push(AppNavigation.messageDetail(
-                                contactId = thread.contactId,
-                                contactName = thread.contactName
-                            ))
-                        })
+                is InboxUiState.Success -> {
+                    val filteredThreads = s.filteredThreads
+
+                    LazyColumn(
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp).plus(padding),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        item {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = {
+                                    searchQuery = it
+                                    model.search(it)
+                                },
+                                placeholder = { Text("Buscar conversación...") },
+                                leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null) },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                singleLine = true
+                            )
+                        }
+
+                        if (filteredThreads.isEmpty() && searchQuery.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "No se encontraron conversaciones",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        items(filteredThreads, key = { it.contactId }) { thread ->
+                            ThreadRow(thread = thread, onClick = {
+                                navigator.push(AppNavigation.messageDetail(
+                                    contactId = thread.contactId,
+                                    contactName = thread.contactName
+                                ))
+                            })
+                        }
                     }
                 }
             }

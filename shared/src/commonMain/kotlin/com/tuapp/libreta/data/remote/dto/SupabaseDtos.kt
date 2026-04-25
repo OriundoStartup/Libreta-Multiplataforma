@@ -4,116 +4,134 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// attendance: id, student_id, date(date→String), status, justification_id, created_at
 @Serializable
-data class AttendanceDto(
+data class ProfileSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
-    @SerialName("student_id")      val studentId: String,
-    val date: String,              // DATE type → "YYYY-MM-DD"
-    val status: String,
-    @SerialName("justification_id")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val justificationId: String? = null,
-    @SerialName("created_at")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val createdAt: String? = null
-)
-
-// students: id, full_name, course_id, parent_id, attendance_percentage
-@Serializable
-data class StudentDto(
-    val id: String,
-    @SerialName("full_name")              val fullName: String,
-    @SerialName("course_id")              val courseId: String,
-    @SerialName("parent_id")              val parentId: String,
-    @SerialName("attendance_percentage")  val attendancePercentage: Double = 0.0
-)
-
-// communications: id, sender_id, receiver_id, student_id, course_id, message_text, category, is_internal, created_at
-@Serializable
-data class CommunicationDto(
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val id: String? = null,
-    @SerialName("sender_id")   val senderId: String,
-    @SerialName("receiver_id")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val receiverId: String? = null,
-    @SerialName("student_id")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val studentId: String? = null,
-    @SerialName("course_id")   val courseId: String,
-    @SerialName("message_text") val messageText: String,
-    val category: String = "AVISO_GENERAL",
-    @SerialName("is_internal") val isInternal: Boolean = false,
-    @SerialName("created_at")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val createdAt: String? = null
-)
-
-// courses: id, name, teacher_id, created_at
-@Serializable
-data class CourseDto(
-    val id: String,
-    val name: String,
-    @SerialName("teacher_id") val teacherId: String,
-    @SerialName("created_at")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val createdAt: String? = null
-)
-
-// profiles: id, full_name, role, updated_at
-@Serializable
-data class ProfileDto(
-    val id: String,
     @SerialName("full_name") val fullName: String? = null,
+    val email: String? = null,
     val role: String? = null,
     @SerialName("course_id") val courseId: String? = null,
-    @SerialName("updated_at")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val updatedAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 @Serializable
-data class SchoolDto(
-    val id: String,
-    val name: String,
-    val address: String = ""
-)
-
-@Serializable
-data class CourseAssignmentDto(
+data class ClassRoomSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
-    @SerialName("teacher_id")      val teacherId: String,
-    @SerialName("course_id")       val courseId: String,
-    @SerialName("school_id")       val schoolId: String,
-    @SerialName("is_head_teacher") val isHeadTeacher: Boolean = false
+    val name: String,
+    val grade: String,
+    val section: String,
+    @SerialName("school_id") val schoolId: String? = null
 )
 
-// justifications: id, student_id, parent_id, date(bigint), reason, status, created_at
+@Serializable
+data class StudentSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    @SerialName("first_name") val firstName: String,
+    @SerialName("last_name") val lastName: String,
+    @SerialName("class_id") val classId: String?,
+    @SerialName("parent_id") val parentId: String? = null
+)
+
+@Serializable
+data class AttendanceSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    @SerialName("student_id") val studentId: String,
+    val date: String,
+    val status: String,
+    @SerialName("course_id") val courseId: String? = null
+)
+
 @Serializable
 data class JustificationSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
     @SerialName("student_id") val studentId: String,
-    @SerialName("parent_id")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val parentId: String? = null,
-    val date: Long,
+    val date: String,
     val reason: String,
-    val status: String = "PENDING",
-    @SerialName("created_at")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val createdAt: String? = null
+    val status: String = "PENDING"
 )
 
-// messages table (direct messages between users)
+@Serializable
+data class CourseSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    val name: String,
+    @SerialName("teacher_id") val teacherId: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    val grade: String? = null,
+    val description: String? = null,
+    val subject: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("invite_code") val inviteCode: String? = null,
+    @SerialName("school_name") val schoolName: String? = null
+)
+
+@Serializable
+data class EnrollmentSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    @SerialName("course_id") val courseId: String,
+    @SerialName("parent_id") val parentId: String,
+    @SerialName("student_name") val studentName: String,
+    @SerialName("student_rut") val studentRut: String? = null,
+    @SerialName("enrolled_at") val enrolledAt: String? = null
+)
+
+@Serializable
+data class InvitationCodeSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    val code: String,
+    @SerialName("student_id") val studentId: String,
+    @SerialName("teacher_id") val teacherId: String,
+    @SerialName("claimed_by") val claimedBy: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null
+)
+
+@Serializable
+data class CourseAssignmentSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    @SerialName("course_id") val courseId: String,
+    @SerialName("teacher_id") val teacherId: String,
+    @SerialName("school_id") val schoolId: String? = null
+)
+
+@Serializable
+data class SchoolSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    val name: String,
+    val address: String? = null
+)
+
+@Serializable
+data class CommunicationSupabaseDto(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val id: String? = null,
+    @SerialName("sender_id") val senderId: String,
+    @SerialName("course_id") val courseId: String,
+    @SerialName("message_text") val messageText: String,
+    val category: String? = null,
+    @SerialName("is_internal") val isInternal: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
 @Serializable
 data class MessageSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
-    @SerialName("sender_id") val senderId: String,
-    @SerialName("receiver_id") val receiverId: String?,
-    val content: String
+    @SerialName("sender_id") val senderId: String? = null,
+    @SerialName("receiver_id") val receiverId: String? = null,
+    @SerialName("student_id") val studentId: String? = null,
+    @SerialName("course_id") val courseId: String? = null,
+    @SerialName("message_text") val messageText: String? = null,
+    val category: String? = null,
+    @SerialName("is_internal") val isInternal: Boolean = true,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("read_at") val readAt: String? = null
 )
