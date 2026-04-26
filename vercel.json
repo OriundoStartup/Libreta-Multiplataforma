@@ -1,5 +1,5 @@
 {
-  "buildCommand": "./gradlew :composeApp:wasmJsBrowserDistribution",
+  "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution",
   "outputDirectory": "composeApp/build/distributions",
   "headers": [
     {
