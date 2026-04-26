@@ -2,7 +2,7 @@ package com.tuapp.libreta.domain.repository
 
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Attendance
-import com.tuapp.libreta.domain.model.ClassRoom
+import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.model.CourseAssignment
 import com.tuapp.libreta.domain.model.InvitationCode
 import com.tuapp.libreta.domain.model.Justification
@@ -20,8 +20,9 @@ interface ProfileRepository {
 }
 
 interface ClassRoomRepository {
-    fun getAll(): Flow<List<ClassRoom>>
-    suspend fun save(classRoom: ClassRoom)
+    fun getAll(): Flow<List<Course>>
+    fun getByTeacher(teacherId: UuidString): Flow<List<Course>>
+    suspend fun save(classRoom: Course)
     suspend fun delete(id: UuidString)
 }
 
@@ -34,6 +35,7 @@ interface StudentRepository {
 
 interface AttendanceRepository {
     fun getByStudent(studentId: UuidString): Flow<List<Attendance>>
+    fun getByCourse(courseId: UuidString): Flow<List<Attendance>>
     suspend fun save(attendance: Attendance)
     suspend fun delete(id: UuidString)
 }

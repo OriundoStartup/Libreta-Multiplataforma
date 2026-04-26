@@ -82,3 +82,12 @@ data class InvitationCode(
     val claimedBy: UuidString?,
     val expiresAt: Long
 )
+
+data class Communication(
+    val id: UuidString,
+    val senderId: UuidString,
+    val courseId: UuidString,
+    val content: String,
+    val category: String?,
+    val createdAt: Long
+)

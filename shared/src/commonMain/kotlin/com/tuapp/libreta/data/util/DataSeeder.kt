@@ -17,59 +17,35 @@ private data class StudentInsert(
     val id: String = "",
     @SerialName("full_name") val fullName: String,
     @SerialName("course_id") val courseId: String,
-    @SerialName("parent_id") val parentId: String,
-    @SerialName("attendance_percentage") val attendancePercentage: Double = 0.0
+    @SerialName("parent_id") val parentId: String
 )
 
-/**
- * DataSeeder proporciona datos de demostración tanto para el modo local como remoto.
- *
- * ESTRATEGIA APLICADA:
- * 1. IDs de Desarrollo: Se han reemplazado IDs genéricos ("s01", "clase-demo") por UUIDs válidos 
- *    (formato de10de10-...) para evitar errores 22P02 en PostgreSQL/Supabase.
- * 2. Aislamiento Local vs Remoto: El seeding en Supabase está desactivado por defecto mediante 
- *    [REMOTE_SEEDING_ENABLED]. Solo debe activarse explícitamente en desarrollo.
- * 3. Seguridad en Producción: El seeding local es seguro ya que solo afecta a la caché SQLite 
- *    del dispositivo del desarrollador/usuario demo.
- */
 class DataSeeder(private val queries: LibretaAppQueries) {
 
     private val now = currentEpochMs()
 
     companion object {
-        // IDs estáticos válidos para mantener consistencia y evitar errores de sintaxis UUID
         private const val DEMO_TEACHER_ID = "de10de10-0000-0000-0000-000000000001"
         private const val DEMO_PARENT_ID  = "de10de10-0000-0000-0000-000000000002"
         private const val DEMO_COURSE_ID  = "de10de10-0000-0000-0000-000000000003"
-
-        // FLAG DE SEGURIDAD: Cambiar a 'true' solo si se desea poblar una instancia de Supabase nueva
         private const val REMOTE_SEEDING_ENABLED = false
     }
 
-    /**
-     * Pobla la base de datos local si está vacía. 
-     * Ideal para pruebas offline y demostraciones rápidas.
-     */
     fun seedIfEmpty() {
         queries.transaction {
-            val count = queries.getStudentsByClass(DEMO_COURSE_ID).executeAsList().size
+            val count = queries.getStudentsByCourse(DEMO_COURSE_ID).executeAsList().size
             if (count > 0) return@transaction
             
             seedLocalProfiles()
-            seedLocalClass()
+            seedLocalCourse()
             seedLocalStudents()
             seedLocalAttendance()
         }
     }
 
-    /**
-     * Pobla Supabase con datos de prueba. 
-     * Requiere que [REMOTE_SEEDING_ENABLED] sea true.
-     */
     suspend fun seedSupabaseIfEmpty(supabase: SupabaseClient, teacherId: String) {
         if (!REMOTE_SEEDING_ENABLED) return
 
-        // Obtener o crear el curso demo vinculado al profesor real
         val existing = runCatching {
             supabase.from("courses").select { filter { eq("teacher_id", teacherId) } }
                 .decodeList<CourseInsert>()
@@ -83,20 +59,17 @@ class DataSeeder(private val queries: LibretaAppQueries) {
                 .decodeSingle<CourseInsert>().id
         }
 
-        // Evitar duplicados
         val studentsExist = runCatching {
             supabase.from("students").select { filter { eq("course_id", courseId) } }
                 .decodeList<StudentInsert>().isNotEmpty()
         }.getOrElse { false }
         if (studentsExist) return
 
-        // Insertar estudiantes (Supabase generará sus UUIDs reales)
         val students = studentData.map { (_, name) ->
             mapOf("full_name" to name, "course_id" to courseId, "parent_id" to teacherId)
         }
         supabase.from("students").insert(students)
 
-        // Insertar asistencia vinculada a los nuevos UUIDs generados por Supabase
         val insertedStudents = supabase.from("students")
             .select { filter { eq("course_id", courseId) } }
             .decodeList<StudentInsert>()
@@ -122,9 +95,9 @@ class DataSeeder(private val queries: LibretaAppQueries) {
             SyncStatus.SYNCED.name, now, now)
     }
 
-    private fun seedLocalClass() =
-        queries.insertOrReplaceClass(DEMO_COURSE_ID, "1BA", "4° Básico A (Demo)", DEMO_TEACHER_ID,
-            SyncStatus.SYNCED.name, now, now)
+    private fun seedLocalCourse() =
+        queries.insertOrReplaceCourse(DEMO_COURSE_ID, "4° Básico A (Demo)", null, null, null, null,
+            DEMO_TEACHER_ID, null, null, 1, SyncStatus.SYNCED.name, now, now)
 
     private val studentData = listOf(
         "de10de10-0000-0000-0000-000000000101" to "Sofía Martínez",
@@ -141,7 +114,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
 
     private fun seedLocalStudents() {
         studentData.forEach { (id, name) ->
-            queries.insertOrReplaceStudent(id, name, DEMO_COURSE_ID, DEMO_PARENT_ID,
+            queries.insertOrReplaceStudent(id, name, null, DEMO_COURSE_ID, DEMO_PARENT_ID,
                 SyncStatus.SYNCED.name, now, now)
         }
     }
@@ -164,11 +137,10 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         studentData.forEach { (studentId, _) ->
             (pattern[studentId] ?: List(5) { true }).forEachIndexed { i, present ->
                 val dateStr = epochMsToIso(now - (4 - i) * dayMs).take(10)
-                // Generar un ID de asistencia único y válido (36 caracteres)
                 val attendanceId = studentId.substring(0, 31) + "a" + i + studentId.takeLast(3)
                 queries.insertOrReplaceAttendance(attendanceId, studentId, dateStr,
                     if (present) AttendanceStatus.PRESENT.name else AttendanceStatus.ABSENT.name,
-                    null, SyncStatus.SYNCED.name, now, now)
+                    SyncStatus.SYNCED.name, now, now)
             }
         }
     }

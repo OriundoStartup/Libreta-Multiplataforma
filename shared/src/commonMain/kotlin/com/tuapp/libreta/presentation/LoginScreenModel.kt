@@ -42,9 +42,6 @@ class LoginScreenModel(
         screenModelScope.launch {
             _state.value = LoginUiState.Loading
             
-            // Forzamos el cierre de sesión previo para limpiar tokens viejos
-            runCatching { authService.signOut() }
-
             val result = runCatching { 
                 launcher?.invoke() ?: authService.signInWithGoogle() 
             }
@@ -52,8 +49,6 @@ class LoginScreenModel(
             if (result.isFailure) {
                 _state.value = LoginUiState.Error(result.exceptionOrNull()?.message ?: "Error al abrir el navegador")
             }
-            // Si tiene éxito, NO llamamos a checkUserStatus aquí. 
-            // Esperamos a que el observador del init{} detecte el cambio tras el callback del navegador.
         }
     }
 

@@ -1,10 +1,10 @@
--- LibretaApp.sq — schema normalizado según Supabase real
+-- LibretaApp.sq — schema SQLite (3NF), mapea a Supabase v2.1
 
--- ── PROFILE ──────────────────────────────────────────────────────────────────
+-- ── PROFILE ───────────────────────────────────────────────────────────────
 CREATE TABLE ProfileEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
-    role        TEXT    NOT NULL,
     full_name   TEXT    NOT NULL DEFAULT '',
+    role        TEXT    NOT NULL DEFAULT 'TEACHER',
     sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
@@ -19,99 +19,112 @@ INSERT OR REPLACE INTO ProfileEntity VALUES (?, ?, ?, ?, ?, ?);
 markProfileAsPendingDelete:
 UPDATE ProfileEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
-getUnsyncedProfiles:
+getUnsyncedProfileEntities:
 SELECT * FROM ProfileEntity WHERE sync_status != 'SYNCED';
 
-
--- ── CLASS ─────────────────────────────────────────────────────────────────────
-CREATE TABLE ClassEntity (
+-- ── COURSE ───────────────────────────────────────────────────────────────
+CREATE TABLE CourseEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
-    class_code  TEXT    NOT NULL,
     name        TEXT    NOT NULL,
+    description TEXT,
+    subject     TEXT,
+    grade       TEXT,
+    section     TEXT,
     teacher_id  TEXT    NOT NULL,
+    school_id   TEXT,
+    invite_code TEXT,
+    is_active   INTEGER NOT NULL DEFAULT 1,
     sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
 
-getAllClasses:
-SELECT * FROM ClassEntity WHERE sync_status != 'PENDING_DELETE';
+getAllCourses:
+SELECT * FROM CourseEntity WHERE sync_status != 'PENDING_DELETE';
 
-insertOrReplaceClass:
-INSERT OR REPLACE INTO ClassEntity VALUES (?, ?, ?, ?, ?, ?, ?);
+getCoursesByTeacher:
+SELECT * FROM CourseEntity WHERE teacher_id = ? AND sync_status != 'PENDING_DELETE';
 
-markClassAsPendingDelete:
-UPDATE ClassEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
+getCourseByInvite:
+SELECT * FROM CourseEntity WHERE invite_code = ? AND sync_status != 'PENDING_DELETE';
 
-getUnsyncedClasses:
-SELECT * FROM ClassEntity WHERE sync_status != 'SYNCED';
+insertOrReplaceCourse:
+INSERT OR REPLACE INTO CourseEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+markCourseAsPendingDelete:
+UPDATE CourseEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
--- ── STUDENT ───────────────────────────────────────────────────────────────────
+getUnsyncedCourseEntities:
+SELECT * FROM CourseEntity WHERE sync_status != 'SYNCED';
+
+-- ── STUDENT ────────────────────────────────────────────────────────────
 CREATE TABLE StudentEntity (
-    id                   TEXT    NOT NULL PRIMARY KEY,
-    full_name            TEXT    NOT NULL DEFAULT '',
-    course_id            TEXT    NOT NULL DEFAULT '',
-    parent_id            TEXT    NOT NULL DEFAULT '',
-    sync_status          TEXT    NOT NULL DEFAULT 'SYNCED',
-    created_at           INTEGER NOT NULL,
-    updated_at           INTEGER NOT NULL
+    id              TEXT    NOT NULL PRIMARY KEY,
+    full_name       TEXT    NOT NULL DEFAULT '',
+    student_rut     TEXT,
+    course_id       TEXT    NOT NULL,
+    parent_id       TEXT    NOT NULL,
+    sync_status     TEXT    NOT NULL DEFAULT 'SYNCED',
+    created_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL
 );
 
 getAllStudents:
 SELECT * FROM StudentEntity WHERE sync_status != 'PENDING_DELETE';
 
-getStudentsByClass:
+getStudentsByCourse:
 SELECT * FROM StudentEntity WHERE course_id = ? AND sync_status != 'PENDING_DELETE';
 
 getStudentsByParent:
 SELECT * FROM StudentEntity WHERE parent_id = ? AND sync_status != 'PENDING_DELETE';
 
 insertOrReplaceStudent:
-INSERT OR REPLACE INTO StudentEntity VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO StudentEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 markStudentAsPendingDelete:
 UPDATE StudentEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
-getUnsyncedStudents:
+getUnsyncedStudentEntities:
 SELECT * FROM StudentEntity WHERE sync_status != 'SYNCED';
 
-
--- ── ATTENDANCE ────────────────────────────────────────────────────────────────
+-- ── ATTENDANCE ────────────────────────────────────────────────────────
 CREATE TABLE AttendanceEntity (
     id               TEXT    NOT NULL PRIMARY KEY,
     student_id       TEXT    NOT NULL,
     date             TEXT    NOT NULL,
     status           TEXT    NOT NULL,
-    justification_id TEXT,
     sync_status      TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at       INTEGER NOT NULL,
     updated_at       INTEGER NOT NULL
 );
 
-getAllAttendances:
+getAllAttendanceEntities:
 SELECT * FROM AttendanceEntity WHERE sync_status != 'PENDING_DELETE';
 
 getAttendanceByStudent:
 SELECT * FROM AttendanceEntity WHERE student_id = ? AND sync_status != 'PENDING_DELETE';
 
+getAttendanceByCourse:
+SELECT a.* FROM AttendanceEntity a
+JOIN StudentEntity s ON s.id = a.student_id
+WHERE s.course_id = ? AND a.sync_status != 'PENDING_DELETE';
+
 insertOrReplaceAttendance:
-INSERT OR REPLACE INTO AttendanceEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO AttendanceEntity VALUES (?, ?, ?, ?, ?, ?, ?);
 
 markAttendanceAsPendingDelete:
 UPDATE AttendanceEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
-getUnsyncedAttendances:
+getUnsyncedAttendanceEntities:
 SELECT * FROM AttendanceEntity WHERE sync_status != 'SYNCED';
 
-
--- ── JUSTIFICATION ─────────────────────────────────────────────────────────────
+-- ── JUSTIFICATION ────────────────────────────────────────────────────
 CREATE TABLE JustificationEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
     student_id  TEXT    NOT NULL,
-    date        INTEGER NOT NULL,
+    date        TEXT    NOT NULL,
     reason      TEXT    NOT NULL,
-    status      TEXT    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'PENDING',
     sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
@@ -123,22 +136,25 @@ SELECT * FROM JustificationEntity WHERE sync_status != 'PENDING_DELETE';
 getJustificationsByStudent:
 SELECT * FROM JustificationEntity WHERE student_id = ? AND sync_status != 'PENDING_DELETE';
 
+getPendingJustifications:
+SELECT * FROM JustificationEntity WHERE status = 'PENDING' AND sync_status != 'PENDING_DELETE';
+
 insertOrReplaceJustification:
 INSERT OR REPLACE INTO JustificationEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 markJustificationAsPendingDelete:
 UPDATE JustificationEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
-getUnsyncedJustifications:
+getUnsyncedJustificationEntities:
 SELECT * FROM JustificationEntity WHERE sync_status != 'SYNCED';
 
-
--- ── MESSAGE ───────────────────────────────────────────────────────────────────
+-- ── MESSAGE ───────────────────────────────────────────────────────────
 CREATE TABLE MessageEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
     sender_id   TEXT    NOT NULL,
     receiver_id TEXT    NOT NULL,
-    content     TEXT    NOT NULL,
+    message_text TEXT   NOT NULL,
+    read_at     INTEGER,
     sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
@@ -150,11 +166,75 @@ SELECT * FROM MessageEntity WHERE sync_status != 'PENDING_DELETE';
 getMessagesByReceiver:
 SELECT * FROM MessageEntity WHERE receiver_id = ? AND sync_status != 'PENDING_DELETE';
 
+getConversation:
+SELECT * FROM MessageEntity 
+WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+AND sync_status != 'PENDING_DELETE'
+ORDER BY created_at ASC;
+
 insertOrReplaceMessage:
-INSERT OR REPLACE INTO MessageEntity VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO MessageEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 markMessageAsPendingDelete:
 UPDATE MessageEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
 
-getUnsyncedMessages:
+getUnsyncedMessageEntities:
 SELECT * FROM MessageEntity WHERE sync_status != 'SYNCED';
+
+-- ── COMMUNICATION ────────────────────────────────────────────────────
+CREATE TABLE CommunicationEntity (
+    id           TEXT    NOT NULL PRIMARY KEY,
+    sender_id    TEXT    NOT NULL,
+    course_id    TEXT    NOT NULL,
+    message_text TEXT    NOT NULL,
+    category    TEXT,
+    sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+);
+
+getCommunicationsByCourse:
+SELECT * FROM CommunicationEntity WHERE course_id = ? AND sync_status != 'PENDING_DELETE'
+ORDER BY created_at DESC;
+
+insertOrReplaceCommunication:
+INSERT OR REPLACE INTO CommunicationEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+markCommunicationAsPendingDelete:
+UPDATE CommunicationEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
+
+-- ── INVITATION CODE ─────────────────────────────────────────────────
+CREATE TABLE InvitationCodeEntity (
+    code        TEXT    NOT NULL PRIMARY KEY,
+    student_id  TEXT    NOT NULL,
+    teacher_id TEXT    NOT NULL,
+    claimed_by TEXT,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+getInvitationCodesByTeacher:
+SELECT * FROM InvitationCodeEntity WHERE teacher_id = ?;
+
+getPendingInvitationCodes:
+SELECT * FROM InvitationCodeEntity WHERE claimed_by IS NULL AND expires_at > ?;
+
+insertOrReplaceInvitationCode:
+INSERT OR REPLACE INTO InvitationCodeEntity VALUES (?, ?, ?, ?, ?, ?);
+
+claimInvitationCode:
+UPDATE InvitationCodeEntity SET claimed_by = ? WHERE code = ? AND claimed_by IS NULL AND expires_at > ?;
+
+-- ── SCHOOL ────────────────────────────────────────────────────────
+CREATE TABLE SchoolEntity (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    name        TEXT    NOT NULL,
+    address    TEXT,
+    created_at  INTEGER NOT NULL
+);
+
+getAllSchools:
+SELECT * FROM SchoolEntity;
+
+insertOrReplaceSchool:
+INSERT OR REPLACE INTO SchoolEntity VALUES (?, ?, ?, ?);

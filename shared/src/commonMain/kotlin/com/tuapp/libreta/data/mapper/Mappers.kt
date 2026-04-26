@@ -2,28 +2,91 @@ package com.tuapp.libreta.data.mapper
 
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.currentEpochMs
-import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.db.AttendanceEntity
-import com.tuapp.libreta.db.ClassEntity
+import com.tuapp.libreta.db.CommunicationEntity
+import com.tuapp.libreta.db.CourseEntity
+import com.tuapp.libreta.db.InvitationCodeEntity
 import com.tuapp.libreta.db.JustificationEntity
 import com.tuapp.libreta.db.MessageEntity
 import com.tuapp.libreta.db.ProfileEntity
+import com.tuapp.libreta.db.SchoolEntity
 import com.tuapp.libreta.db.StudentEntity
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
-import com.tuapp.libreta.domain.model.ClassRoom
+import com.tuapp.libreta.domain.model.Communication
+import com.tuapp.libreta.domain.model.Course
+import com.tuapp.libreta.domain.model.InvitationCode
 import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.model.JustificationStatus
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.domain.model.Profile
+import com.tuapp.libreta.domain.model.School
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.model.UserRole
 
 fun now(): Long = currentEpochMs()
 
-fun ProfileEntity.toDomain()       = Profile(UuidString(id), UserRole.valueOf(role), full_name)
-fun ClassEntity.toDomain()         = ClassRoom(UuidString(id), class_code, name, UuidString(teacher_id))
-fun StudentEntity.toDomain()       = Student(UuidString(id), full_name, UuidString(course_id), UuidString(parent_id))
-fun AttendanceEntity.toDomain()    = Attendance(id.toUuidOrNull(), UuidString(student_id), date, AttendanceStatus.valueOf(status), justification_id.toUuidOrNull())
-fun JustificationEntity.toDomain() = Justification(id.toUuidOrNull(), UuidString(student_id), date, reason, JustificationStatus.valueOf(status))
-fun MessageEntity.toDomain()       = Message(id.toUuidOrNull(), UuidString(sender_id), receiver_id.toUuidOrNull(), content)
+fun ProfileEntity.toDomain() = Profile(UuidString(id), UserRole.valueOf(role), full_name)
+
+fun CourseEntity.toDomain() = Course(
+    id = id,
+    teacherId = teacher_id,
+    name = name,
+    description = description,
+    subject = subject,
+    grade = grade,
+    schoolName = school_id,
+    inviteCode = invite_code ?: "",
+    isActive = is_active.toLong() == 1L,
+    createdAt = ""
+)
+
+fun StudentEntity.toDomain() = Student(
+    id = UuidString(id),
+    fullName = full_name,
+    courseId = UuidString(course_id),
+    parentId = UuidString(parent_id),
+    attendancePercentage = 0.0
+)
+
+fun AttendanceEntity.toDomain() = Attendance(
+    id = UuidString(id),
+    studentId = UuidString(student_id),
+    date = date,
+    status = runCatching { AttendanceStatus.valueOf(status) }.getOrElse { AttendanceStatus.ABSENT },
+    justificationId = null
+)
+
+fun JustificationEntity.toDomain() = Justification(
+    id = UuidString(id),
+    studentId = UuidString(student_id),
+    date = date.toLongOrNull() ?: 0L,
+    reason = reason,
+    status = runCatching { JustificationStatus.valueOf(status) }.getOrElse { JustificationStatus.PENDING }
+)
+
+fun MessageEntity.toDomain() = Message(
+    id = UuidString(id),
+    senderId = UuidString(sender_id),
+    receiverId = receiver_id.let { UuidString(it) },
+    content = message_text
+)
+
+fun CommunicationEntity.toDomain() = Communication(
+    id = UuidString(id),
+    senderId = UuidString(sender_id),
+    courseId = UuidString(course_id),
+    content = message_text,
+    category = category,
+    createdAt = created_at
+)
+
+fun InvitationCodeEntity.toDomain() = InvitationCode(
+    code = code,
+    studentId = UuidString(student_id),
+    teacherId = UuidString(teacher_id),
+    claimedBy = claimed_by?.let { UuidString(it) },
+    expiresAt = expires_at
+)
+
+fun SchoolEntity.toDomain() = School(UuidString(id), name, address ?: "")

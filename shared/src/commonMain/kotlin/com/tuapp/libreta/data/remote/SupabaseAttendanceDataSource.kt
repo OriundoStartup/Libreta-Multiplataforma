@@ -1,6 +1,7 @@
 package com.tuapp.libreta.data.remote
 
 import com.tuapp.libreta.data.remote.dto.AttendanceSupabaseDto
+import com.tuapp.libreta.data.remote.dto.StudentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.remote.dto.toSupabaseDto
 import com.tuapp.libreta.data.util.AppLogger
@@ -24,7 +25,32 @@ class SupabaseAttendanceDataSource(private val supabase: SupabaseClient) : Atten
                 .map { it.toDomain() }
             emit(result)
         } catch (e: Exception) {
-            AppLogger.e("AttendanceDataSource", "Error cargando asistencia de ${studentId.value}: ${e.message}")
+            AppLogger.e("AttendanceDataSource", "Error loading attendance: ${e.message}")
+            emit(emptyList())
+        }
+    }
+
+    override fun getByCourse(courseId: UuidString): Flow<List<Attendance>> = flow {
+        try {
+            val students = supabase.from("students")
+                .select { filter { eq("course_id", courseId.value) } }
+                .decodeList<StudentSupabaseDto>()
+            val studentIds = students.mapNotNull { it.id }
+            
+            if (studentIds.isEmpty()) {
+                emit(emptyList())
+                return@flow
+            }
+            
+            val result = supabase.from("attendance")
+                .select {
+                    filter { isIn("student_id", studentIds) }
+                }
+                .decodeList<AttendanceSupabaseDto>()
+                .map { it.toDomain() }
+            emit(result)
+        } catch (e: Exception) {
+            AppLogger.e("AttendanceDataSource", "Error loading attendance by course: ${e.message}")
             emit(emptyList())
         }
     }
@@ -33,7 +59,7 @@ class SupabaseAttendanceDataSource(private val supabase: SupabaseClient) : Atten
         try {
             supabase.from("attendance").upsert(attendance.toSupabaseDto())
         } catch (e: Exception) {
-            AppLogger.e("AttendanceDataSource", "Error guardando asistencia: ${e.message}")
+            AppLogger.e("AttendanceDataSource", "Error saving attendance: ${e.message}")
             throw e
         }
     }
@@ -42,7 +68,7 @@ class SupabaseAttendanceDataSource(private val supabase: SupabaseClient) : Atten
         try {
             supabase.from("attendance").delete { filter { eq("id", id.value) } }
         } catch (e: Exception) {
-            AppLogger.e("AttendanceDataSource", "Error eliminando asistencia ${id.value}: ${e.message}")
+            AppLogger.e("AttendanceDataSource", "Error deleting attendance: ${e.message}")
             throw e
         }
     }
