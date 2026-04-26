@@ -98,5 +98,6 @@ buildkonfig {
     defaultConfigs {
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_URL", localProps.getProperty("SUPABASE_URL", ""))
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_KEY", localProps.getProperty("SUPABASE_KEY", ""))
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_REDIRECT_URL", localProps.getProperty("SUPABASE_REDIRECT_URL", ""))
     }
 }

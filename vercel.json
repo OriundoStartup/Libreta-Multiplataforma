@@ -1,6 +1,9 @@
 {
   "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution",
   "outputDirectory": "composeApp/build/distributions",
+  "buildEnv": {
+    "JAVA_HOME": "/opt/java/openjdk"
+  },
   "headers": [
     {
       "source": "/(.*)",

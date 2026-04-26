@@ -13,14 +13,13 @@ allprojects {
     configurations.all {
         resolutionStrategy {
             eachDependency {
-                // Forzamos solo las librerías estándar para evitar conflictos de versión
                 if (requested.group == "org.jetbrains.kotlin" && 
                     (requested.name.startsWith("kotlin-stdlib") || 
                      requested.name.startsWith("kotlin-reflect") ||
-                     requested.name.startsWith("kotlin-test"))) {
-                    useVersion("2.1.0")
+                     requested.name.startsWith("kotlin-test") ||
+                     requested.name.startsWith("kotlin-wasm-stdlib-wasm-js"))) {
+                    useVersion(libs.versions.kotlin.get())
                 }
-                // Forzamos kotlinx-datetime para compatibilidad con WasmJs
                 if (requested.name == "kotlinx-datetime") {
                     useVersion("0.6.0")
                 }

@@ -30,6 +30,8 @@ sealed class SessionStatus {
     data object NotAuthenticated : SessionStatus()
     data object Loading : SessionStatus()
     data class Authenticated(val user: UserInfo) : SessionStatus()
+    
+    fun isAuthenticated(): Boolean = this is Authenticated
 }
 
 class SupabaseAuthService(private val supabase: SupabaseClient) {
