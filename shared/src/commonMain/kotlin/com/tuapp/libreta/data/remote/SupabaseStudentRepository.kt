@@ -88,6 +88,13 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
         )
     }
 
+    override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = runCatching {
+        supabase.postgrest["enrollments"].update({
+            set("student_name", name)
+            set("student_rut", rut)
+        }) { filter { eq("id", id.value) } }
+    }
+
     override suspend fun deleteStudent(id: UuidString) {
         supabase.postgrest["enrollments"].delete { filter { eq("id", id.value) } }
     }

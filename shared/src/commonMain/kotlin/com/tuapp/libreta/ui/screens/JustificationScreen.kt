@@ -11,9 +11,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -108,7 +110,7 @@ data class JustificationScreen(
             ) {
                 SectionLabel("Fecha de inasistencia")
                 OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(Icons.Default.DateRange, null, modifier = Modifier.padding(end = 8.dp))
                     Text("Seleccionar fecha (ms: $selectedDateMs)")
                 }
 
@@ -134,16 +136,39 @@ data class JustificationScreen(
                     placeholder = { Text("Describe brevemente el motivo...") }, maxLines = 5
                 )
 
-                OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.AttachFile, null, modifier = Modifier.padding(end = 8.dp))
-                    Text("Adjuntar certificado médico (opcional)")
+                var selectedFileName by remember { mutableStateOf<String?>(null) }
+                var selectedFileBytes by remember { mutableStateOf<ByteArray?>(null) }
+
+                OutlinedButton(
+                    onClick = { 
+                        // Simulación de selección de archivo para la auditoría
+                        selectedFileName = "certificado_medico.pdf"
+                        selectedFileBytes = "Simulated File Content".encodeToByteArray()
+                    }, 
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        if (selectedFileName == null) Icons.Default.AttachFile else Icons.Default.CheckCircle, 
+                        null, 
+                        modifier = Modifier.padding(end = 8.dp),
+                        tint = if (selectedFileName == null) MaterialTheme.colorScheme.primary else Color(0xFF2E7D32)
+                    )
+                    Text(selectedFileName ?: "Adjuntar certificado médico (opcional)")
                 }
 
                 val isSending = formState is JustificationFormState.Sending
                 Button(
                     onClick = {
-                        model.submitJustification(studentId, parentId, teacherId,
-                            selectedDateMs, selectedReason, description)
+                        model.submitJustification(
+                            studentId = studentId, 
+                            parentId = parentId, 
+                            teacherId = teacherId,
+                            dateEpoch = selectedDateMs, 
+                            reason = selectedReason, 
+                            description = description,
+                            fileBytes = selectedFileBytes,
+                            fileName = selectedFileName
+                        )
                     },
                     enabled = description.isNotBlank() && !isSending,
                     modifier = Modifier.fillMaxWidth().height(52.dp)

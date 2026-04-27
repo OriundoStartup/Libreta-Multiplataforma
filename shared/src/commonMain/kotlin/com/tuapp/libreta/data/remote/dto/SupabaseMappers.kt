@@ -48,25 +48,29 @@ fun CourseAssignmentSupabaseDto.toDomain() = CourseAssignment(
 )
 
 fun JustificationSupabaseDto.toDomain() = Justification(
-    id        = id.toUuidOrNull(),
-    studentId = UuidString(studentId),
-    date      = date.toLongOrNull() ?: 0L,
-    reason    = reason,
-    status    = runCatching { JustificationStatus.valueOf(status.uppercase()) }.getOrElse { JustificationStatus.PENDING }
+    id          = id.toUuidOrNull(),
+    studentId   = UuidString(studentId),
+    date        = date.toLongOrNull() ?: 0L,
+    reason      = reason,
+    status      = runCatching { JustificationStatus.valueOf(status.uppercase()) }.getOrElse { JustificationStatus.PENDING },
+    documentUrl = documentUrl
 )
 
 fun MessageSupabaseDto.toDomain() = Message(
     id = id.toUuidOrNull(),
     senderId = senderId?.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000"),
     receiverId = receiverId.toUuidOrNull(),
-    content = messageText ?: ""
+    content = messageText ?: "",
+    createdAt = createdAt,
+    readAt = readAt
 )
 
 fun CommunicationSupabaseDto.toDomain() = Message(
     id         = id.toUuidOrNull(),
     senderId   = UuidString(senderId),
     receiverId = null,
-    content    = messageText
+    content    = messageText,
+    createdAt  = createdAt
 )
 
 fun Attendance.toSupabaseDto() = AttendanceSupabaseDto(

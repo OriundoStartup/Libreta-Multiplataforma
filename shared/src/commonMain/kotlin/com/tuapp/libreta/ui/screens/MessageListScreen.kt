@@ -176,7 +176,7 @@ private fun ThreadRow(thread: MessageThread, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text  = thread.contactName.first().uppercaseChar().toString(),
+                text  = thread.contactName[0].uppercaseChar().toString(),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )

@@ -12,6 +12,7 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
@@ -40,6 +41,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     val isLoggedInFlow: Flow<Boolean> = supabase.auth.sessionStatus
         .map { it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated }
+        .distinctUntilChanged()
 
     val sessionStatusFlow: Flow<SessionStatus> = supabase.auth.sessionStatus.map { status ->
         when (status) {
@@ -51,9 +53,15 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
             }
             else -> SessionStatus.NotAuthenticated
         }
-    }
+    }.distinctUntilChanged()
 
-    fun getGoogleOAuthUrl(): String = supabase.auth.getOAuthUrl(Google)
+    fun getGoogleOAuthUrl(redirectTo: String? = null): String {
+        val redirectQuery = redirectTo?.let { "&redirect_to=$it" } ?: ""
+        // Supabase GoTrue espera parámetros adicionales para el proveedor en 'query_params'
+        // Formato: {"prompt":"select_account"} URL-encoded
+        val queryParams = "&query_params=%7B%22prompt%22%3A%22select_account%22%7D"
+        return "${SupabaseConfig.URL}/auth/v1/authorize?provider=google$redirectQuery$queryParams"
+    }
 
     suspend fun signInWithGoogle() = supabase.auth.signInWith(Google)
 

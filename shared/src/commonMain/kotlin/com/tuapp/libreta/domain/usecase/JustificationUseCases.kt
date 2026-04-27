@@ -10,14 +10,23 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class SubmitJustificationUseCase(private val repository: JustificationRepository) {
-    suspend operator fun invoke(studentId: UuidString, dateEpoch: Long, reason: String) =
-        repository.save(Justification(
-            id        = null,   // Supabase generates UUID
+    suspend operator fun invoke(
+        studentId: UuidString,
+        dateEpoch: Long,
+        reason: String,
+        fileBytes: ByteArray? = null,
+        fileName: String? = null
+    ): Result<Unit> = repository.saveWithAttachment(
+        justification = Justification(
+            id        = null,
             studentId = studentId,
             date      = dateEpoch,
             reason    = reason,
             status    = JustificationStatus.PENDING
-        ))
+        ),
+        fileBytes = fileBytes,
+        fileName  = fileName
+    )
 }
 
 class GetPendingJustificationsUseCase(private val repository: JustificationRepository) {

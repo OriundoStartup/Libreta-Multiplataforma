@@ -13,6 +13,7 @@ import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class AttendanceRepositoryImpl(private val queries: LibretaAppQueries) : AttendanceRepository {
 
@@ -31,23 +32,27 @@ class AttendanceRepositoryImpl(private val queries: LibretaAppQueries) : Attenda
             .catch { emit(emptyList()) }
 
     override suspend fun save(attendance: Attendance) {
-        val now = currentEpochMs()
-        val attendanceId = attendance.id ?: UuidString.random()
-        queries.insertOrReplaceAttendance(
-            id = attendanceId.value,
-            student_id = attendance.studentId.value,
-            date = attendance.date,
-            status = attendance.status.name,
-            sync_status = "PENDING_INSERT",
-            created_at = now,
-            updated_at = now
-        )
+        withContext(getIoDispatcher()) {
+            val now = currentEpochMs()
+            val attendanceId = attendance.id ?: UuidString.random()
+            queries.insertOrReplaceAttendance(
+                id = attendanceId.value,
+                student_id = attendance.studentId.value,
+                date = attendance.date,
+                status = attendance.status.name,
+                sync_status = "PENDING_INSERT",
+                created_at = now,
+                updated_at = now
+            )
+        }
     }
 
     override suspend fun delete(id: UuidString) {
-        queries.markAttendanceAsPendingDelete(
-            updated_at = currentEpochMs(),
-            id = id.value
-        )
+        withContext(getIoDispatcher()) {
+            queries.markAttendanceAsPendingDelete(
+                updated_at = currentEpochMs(),
+                id = id.value
+            )
+        }
     }
 }

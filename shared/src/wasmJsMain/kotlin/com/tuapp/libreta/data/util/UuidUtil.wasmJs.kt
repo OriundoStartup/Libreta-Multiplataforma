@@ -11,7 +11,7 @@ package com.tuapp.libreta.data.util
 }""")
 external fun cryptoRandomUUID(): String
 
-private val uuidRegex = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE)
+private val uuidRegex = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE)
 
 actual fun String?.isValidUUID(): Boolean = this != null && uuidRegex.matches(this)
 actual fun randomUuidString(): String = cryptoRandomUUID()

@@ -33,6 +33,4 @@ actual val platformModule = module {
     single { LibretaAppDatabase(get()) }
     single { get<LibretaAppDatabase>().libretaAppQueries }
     single { DataSeeder(get()) }
-    single<ProfileRepository>   { ProfileRepositoryImpl(get()) }
-    single<ClassRoomRepository> { ClassRoomRepositoryImpl(get()) }
 }

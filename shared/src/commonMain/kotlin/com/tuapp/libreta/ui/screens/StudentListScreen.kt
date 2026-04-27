@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,16 +27,19 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AssignmentLate
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,8 +75,10 @@ import com.tuapp.libreta.navigation.AppNavigation
 import com.tuapp.libreta.presentation.StudentListEvent
 import com.tuapp.libreta.presentation.StudentListScreenModel
 import com.tuapp.libreta.presentation.StudentListUiState
+import com.tuapp.libreta.ui.components.EmptyStateView
 import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StudentCard
+import com.tuapp.libreta.ui.components.AppDrawer
 import kotlinx.coroutines.launch
 
 data class StudentListScreen(
@@ -96,12 +102,16 @@ data class StudentListScreen(
 
         ModalNavigationDrawer(
             drawerState   = drawerState,
-            drawerContent = { AppDrawer(
-            onClose          = { scope.launch { drawerState.close() } },
-            onMessages       = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.messages()) },
-            onJustifications = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.justificationReview(classId)) },
-            onStats          = { scope.launch { drawerState.close() }; navigator.push(AppNavigation.courseStats(classId, className)) }
-        ) }
+            drawerContent = { 
+                AppDrawer(
+                    onClose = { scope.launch { drawerState.close() } },
+                    onNavigateToDashboard = { navigator.popUntilRoot() },
+                    onNavigateToMessages = { navigator.push(AppNavigation.messages()) },
+                    onNavigateToCompose = { navigator.push(AppNavigation.composeNotice(classId = classId)) },
+                    onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
+                    onLogout = { model.logout() }
+                )
+            }
         ) {
             Scaffold(
                 topBar = {
@@ -137,17 +147,20 @@ data class StudentListScreen(
                 },
                 floatingActionButton = {
                     AnimatedVisibility(
-                        visible = uiState is StudentListUiState.Success,
+                        visible = uiState !is StudentListUiState.Loading,
                         enter   = fadeIn() + scaleIn(),
                         exit    = fadeOut() + scaleOut()
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SmallFloatingActionButton(
-                                onClick        = { navigator.push(AppNavigation.composeNotice()) },
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Icon(Icons.Default.MailOutline, contentDescription = "Enviar comunicación")
-                            }
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End) {
+                            ExtendedFloatingActionButton(
+                                onClick        = { navigator.push(AppNavigation.composeNotice(classId = classId)) },
+                                expanded       = fabExpanded,
+                                icon           = { Icon(Icons.Default.EditNote, contentDescription = null) },
+                                text           = { Text("Redactar") },
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor   = MaterialTheme.colorScheme.onPrimary,
+                                elevation      = FloatingActionButtonDefaults.elevation(8.dp)
+                            )
                             ExtendedFloatingActionButton(
                                 onClick        = { navigator.push(AppNavigation.attendance(classId, className)) },
                                 expanded       = fabExpanded,
@@ -155,12 +168,6 @@ data class StudentListScreen(
                                 text           = { Text("Pasar Asistencia") },
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
-                            SmallFloatingActionButton(
-                                onClick        = { navigator.push(AppNavigation.messages()) },
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Icon(Icons.Default.MailOutline, contentDescription = "Mensajes")
-                            }
                         }
                     }
                 },
@@ -169,7 +176,11 @@ data class StudentListScreen(
                 Box(Modifier.padding(padding).fillMaxSize()) {
                     when (val state = uiState) {
                         StudentListUiState.Loading -> ShimmerList()
-                        StudentListUiState.Empty   -> EmptyState()
+                        StudentListUiState.Empty   -> EmptyStateView(
+                            icon = Icons.Default.Groups,
+                            title = "Sin alumnos registrados",
+                            description = "Agrega alumnos para comenzar a pasar asistencia"
+                        )
 
                         is StudentListUiState.Success -> {
                             val filteredStudents = state.filteredStudents
@@ -188,16 +199,18 @@ data class StudentListScreen(
                                         },
                                         placeholder = { Text("Buscar alumno...") },
                                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                        singleLine = true
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(12.dp)
                                     )
                                 }
                                 item {
                                     Text(
-                                        text     = "${filteredStudents.size} de ${state.students.size} alumnos",
-                                        style    = MaterialTheme.typography.labelMedium,
-                                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                                        text     = if (searchQuery.isEmpty()) "Todos los alumnos (${state.students.size})" 
+                                                   else "Resultados (${filteredStudents.size})",
+                                        style    = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color    = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                                     )
                                 }
                                 if (filteredStudents.isEmpty() && searchQuery.isNotEmpty()) {
@@ -213,18 +226,13 @@ data class StudentListScreen(
                                         }
                                     }
                                 }
-                                items(filteredStudents, key = { it.id }) { student ->
-                                    AnimatedVisibility(
-                                        visible = true,
-                                        enter   = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 }
-                                    ) {
-                                        StudentCard(
-                                            student        = student,
-                                            onMarkPresent  = { model.onEvent(StudentListEvent.ToggleAttendance(it)) },
-                                            onMarkAbsent   = { model.onEvent(StudentListEvent.DeleteStudent(it)) },
-                                            onClick        = { navigator.push(AppNavigation.studentDetail(student.id.value, student.fullName, student.courseId.value, student.parentId.value)) }
-                                        )
-                                    }
+                                items(filteredStudents, key = { it.id.value }) { student ->
+                                    StudentCard(
+                                        student        = student,
+                                        onMarkPresent  = { model.onEvent(StudentListEvent.ToggleAttendance(it)) },
+                                        onMarkAbsent   = { model.onEvent(StudentListEvent.ToggleAttendance(it)) },
+                                        onClick        = { navigator.push(AppNavigation.studentDetail(student.id.value, student.fullName, student.courseId.value, student.parentId.value)) }
+                                    )
                                 }
                                 item { Spacer(Modifier.height(88.dp)) }
                             }
@@ -245,60 +253,6 @@ data class StudentListScreen(
     }
 }
 
-// ── Navigation Drawer ─────────────────────────────────────────────────────────
-
-@Composable
-private fun AppDrawer(onClose: () -> Unit, onMessages: () -> Unit, onJustifications: () -> Unit, onStats: () -> Unit) {
-    ModalDrawerSheet {
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text     = "Libreta App",
-            style    = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
-        Text(
-            text     = "Panel del Profesor",
-            style    = MaterialTheme.typography.bodySmall,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-        )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.MailOutline, null) },
-            label   = { Text("Mensajes") },
-            selected = false,
-            onClick  = onMessages
-        )
-        NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.AssignmentLate, null) },
-            label   = { Text("Justificaciones") },
-            selected = false,
-            onClick  = onJustifications
-        )
-        NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.BarChart, null) },
-            label   = { Text("Estadísticas") },
-            selected = false,
-            onClick  = onStats
-        )
-        NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.Settings, null) },
-            label   = { Text("Configuración") },
-            selected = false,
-            onClick  = onClose
-        )
-        Spacer(Modifier.weight(1f))
-        HorizontalDivider()
-        NavigationDrawerItem(
-            icon    = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
-            label   = { Text("Cerrar Sesión", color = MaterialTheme.colorScheme.error) },
-            selected = false,
-            onClick  = onClose,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-    }
-}
-
 // ── Shimmer list ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -309,31 +263,6 @@ private fun ShimmerList() {
         userScrollEnabled   = false
     ) {
         items(7) { ShimmerCard() }
-    }
-}
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun EmptyState() {
-    Column(
-        modifier              = Modifier.fillMaxSize(),
-        horizontalAlignment   = Alignment.CenterHorizontally,
-        verticalArrangement   = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.Groups,
-            contentDescription = null,
-            modifier    = Modifier.size(72.dp),
-            tint        = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Sin alumnos registrados",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-        Spacer(Modifier.height(4.dp))
-        Text("Agrega alumnos para comenzar a pasar asistencia",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

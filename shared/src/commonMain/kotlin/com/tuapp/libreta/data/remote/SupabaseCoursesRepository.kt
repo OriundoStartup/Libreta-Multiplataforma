@@ -25,9 +25,15 @@ interface CoursesRepository {
         subject: String?,
         grade: String?
     ): Result<Course>
+    suspend fun deleteCourse(courseId: String): Result<Unit>
 }
 
 class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesRepository {
+
+    override suspend fun deleteCourse(courseId: String): Result<Unit> = runCatching {
+        supabase.postgrest["courses"].delete { filter { eq("id", courseId) } }
+        Unit
+    }
 
     override suspend fun createCourse(
         name: String,

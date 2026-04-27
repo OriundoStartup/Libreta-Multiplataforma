@@ -1,0 +1,19 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Evita scrolls dobles innecesarios */
+    background-color: #ffffff;
+}
+
+#app-root {
+    width: 100%;
+    height: 100%;
+    display: block; /* Asegura que no colapse */
+}
+
+/* Ocultar el scrollbar en navegadores basados en Webkit si fuera necesario */
+body::-webkit-scrollbar {
+    display: none;
+}

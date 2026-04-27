@@ -14,11 +14,38 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
+import io.github.jan.supabase.postgrest.query.filter.*
+
+import io.github.jan.supabase.realtime.realtime
+import io.github.jan.supabase.realtime.selectAsFlow
+import io.github.jan.supabase.annotations.SupabaseExperimental
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 private const val INBOX_LIMIT        = 100
 private const val CONVERSATION_LIMIT = 200
 
+@OptIn(SupabaseExperimental::class)
 class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageRepository {
+
+    override fun observeConversation(currentUserId: String, contactId: String): Flow<List<Message>> {
+        return try {
+            supabase.from("messages")
+                .selectAsFlow(MessageSupabaseDto::id)
+                .map { list: List<MessageSupabaseDto> -> 
+                    list.map { it.toDomain() }
+                        .filter { 
+                            (it.senderId.value == currentUserId && it.receiverId?.value == contactId) ||
+                            (it.senderId.value == contactId && it.receiverId?.value == currentUserId)
+                        }
+                        .sortedBy { it.createdAt ?: "" } 
+                }
+        } catch (e: Exception) {
+            AppLogger.e("MessageRepository", "Error en realtime: ${e.message}")
+            flow { emit(emptyList()) }
+        }
+    }
 
     override suspend fun getInbox(currentUserId: String): List<MessageThread> {
         return try {
@@ -35,22 +62,36 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
                 }
                 .decodeList<MessageSupabaseDto>()
 
-            messages
+            val grouped = messages
                 .groupBy { msg ->
                     if (msg.senderId == currentUserId) msg.receiverId ?: "" else msg.senderId ?: ""
                 }
                 .filter { it.key.isNotBlank() }
-                .map { (contactId, msgs) ->
-                    val lastMsg    = msgs.first()
-                    val unreadCount = msgs.count { it.receiverId == currentUserId && it.readAt == null }
-                    val profile    = getProfileName(contactId)
-                    MessageThread(
-                        contactId   = UuidString(contactId),
-                        contactName = profile?.fullName ?: "Usuario",
-                        lastMessage = lastMsg.messageText ?: "",
-                        unread      = unreadCount > 0
-                    )
-                }
+
+            // Batch fetch profiles to avoid N+1
+            val contactIds = grouped.keys.toList()
+            val profiles = if (contactIds.isNotEmpty()) {
+                supabase.from("profiles")
+                    .select(columns = Columns.raw("id,full_name")) {
+                        filter {
+                            isIn("id", contactIds)
+                        }
+                    }
+                    .decodeList<ProfileSupabaseDto>()
+                    .associateBy { it.id ?: "" }
+            } else emptyMap()
+
+            grouped.map { (contactId, msgs) ->
+                val lastMsg    = msgs.first()
+                val unreadCount = msgs.count { it.receiverId == currentUserId && it.readAt == null }
+                val profile    = profiles[contactId]
+                MessageThread(
+                    contactId   = UuidString(contactId),
+                    contactName = profile?.fullName ?: "Usuario",
+                    lastMessage = lastMsg.messageText ?: "",
+                    unread      = unreadCount > 0
+                )
+            }
         } catch (e: Exception) {
             AppLogger.e("MessageRepository", "Error cargando inbox: ${e.message}")
             emptyList()
@@ -110,6 +151,38 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
         }.onFailure { e ->
             AppLogger.e("MessageRepository", "Error marcando como leído: ${e.message}")
         }
+    }
+
+    override fun getInternalNotes(studentId: UuidString): Flow<List<Message>> = flow {
+        try {
+            val response = supabase.from("messages")
+                .select {
+                    filter {
+                        eq("student_id", studentId.value)
+                        eq("is_internal", true)
+                    }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<MessageSupabaseDto>()
+            emit(response.map { it.toDomain() })
+        } catch (e: Exception) {
+            AppLogger.e("MessageRepository", "Error cargando notas: ${e.message}")
+            emit(emptyList())
+        }
+    }
+
+    override suspend fun saveInternalNote(
+        studentId: UuidString,
+        senderId: UuidString,
+        content: String
+    ): Result<Unit> = runCatching {
+        val dto = MessageSupabaseDto(
+            senderId    = senderId.value,
+            studentId   = studentId.value,
+            messageText = content,
+            isInternal  = true
+        )
+        supabase.from("messages").insert(dto)
     }
 
     override suspend fun save(message: Message) {

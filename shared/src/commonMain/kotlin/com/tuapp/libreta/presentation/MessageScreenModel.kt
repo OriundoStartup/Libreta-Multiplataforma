@@ -10,8 +10,10 @@ import com.tuapp.libreta.domain.usecase.GetConversationUseCase
 import com.tuapp.libreta.domain.usecase.GetInboxUseCase
 import com.tuapp.libreta.domain.usecase.MarkAsReadUseCase
 import com.tuapp.libreta.domain.usecase.MessageThread
+import com.tuapp.libreta.domain.usecase.ObserveConversationUseCase
 import com.tuapp.libreta.domain.usecase.SendMessageUseCase
 import io.github.jan.supabase.SupabaseClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +42,7 @@ sealed interface ConversationUiState {
 class MessageScreenModel(
     private val getInbox: GetInboxUseCase,
     private val getConversation: GetConversationUseCase,
+    private val observeConversation: ObserveConversationUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
     private val markAsRead: MarkAsReadUseCase,
     private val authService: SupabaseAuthService,
@@ -57,6 +60,8 @@ class MessageScreenModel(
 
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
+
+    private var conversationJob: Job? = null
 
     fun loadInbox() {
         val uid = currentUserId ?: run {
@@ -86,28 +91,19 @@ class MessageScreenModel(
     fun openConversation(contactId: UuidString) {
         val uid = currentUserId ?: return
         
-        screenModelScope.launch {
-            // Carga inicial
-            loadConversation(contactId)
-            
-            // Marcar como leído
-            markAsRead(contactId, uid)
-
-            // Realtime暂时禁用 - 需要额外的supabase-realtime模块和正确配置
-            // TODO: 实现实时消息更新
-        }
-    }
-
-    fun loadConversation(contactId: UuidString) {
-        val uid = currentUserId ?: return
-        screenModelScope.launch {
+        conversationJob?.cancel()
+        conversationJob = screenModelScope.launch {
             _conversation.value = ConversationUiState.Loading
-            runCatching { getConversation(uid, contactId) }
-                .onSuccess { _conversation.value = ConversationUiState.Success(it) }
-                .onFailure {
-                    AppLogger.e("MessageScreenModel", "Error loading conversation", it)
-                    _conversation.value = ConversationUiState.Success(emptyList())
+            
+            // Carga inicial y observación en tiempo real
+            observeConversation(uid, contactId).collect { msgs ->
+                _conversation.value = ConversationUiState.Success(msgs)
+                
+                // Marcar como leído si hay mensajes nuevos para mí
+                if (msgs.any { it.receiverId == uid }) {
+                    markAsRead(contactId, uid)
                 }
+            }
         }
     }
 
@@ -117,15 +113,15 @@ class MessageScreenModel(
         screenModelScope.launch {
             _sending.value = true
             sendMessageUseCase(receiverId, content)
-                .onSuccess {
-                    loadConversation(receiverId)
+                .onFailure {
+                    AppLogger.e("MessageScreenModel", "Error enviando mensaje: ${it.message}")
                 }
             _sending.value = false
         }
     }
 
     override fun onDispose() {
-        // Cleanup if needed
+        conversationJob?.cancel()
         super.onDispose()
     }
 }

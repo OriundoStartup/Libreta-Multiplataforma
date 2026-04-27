@@ -72,6 +72,9 @@ CREATE TABLE StudentEntity (
 getAllStudents:
 SELECT * FROM StudentEntity WHERE sync_status != 'PENDING_DELETE';
 
+getStudentById:
+SELECT * FROM StudentEntity WHERE id = ?;
+
 getStudentsByCourse:
 SELECT * FROM StudentEntity WHERE course_id = ? AND sync_status != 'PENDING_DELETE';
 
@@ -118,6 +121,27 @@ UPDATE AttendanceEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE
 getUnsyncedAttendanceEntities:
 SELECT * FROM AttendanceEntity WHERE sync_status != 'SYNCED';
 
+deleteAttendanceEntity:
+DELETE FROM AttendanceEntity WHERE id = ?;
+
+deleteStudentEntity:
+DELETE FROM StudentEntity WHERE id = ?;
+
+deleteProfileEntity:
+DELETE FROM ProfileEntity WHERE id = ?;
+
+deleteCourseEntity:
+DELETE FROM CourseEntity WHERE id = ?;
+
+deleteJustificationEntity:
+DELETE FROM JustificationEntity WHERE id = ?;
+
+deleteMessageEntity:
+DELETE FROM MessageEntity WHERE id = ?;
+
+deleteCommunicationEntity:
+DELETE FROM CommunicationEntity WHERE id = ?;
+
 -- ── JUSTIFICATION ────────────────────────────────────────────────────
 CREATE TABLE JustificationEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
@@ -138,6 +162,12 @@ SELECT * FROM JustificationEntity WHERE student_id = ? AND sync_status != 'PENDI
 
 getPendingJustifications:
 SELECT * FROM JustificationEntity WHERE status = 'PENDING' AND sync_status != 'PENDING_DELETE';
+
+getPendingJustificationsByTeacher:
+SELECT j.* FROM JustificationEntity j
+JOIN StudentEntity s ON s.id = j.student_id
+JOIN CourseEntity c ON c.id = s.course_id
+WHERE c.teacher_id = ? AND j.status = 'PENDING' AND j.sync_status != 'PENDING_DELETE';
 
 insertOrReplaceJustification:
 INSERT OR REPLACE INTO JustificationEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);

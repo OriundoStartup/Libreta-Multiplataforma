@@ -191,4 +191,17 @@ class ProfileScreenModel(
     fun signOut() {
         screenModelScope.launch { runCatching { authService.signOut() } }
     }
+
+    fun deleteAccount() {
+        screenModelScope.launch {
+            try {
+                val uid = authService.currentUserId() ?: return@launch
+                // En un sistema real borraríamos de Supabase y luego Auth
+                supabase.from("profiles").delete { filter { eq("id", uid.value) } }
+                authService.signOut()
+            } catch (e: Exception) {
+                _state.value = ProfileUiState.Error("No se pudo eliminar la cuenta: ${e.message}")
+            }
+        }
+    }
 }

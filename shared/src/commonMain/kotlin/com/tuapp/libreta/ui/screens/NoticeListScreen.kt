@@ -11,13 +11,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -39,6 +43,9 @@ import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.presentation.NoticeListScreenModel
 import com.tuapp.libreta.presentation.NoticeListUiState
+import com.tuapp.libreta.ui.components.EmptyStateView
+import com.tuapp.libreta.ui.components.FullScreenError
+import com.tuapp.libreta.ui.components.FullScreenLoading
 
 data class NoticeListScreen(val classId: UuidString) : Screen {
 
@@ -56,38 +63,61 @@ data class NoticeListScreen(val classId: UuidString) : Screen {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                        }
-                    },
-                    title = { Text("Avisos del Curso") }
+                    navigationIcon = { IconButton(onClick = { navigator.pop() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }},
+                    title = { Text("Comunicados del Curso", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) }
                 )
             }
         ) { padding ->
-            when (val s = state) {
-                NoticeListUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            val selectedCategory by model.selectedCategory.collectAsState()
+
+            Column(modifier = Modifier.padding(padding)) {
+                // Fila de Filtros
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedCategory == null,
+                            onClick = { model.setCategoryFilter(null) },
+                            label = { Text("Todos") }
+                        )
+                    }
+                    items(com.tuapp.libreta.domain.model.NoticeCategory.entries) { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { model.setCategoryFilter(cat) },
+                            label = { Text("${cat.emoji} ${cat.label}") }
+                        )
+                    }
                 }
-                is NoticeListUiState.Success -> {
-                    if (s.notices.isEmpty()) {
-                        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                            Text("No hay avisos para este curso", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(s.notices) { notice ->
-                                NoticeItem(notice)
+
+                when (val s = state) {
+                    NoticeListUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+                        CircularProgressIndicator() 
+                    }
+                    is NoticeListUiState.Success -> {
+                        if (s.notices.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No hay comunicados para este filtro", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(s.notices) { notice ->
+                                    NoticeItem(notice)
+                                }
                             }
                         }
                     }
-                }
-                is NoticeListUiState.Error -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(s.message, color = MaterialTheme.colorScheme.error)
+                    is NoticeListUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(s.message, color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }

@@ -47,8 +47,8 @@ import libretamultiplataformaws.shared.generated.resources.Res
 import libretamultiplataformaws.shared.generated.resources.icono_libreta
 import org.jetbrains.compose.resources.painterResource
 
-private val ChileBlue = Color(0xFF0039A6)
-private val ChileRed  = Color(0xFFD52B1E)
+import com.tuapp.libreta.ui.theme.ChileBlue
+import com.tuapp.libreta.ui.theme.ChileRed
 
 object LoginScreen : Screen {
 
@@ -95,11 +95,11 @@ object LoginScreen : Screen {
                 ) {
                     Text(
                         text  = "LibretApp",
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontFamily = FontFamily.Cursive,
-                            fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
                             color      = Color.White,
-                            fontSize   = 58.sp
+                            fontSize   = 64.sp,
+                            letterSpacing = (-2).sp
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -127,7 +127,10 @@ object LoginScreen : Screen {
                         LoginUiState.Loading -> CircularProgressIndicator(color = Color.White)
                         else -> {
                             GoogleSignInButton(
-                                onClick  = { model.signInWithGoogle(googleLauncher) },
+                                onClick  = { 
+                                    println("LoginScreen: Botón Google presionado")
+                                    model.signInWithGoogle(googleLauncher) 
+                                },
                                 enabled  = state !is LoginUiState.Loading
                             )
                             if (state is LoginUiState.Error) {

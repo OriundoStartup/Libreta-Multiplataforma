@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -79,6 +80,8 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.tuapp.libreta.navigation.AppNavigation
 import com.tuapp.libreta.presentation.ParentDashboardScreenModel
 import com.tuapp.libreta.presentation.ParentDashboardUiState
+import com.tuapp.libreta.ui.components.EmptyStateView
+import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StatusCard
 import com.tuapp.libreta.ui.components.TimelineItem
@@ -113,7 +116,12 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                 TopAppBar(
                     title = { Text("Panel Apoderado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
                     actions = {
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = { 
+                            if (uiState is ParentDashboardUiState.Success) {
+                                val ids = uiState.students.map { it.id.value }
+                                navigator.push(AppNavigation.notificationScreen(parentId, ids))
+                            }
+                        }) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
                         }
                         IconButton(onClick = { navigator.push(AppNavigation.profile()) }) {
@@ -151,13 +159,16 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
         ) { padding ->
             when (uiState) {
                 ParentDashboardUiState.Loading    -> ParentShimmer(padding)
-                ParentDashboardUiState.NoStudents -> NoStudentsState(padding) {
-                    navigator.push(
-                        AppNavigation.profile()
-                    )
-                }
+                ParentDashboardUiState.NoStudents -> EmptyStateView(
+                    icon = Icons.Default.PersonAdd,
+                    title = "Sin alumnos vinculados",
+                    description = "Registra a tus hijos para ver su asistencia y comunicaciones escolares.",
+                    actionText = "Ir a mi perfil",
+                    onAction = { navigator.push(AppNavigation.profile()) },
+                    modifier = Modifier.padding(padding)
+                )
 
-                is ParentDashboardUiState.Error   -> ErrorState(uiState.message, padding) { model.load() }
+                is ParentDashboardUiState.Error   -> FullScreenError(uiState.message, padding) { model.load() }
                 is ParentDashboardUiState.Success -> {
                     val student = uiState.students[uiState.selectedIndex]
 
@@ -183,7 +194,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         Tab(
                                             selected = index == uiState.selectedIndex,
                                             onClick  = { model.selectStudent(index) },
-                                            text     = { Text(pupil.name.split(" ").first()) }
+                                            text     = { Text(pupil.name.split(" ")[0]) }
                                         )
                                     }
                                 }
@@ -196,6 +207,8 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 name = student.name,
                                 percent = student.attendancePercent,
                                 studentId = student.id.value,
+                                studentRut = student.rut,
+                                navigator = navigator,
                                 onViewHistory = {
                                     navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
                                 }
@@ -223,12 +236,12 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 )
                                 StatusCard(
                                     icon           = Icons.Default.EditNote,
-                                    value          = "Avisos",
-                                    label          = "Ver circulares",
+                                    value          = "Trámites",
+                                    label          = "Justificaciones",
                                     containerColor = Color(0xFFFFF8E1),
                                     contentColor   = Color(0xFFF57F17),
                                     modifier       = Modifier.weight(1f).clickable { 
-                                        navigator.push(AppNavigation.noticeList(student.courseId)) 
+                                        navigator.push(AppNavigation.justificationList(student.id.value)) 
                                     }
                                 )
                             }
@@ -348,7 +361,14 @@ fun AddStudentDialog(
 // ── Student header ────────────────────────────────────────────────────────────
 
 @Composable
-private fun StudentHeader(name: String, percent: Int, studentId: String, onViewHistory: () -> Unit) {
+private fun StudentHeader(
+    name: String, 
+    percent: Int, 
+    studentId: String, 
+    studentRut: String?,
+    navigator: cafe.adriel.voyager.navigator.Navigator,
+    onViewHistory: () -> Unit
+) {
     Row(
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -359,7 +379,7 @@ private fun StudentHeader(name: String, percent: Int, studentId: String, onViewH
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text  = name.first().uppercaseChar().toString(),
+                text  = name[0].uppercaseChar().toString(),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -380,6 +400,15 @@ private fun StudentHeader(name: String, percent: Int, studentId: String, onViewH
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp))
+        }
+        IconButton(onClick = {
+            navigator.push(AppNavigation.parentStudentDetail(studentId, name, studentRut))
+        }) {
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = "Gestionar alumno",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         IconButton(onClick = onViewHistory) {
             Icon(
@@ -427,41 +456,4 @@ private fun ShimmerBox(height: Int, widthFraction: Float = 1f, modifier: Modifie
         start = Offset(x, 0f), end = Offset(x + 400f, 0f)
     )
     Box(modifier.fillMaxWidth(widthFraction).height(height.dp).clip(RoundedCornerShape(12.dp)).background(brush))
-}
-
-// -- No students state -------------------------------------------------------
-
-@Composable
-private fun NoStudentsState(padding: PaddingValues, onGoToProfile: () -> Unit) {
-    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-            Spacer(Modifier.height(16.dp))
-            Text("Sin alumnos vinculados", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text("Registra a tus hijos para ver su asistencia y comunicaciones escolares.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            Spacer(Modifier.height(24.dp))
-            TextButton(onClick = onGoToProfile) { 
-                Text("Ir a mi perfil") 
-            }
-        }
-    }
-}
-
-// -- Error state --------------------------------------------------------------
-
-@Composable
-private fun ErrorState(message: String, padding: PaddingValues, onRetry: () -> Unit) {
-    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(message, color = MaterialTheme.colorScheme.error,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp))
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text("Reintentar") }
-        }
-    }
 }

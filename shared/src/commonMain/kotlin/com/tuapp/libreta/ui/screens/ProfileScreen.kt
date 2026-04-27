@@ -19,13 +19,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,7 +36,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,8 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,22 +64,21 @@ import com.tuapp.libreta.presentation.LinkedStudentInfo
 import com.tuapp.libreta.presentation.ProfileScreenModel
 import com.tuapp.libreta.presentation.ProfileUiState
 import com.tuapp.libreta.presentation.TeacherCourseInfo
+import com.tuapp.libreta.ui.components.FullScreenError
+import com.tuapp.libreta.ui.components.FullScreenLoading
 
 object ProfileScreen : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
-        val navigator  = LocalNavigator.currentOrThrow
+        val navigator = LocalNavigator.currentOrThrow
         val model: ProfileScreenModel = koinScreenModel()
         val state by model.state.collectAsState()
+        var showDeleteDialog by remember { mutableStateOf(false) }
 
-        LaunchedEffect(state) {
-            if (state is ProfileUiState.Saved) {
-                // El model.load() ya se llamó en el ScreenModel tras guardar,
-                // pero si queremos volver atrás:
-                // navigator.pop() 
-            }
+        LaunchedEffect(Unit) {
+            model.load()
         }
 
         Scaffold(
@@ -94,36 +94,24 @@ object ProfileScreen : Screen {
             }
         ) { padding ->
             when (val s = state) {
-                is ProfileUiState.Loading -> Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-
-                is ProfileUiState.Error -> Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(s.message, color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 32.dp))
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { model.load() }) { Text("Reintentar") }
-                    }
-                }
-
-                is ProfileUiState.Success, is ProfileUiState.Saved -> {
-                    val success = (s as? ProfileUiState.Success) ?: return@Scaffold
+                ProfileUiState.Loading -> FullScreenLoading()
+                is ProfileUiState.Success -> {
                     ProfileContent(
-                        state   = success,
                         padding = padding,
-                        onSave  = { model.saveName(it) },
-                        onGenerateCode = { model.generateCodeForCourse(it) },
-                        onClearCode    = { model.clearCourseCode(it) },
-                        onSignOut = {
-                            model.signOut()
-                            navigator.replaceAll(LoginScreen)
-                        }
+                        state = s,
+                        model = model,
+                        onSignOut = { 
+                            model.signOut() 
+                            navigator.popUntilRoot()
+                        },
+                        onDeleteAccount = { model.deleteAccount() },
+                        showDeleteDialog = showDeleteDialog,
+                        onShowDeleteDialog = { showDeleteDialog = it }
                     )
+                }
+                is ProfileUiState.Error -> FullScreenError(s.message, padding) { model.load() }
+                ProfileUiState.Saved -> {
+                   // Ya se manejó con el load() automático en el model
                 }
             }
         }
@@ -132,258 +120,151 @@ object ProfileScreen : Screen {
 
 @Composable
 private fun ProfileContent(
-    state: ProfileUiState.Success,
     padding: PaddingValues,
-    onSave: (String) -> Unit,
-    onGenerateCode: (String) -> Unit,
-    onClearCode: (String) -> Unit,
-    onSignOut: () -> Unit
+    state: ProfileUiState.Success,
+    model: ProfileScreenModel,
+    onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    showDeleteDialog: Boolean,
+    onShowDeleteDialog: (Boolean) -> Unit
 ) {
-    var nameInput by remember(state.profile.fullName) { mutableStateOf(state.profile.fullName) }
-
     LazyColumn(
-        modifier       = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(16.dp, padding.calculateTopPadding() + 8.dp, 16.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ── Avatar + badge ────────────────────────────────────────────────────
         item {
-            Column(
-                Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    Modifier.size(80.dp).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text  = state.profile.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onPrimary
-                        )
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Text(
-                        text     = if (state.profile.role == UserRole.TEACHER) "Profesor" else "Apoderado",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style    = MaterialTheme.typography.labelMedium,
-                        color    = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.SemiBold
-                    )
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                        Text(state.profile.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "U", 
+                            style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(state.profile.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(state.profile.role.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
-        // ── Editable name ─────────────────────────────────────────────────────
+        item { SectionLabel("Mis Datos") }
+        
         item {
-            OutlinedTextField(
-                value         = nameInput,
-                onValueChange = { nameInput = it },
-                label         = { Text("Nombre completo") },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
-            )
-        }
-
-        // ── Email (read-only) ────────────────────────────────────────────────
-        item {
-            OutlinedTextField(
-                value = state.profile.email,
-                onValueChange = {},
-                label = { Text("Correo electrónico") },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.outline,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-        }
-
-        // ── Save button ───────────────────────────────────────────────────────
-        item {
-            Button(
-                onClick  = { onSave(nameInput) },
-                enabled  = nameInput.isNotBlank() && nameInput != state.profile.fullName,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Guardar cambios") }
-        }
-
-        // ── Role-specific section ─────────────────────────────────────────────
-        if (state.profile.role == UserRole.TEACHER) {
-            item {
-                Text(
-                    "Mis Cursos",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-            }
-            if (state.teacherCourses.isEmpty()) {
-                item {
-                    Text(
-                        "No tienes cursos asignados aún.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                items(state.teacherCourses, key = { it.courseId.value }) { course ->
-                    TeacherCourseCard(
-                        course         = course,
-                        onGenerateCode = { onGenerateCode(course.courseId.toString()) },
-                        onClearCode    = { onClearCode(course.courseId.toString()) }
-                    )
-                }
-            }
-        } else {
-            // PRIORIDAD 3: Soporte multi-hijo
-            item {
-                Text(
-                    if (state.linkedStudents.size > 1) "Mis Hijos/as" else "Mi Hijo/a",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-            }
-            if (state.linkedStudents.isEmpty()) {
-                item { ParentStudentCard(null) }
-            } else {
-                items(state.linkedStudents) { student ->
-                    ParentStudentCard(student)
-                }
-            }
-        }
-
-        // ── Sign out ──────────────────────────────────────────────────────────
-        item { Spacer(Modifier.height(8.dp)) }
-        item {
-            OutlinedButton(
-                onClick  = onSignOut,
-                modifier = Modifier.fillMaxWidth(),
-                colors   = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            ) { Text("Cerrar sesión") }
-        }
-        item { Spacer(Modifier.height(32.dp)) }
-    }
-}
-
-// ── Teacher course card ───────────────────────────────────────────────────────
-
-@Composable
-private fun TeacherCourseCard(
-    course: TeacherCourseInfo,
-    onGenerateCode: () -> Unit,
-    onClearCode: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp)
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Groups, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(course.courseId.value,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text("${course.studentCount} alumno${if (course.studentCount != 1) "s" else ""}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = onGenerateCode) {
-                    Icon(Icons.Default.Key, contentDescription = "Generar código",
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            course.generatedCode?.let { code ->
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text  = code,
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight    = FontWeight.Bold,
-                                letterSpacing = 4.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Row {
-                            IconButton(onClick = {
-                                com.tuapp.libreta.data.util.ClipboardHelper.copyToClipboard(code)
-                            }) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Copiar",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            var nameText by remember { mutableStateOf(state.profile.fullName) }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = nameText,
+                    onValueChange = { nameText = it },
+                    label = { Text("Nombre Completo") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (nameText != state.profile.fullName) {
+                            TextButton(onClick = { model.saveName(nameText) }) {
+                                Text("Guardar")
                             }
                         }
                     }
+                )
+            }
+        }
+
+        if (state.profile.role == UserRole.TEACHER) {
+            item { SectionLabel("Mis Cursos") }
+            items(state.teacherCourses) { course ->
+                TeacherCourseCard(course, 
+                    onGenerateCode = { model.generateCodeForCourse(course.courseId.value) },
+                    onClearCode = { model.clearCourseCode(course.courseId.value) }
+                )
+            }
+        } else {
+            item { SectionLabel("Hijos Vinculados") }
+            items(state.linkedStudents) { student ->
+                ParentStudentCard(student)
+            }
+        }
+
+        item { SectionLabel("Zona de Peligro") }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Acciones permanentes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    OutlinedButton(
+                        onClick = { onShowDeleteDialog(true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Eliminar mi cuenta") }
                 }
-                Text("Válido por 7 días",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = onClearCode) { Text("Cerrar") }
+            }
+        }
+
+        item {
+            OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.AutoMirrored.Filled.Logout, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Cerrar sesión")
+            }
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { onShowDeleteDialog(false) },
+            title = { Text("¿Eliminar cuenta?") },
+            text = { Text("Se borrarán todos tus datos. Esta acción es irreversible.") },
+            confirmButton = {
+                TextButton(onClick = { onShowDeleteDialog(false); onDeleteAccount() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onShowDeleteDialog(false) }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text = text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+}
+
+@Composable
+private fun TeacherCourseCard(course: TeacherCourseInfo, onGenerateCode: () -> Unit, onClearCode: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Curso ID: ${course.courseId.value.take(8)}...", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onGenerateCode) { Icon(Icons.Default.Key, null) }
+            }
+            course.generatedCode?.let { code ->
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(code, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        IconButton(onClick = onClearCode) { Text("Cerrar") }
+                    }
+                }
             }
         }
     }
 }
 
-// ── Parent student card ───────────────────────────────────────────────────────
-
 @Composable
-private fun ParentStudentCard(linked: LinkedStudentInfo?) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape    = RoundedCornerShape(12.dp)
-    ) {
-        if (linked == null) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Sin alumno vinculado",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                Text(
-                    "Para vincular a tu hijo/a, pide al profesor el código de invitación " +
-                    "e ingrésalo en la pantalla de selección de rol.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+private fun ParentStudentCard(student: LinkedStudentInfo) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+                Text(student.studentName[0].toString())
             }
-        } else {
-            Row(
-                Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    Modifier.size(48.dp).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text  = linked.studentName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-                Column {
-                    Text(linked.studentName,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text(linked.courseName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(student.studentName, fontWeight = FontWeight.Bold)
+                Text(student.courseName, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

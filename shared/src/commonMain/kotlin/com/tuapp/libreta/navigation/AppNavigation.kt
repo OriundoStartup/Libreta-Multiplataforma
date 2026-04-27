@@ -15,13 +15,19 @@ import com.tuapp.libreta.ui.screens.JustificationScreen
 import com.tuapp.libreta.ui.screens.LoginScreen
 import com.tuapp.libreta.ui.screens.MessageDetailScreen
 import com.tuapp.libreta.ui.screens.MessageListScreen
-import com.tuapp.libreta.ui.screens.NewMessageScreen
 import com.tuapp.libreta.ui.screens.NoticeListScreen
 import com.tuapp.libreta.ui.screens.ParentDashboardScreen
 import com.tuapp.libreta.ui.screens.ProfileScreen
 import com.tuapp.libreta.ui.screens.StudentDetailScreen
 import com.tuapp.libreta.ui.screens.StudentListScreen
 import com.tuapp.libreta.ui.screens.TeacherDashboardScreen
+import com.tuapp.libreta.ui.screens.JustificationListScreen
+import com.tuapp.libreta.ui.screens.NotificationScreen
+import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen
+import com.tuapp.libreta.ui.screens.AttendanceReportScreen
+import com.tuapp.libreta.ui.screens.GlobalJustificationReviewScreen
+import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen as ParentStudentDetailScreenUI
+import com.tuapp.libreta.ui.screens.NoticeListScreen as NoticeListScreenUI
 
 object AppConfig {
     const val CURRENT_USER_ID = "user-current"
@@ -48,10 +54,10 @@ object AppNavigation {
 
     fun messages(): Screen = MessageListScreen
 
-    fun newMessage(): Screen = NewMessageScreen
+    fun newMessage(): Screen = composeNotice()
 
-    fun messageDetail(contactId: UuidString, contactName: String): Screen =
-        MessageDetailScreen(contactId = contactId, contactName = contactName)
+    fun messageDetail(contactId: UuidString, contactName: String, contextLabel: String? = null): Screen =
+        MessageDetailScreen(contactId = contactId, contactName = contactName, contextLabel = contextLabel)
 
     fun justificationForm(parentId: String = AppConfig.CURRENT_USER_ID, studentId: String = AppConfig.DEMO_STUDENT_ID): Screen =
         JustificationScreen(
@@ -60,13 +66,27 @@ object AppNavigation {
             teacherId = AppConfig.DEMO_TEACHER_ID
         )
 
+    fun justificationList(studentId: String): Screen = JustificationListScreen(studentId)
+
+    fun notificationScreen(parentId: String, studentIds: List<String>): Screen = 
+        NotificationScreen(parentId, studentIds)
+
+    fun parentStudentDetail(studentId: String, name: String, rut: String?): Screen = 
+        ParentStudentDetailScreen(studentId, name, rut)
+
+    fun attendanceReport(courseId: String, courseName: String): Screen = 
+        AttendanceReportScreen(courseId, courseName)
+
+    fun globalJustificationReview(): Screen = GlobalJustificationReviewScreen
+
     fun justificationReview(classId: String = AppConfig.DEMO_CLASS_ID): Screen =
         JustificationReviewScreen(classId = classId, parentId = AppConfig.DEMO_PARENT_ID)
 
     fun courseStats(classId: String = AppConfig.DEMO_CLASS_ID, className: String = AppConfig.DEMO_CLASS_NAME): Screen =
         CourseStatsScreen(classId = classId, className = className)
 
-    fun composeNotice(): Screen = ComposeNoticeScreen
+    fun composeNotice(classId: String? = null, studentId: String? = null): Screen = 
+        ComposeNoticeScreen(preselectedClassId = classId, preselectedStudentId = studentId)
 
     fun noticeList(classId: UuidString): Screen = NoticeListScreen(classId = classId)
 

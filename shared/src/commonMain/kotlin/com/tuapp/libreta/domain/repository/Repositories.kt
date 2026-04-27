@@ -30,6 +30,7 @@ interface StudentRepository {
     fun getStudentsByClass(classId: UuidString): Flow<List<Student>>
     fun getStudentsByParent(parentId: UuidString): Flow<List<Student>>
     suspend fun saveStudent(student: Student)
+    suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit>
     suspend fun deleteStudent(id: UuidString)
 }
 
@@ -42,7 +43,9 @@ interface AttendanceRepository {
 
 interface JustificationRepository {
     fun getByStudent(studentId: UuidString): Flow<List<Justification>>
+    fun getPendingByTeacher(teacherId: UuidString): Flow<List<Justification>>
     suspend fun save(justification: Justification)
+    suspend fun saveWithAttachment(justification: Justification, fileBytes: ByteArray?, fileName: String?): Result<Unit>
     suspend fun delete(id: UuidString)
 }
 
@@ -52,6 +55,9 @@ interface MessageRepository {
     suspend fun sendMessage(receiverId: String, content: String): Result<Unit>
     suspend fun markAsRead(senderId: String, currentUserId: String)
     suspend fun save(message: Message)
+    fun observeConversation(currentUserId: String, contactId: String): Flow<List<Message>>
+    fun getInternalNotes(studentId: UuidString): Flow<List<Message>>
+    suspend fun saveInternalNote(studentId: UuidString, senderId: UuidString, content: String): Result<Unit>
 }
 
 interface InvitationCodeRepository {
@@ -63,6 +69,7 @@ interface InvitationCodeRepository {
 interface CourseAssignmentRepository {
     fun getByTeacher(teacherId: UuidString): Flow<List<CourseAssignment>>
     suspend fun assign(assignment: CourseAssignment)
+    suspend fun assignByCode(code: String, teacherId: UuidString): Result<Unit>
     suspend fun generateColleagueInvite(courseId: UuidString, schoolId: UuidString, issuedByTeacherId: UuidString): String
 }
 

@@ -52,7 +52,8 @@ data class JustificationSupabaseDto(
     @SerialName("student_id") val studentId: String,
     val date: String,
     val reason: String,
-    val status: String = "PENDING"
+    val status: String = "PENDING",
+    @SerialName("document_url") val documentUrl: String? = null
 )
 
 @Serializable
@@ -86,10 +87,12 @@ data class InvitationCodeSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
     val code: String,
-    @SerialName("student_id") val studentId: String,
+    @SerialName("student_id") val studentId: String? = null,
+    @SerialName("course_id") val courseId: String? = null,
     @SerialName("teacher_id") val teacherId: String,
     @SerialName("claimed_by") val claimedBy: String? = null,
-    @SerialName("expires_at") val expiresAt: String? = null
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("target_role") val targetRole: String = "PARENT"
 )
 
 @Serializable

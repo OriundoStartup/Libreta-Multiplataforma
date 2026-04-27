@@ -26,7 +26,10 @@ class SupabaseCommunicationRepository(private val supabase: SupabaseClient) : Co
 
     override fun getByClass(classId: UuidString): Flow<List<Message>> = flow {
         emit(supabase.from("communications")
-            .select { filter { eq("course_id", classId.value) } }
+            .select { 
+                filter { eq("course_id", classId.value) }
+                order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+            }
             .decodeList<CommunicationSupabaseDto>()
             .map { it.toDomain() })
     }

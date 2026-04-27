@@ -5,7 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.UserRole
-import io.github.jan.supabase.auth.status.SessionStatus
+import com.tuapp.libreta.data.remote.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,26 +28,40 @@ class LoginScreenModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     init {
-        // Escuchamos la sesión globalmente pero solo reaccionamos si estamos en Loading
+        // Escuchamos la sesión globalmente. Si estamos autenticados, verificamos el rol y redirigimos.
         screenModelScope.launch {
             authService.sessionStatusFlow.collectLatest { status ->
-                if (status is SessionStatus.Authenticated && _state.value == LoginUiState.Loading) {
+                if (status is SessionStatus.Authenticated && _state.value !is LoginUiState.Success) {
                     checkUserStatus()
+                } else if (status is SessionStatus.NotAuthenticated) {
+                    _state.value = LoginUiState.Unauthenticated
                 }
             }
         }
     }
 
     fun signInWithGoogle(launcher: (suspend () -> Unit)? = null) {
+        println("LoginModel: signInWithGoogle called")
         screenModelScope.launch {
             _state.value = LoginUiState.Loading
+            println("LoginModel: UI State -> Loading")
             
             val result = runCatching { 
-                launcher?.invoke() ?: authService.signInWithGoogle() 
+                if (launcher != null) {
+                    println("LoginModel: Invoking launcher...")
+                    launcher.invoke()
+                } else {
+                    println("LoginModel: Using default authService.signInWithGoogle()")
+                    authService.signInWithGoogle()
+                }
             }
 
             if (result.isFailure) {
-                _state.value = LoginUiState.Error(result.exceptionOrNull()?.message ?: "Error al abrir el navegador")
+                val errorMsg = result.exceptionOrNull()?.message ?: "Error desconocido"
+                println("LoginModel: FAILURE -> $errorMsg")
+                _state.value = LoginUiState.Error(errorMsg)
+            } else {
+                println("LoginModel: SUCCESS (Waiting for redirection or callback)")
             }
         }
     }

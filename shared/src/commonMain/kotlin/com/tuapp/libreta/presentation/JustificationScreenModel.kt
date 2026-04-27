@@ -44,8 +44,16 @@ class JustificationScreenModel(
     private val _reviewState = MutableStateFlow<JustificationReviewState>(JustificationReviewState.Loading)
     val reviewState: StateFlow<JustificationReviewState> = _reviewState.asStateFlow()
 
-    fun submitJustification(studentId: String, parentId: String, teacherId: String,
-                            dateEpoch: Long, reason: JustificationReason, description: String) {
+    fun submitJustification(
+        studentId: String,
+        parentId: String,
+        teacherId: String,
+        dateEpoch: Long,
+        reason: JustificationReason,
+        description: String,
+        fileBytes: ByteArray? = null,
+        fileName: String? = null
+    ) {
         val studentUuid = studentId.toUuidOrNull() ?: run {
             _formState.value = JustificationFormState.Error("ID de estudiante inválido")
             return
@@ -53,7 +61,15 @@ class JustificationScreenModel(
 
         screenModelScope.launch {
             _formState.value = JustificationFormState.Sending
-            runCatching { submitUseCase(studentUuid, dateEpoch, "${reason.label}: $description") }
+            runCatching { 
+                submitUseCase(
+                    studentId = studentUuid, 
+                    dateEpoch = dateEpoch, 
+                    reason = "${reason.label}: $description",
+                    fileBytes = fileBytes,
+                    fileName = fileName
+                ) 
+            }
                 .onSuccess { _formState.value = JustificationFormState.Sent }
                 .onFailure { e -> _formState.value = JustificationFormState.Error(e.message ?: "Error") }
         }

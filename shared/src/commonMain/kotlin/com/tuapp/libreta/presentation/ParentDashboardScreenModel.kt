@@ -24,6 +24,7 @@ data class StudentSummary(
     val id: UuidString,
     val courseId: UuidString,
     val name: String,
+    val rut: String?,
     val attendancePercent: Int,
     val lastNote: String,
     val pendingMessages: Int
@@ -110,6 +111,7 @@ class ParentDashboardScreenModel(
                             id = student.id,
                             courseId = student.courseId,
                             name = student.fullName,
+                            rut = student.studentRut,
                             attendancePercent = present * 100 / total,
                             lastNote = "Sin anotaciones recientes",
                             pendingMessages = msgs

@@ -46,6 +46,7 @@ kotlin {
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
             implementation(libs.supabase.realtime)
+            implementation(libs.supabase.storage)
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
         }
@@ -59,10 +60,10 @@ kotlin {
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
-            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.browser)
+            implementation(libs.sqldriver.web)
         }
-        wasmJsTest.dependencies {
+        commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }

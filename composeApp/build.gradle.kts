@@ -33,6 +33,7 @@ kotlin {
         val wasmJsMain by getting {
             dependencies {
                 implementation(libs.ktor.client.js)
+                implementation(libs.supabase.auth)
             }
         }
         androidMain.dependencies {

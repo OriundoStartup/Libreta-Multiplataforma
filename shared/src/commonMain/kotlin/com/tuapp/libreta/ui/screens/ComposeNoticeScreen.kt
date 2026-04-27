@@ -5,12 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,34 +37,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tuapp.libreta.domain.model.NoticeCategory
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.toUuidOrNull
+import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.navigation.AppConfig
-import com.tuapp.libreta.presentation.NoticeCategory
+import com.tuapp.libreta.presentation.ComposeMode
 import com.tuapp.libreta.presentation.NoticeScreenModel
 import com.tuapp.libreta.presentation.NoticeUiState
 
-object ComposeNoticeScreen : Screen {
+data class ComposeNoticeScreen(
+    val preselectedClassId: String? = null,
+    val preselectedStudentId: String? = null
+) : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val model: NoticeScreenModel = koinScreenModel()
-        val state   by model.state.collectAsState()
-        val classes by model.classes.collectAsState()
+        val state       by model.state.collectAsState()
+        val classes     by model.classes.collectAsState()
+        val students    by model.students.collectAsState()
+        val composeMode by model.composeMode.collectAsState()
 
-        // Fallback seguro para IDs de demo que podrían no ser UUIDs válidos
         val defaultClassId = AppConfig.DEMO_CLASS_ID.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000")
         val defaultTeacherId = AppConfig.DEMO_TEACHER_ID.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000")
 
@@ -66,19 +80,47 @@ object ComposeNoticeScreen : Screen {
         var selectedCategory by remember { mutableStateOf(NoticeCategory.INFO) }
         var classExpanded    by remember { mutableStateOf(false) }
         
-        // Consistencia: Usamos UuidString para el estado local del ID
         var selectedClassId   by remember { mutableStateOf(defaultClassId) }
         var selectedClassName by remember { mutableStateOf(AppConfig.DEMO_CLASS_NAME) }
 
-        // Auto-select first class when loaded
+        var selectedParentId  by remember { mutableStateOf<UuidString?>(null) }
+        var studentQuery      by remember { mutableStateOf("") }
+        
+        val filteredStudents by remember(studentQuery, students) {
+            derivedStateOf {
+                if (studentQuery.isEmpty()) students
+                else students.filter { it.fullName.contains(studentQuery, ignoreCase = true) }
+            }
+        }
+
         LaunchedEffect(classes) {
-            classes.firstOrNull()?.let { 
-                selectedClassId = it.id 
+            val preId = preselectedClassId?.let { UuidString(it) }
+            val foundClass = classes.find { it.id == preId?.value } ?: classes.firstOrNull()
+            
+            foundClass?.let { 
+                selectedClassId = UuidString(it.id) 
                 selectedClassName = it.name 
             }
         }
 
-        // Navigate back on success
+        LaunchedEffect(selectedClassId) {
+            model.loadStudents(selectedClassId)
+            if (preselectedStudentId == null) {
+                selectedParentId = null
+                studentQuery = ""
+            }
+        }
+
+        LaunchedEffect(students) {
+            if (preselectedStudentId != null && selectedParentId == null) {
+                students.find { it.id.value == preselectedStudentId }?.let { std ->
+                    selectedParentId = std.parentId
+                    studentQuery = std.fullName
+                    model.setComposeMode(ComposeMode.DIRECT)
+                }
+            }
+        }
+
         LaunchedEffect(state) {
             if (state is NoticeUiState.Sent) { navigator.pop(); model.resetState() }
         }
@@ -89,7 +131,7 @@ object ComposeNoticeScreen : Screen {
                     navigationIcon = { IconButton(onClick = { navigator.pop() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }},
-                    title  = { Text("Enviar Comunicación",
+                    title  = { Text("Redactar Mensaje",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
@@ -119,20 +161,11 @@ object ComposeNoticeScreen : Screen {
                         expanded         = classExpanded,
                         onDismissRequest = { classExpanded = false }
                     ) {
-                        // Siempre muestra al menos el curso demo usando tipado fuerte
-                        val displayClasses = classes.ifEmpty {
-                            listOf(com.tuapp.libreta.domain.model.ClassRoom(
-                                id = defaultClassId, 
-                                classCode = "DEMO", 
-                                name = AppConfig.DEMO_CLASS_NAME, 
-                                teacherId = defaultTeacherId
-                            ))
-                        }
-                        displayClasses.forEach { cls ->
+                        classes.forEach { cls ->
                             DropdownMenuItem(
                                 text    = { Text(cls.name) },
                                 onClick = { 
-                                    selectedClassId = cls.id 
+                                    selectedClassId = UuidString(cls.id)
                                     selectedClassName = cls.name 
                                     classExpanded = false 
                                 }
@@ -141,29 +174,121 @@ object ComposeNoticeScreen : Screen {
                     }
                 }
 
-                // ── Categorías ────────────────────────────────────────────────
-                SectionLabel("Categoría")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NoticeCategory.entries.forEach { cat ->
-                        FilterChip(
-                            selected = selectedCategory == cat,
-                            onClick  = { selectedCategory = cat },
-                            label    = { Text("${cat.emoji} ${cat.label}") }
-                        )
+                // ── Modo de envío ─────────────────────────────────────────────
+                TabRow(selectedTabIndex = if (composeMode == ComposeMode.GENERAL) 0 else 1) {
+                    Tab(
+                        selected = composeMode == ComposeMode.GENERAL,
+                        onClick  = { model.setComposeMode(ComposeMode.GENERAL) },
+                        text     = { Text("Aviso al Curso") }
+                    )
+                    Tab(
+                        selected = composeMode == ComposeMode.DIRECT,
+                        onClick  = { model.setComposeMode(ComposeMode.DIRECT) },
+                        text     = { Text("Mensaje Directo") }
+                    )
+                }
+
+                if (composeMode == ComposeMode.DIRECT) {
+                    // ── Búsqueda de Alumno (Buscador Ligero) ───────────────────
+                    SectionLabel("Buscar alumno")
+                    OutlinedTextField(
+                        value         = studentQuery,
+                        onValueChange = { 
+                            studentQuery = it
+                            if (it.isEmpty()) selectedParentId = null
+                        },
+                        placeholder   = { Text("Escribe el nombre del alumno...") },
+                        modifier      = Modifier.fillMaxWidth(),
+                        singleLine    = true,
+                        trailingIcon  = {
+                            if (studentQuery.isNotEmpty()) {
+                                IconButton(onClick = { studentQuery = ""; selectedParentId = null }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Limpiar")
+                                }
+                            }
+                        }
+                    )
+
+                    if (selectedParentId == null) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ) {
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                if (filteredStudents.isEmpty()) {
+                                    Text(
+                                        "No hay alumnos en este curso", 
+                                        modifier = Modifier.padding(16.dp),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                } else {
+                                    filteredStudents.forEach { std ->
+                                        DropdownMenuItem(
+                                            text    = { 
+                                                Column {
+                                                    Text(std.fullName, fontWeight = FontWeight.SemiBold)
+                                                    Text("Apoderado vinculado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                            },
+                                            onClick = { 
+                                                selectedParentId = std.parentId 
+                                                studentQuery = std.fullName
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Tarjeta de destinatario seleccionado
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Destinatario", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    Text(studentQuery, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("Mensaje llegará al apoderado", style = MaterialTheme.typography.bodySmall)
+                                }
+                                IconButton(onClick = { selectedParentId = null; studentQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cambiar")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    SectionLabel("Categoría")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (cat in NoticeCategory.entries) {
+                            FilterChip(
+                                selected = selectedCategory == cat,
+                                onClick  = { selectedCategory = cat },
+                                label    = { Text("${cat.emoji} ${cat.label}") }
+                            )
+                        }
                     }
                 }
 
-                // ── Cuerpo del mensaje ────────────────────────────────────────
                 SectionLabel("Mensaje")
                 OutlinedTextField(
                     value         = content,
                     onValueChange = { content = it },
                     modifier      = Modifier.fillMaxWidth().height(140.dp),
-                    placeholder   = { Text("Escribe el aviso para los apoderados...") },
+                    placeholder   = { 
+                        if (composeMode == ComposeMode.GENERAL) Text("Escribe el aviso para el curso...") 
+                        else Text("Escribe un mensaje directo al apoderado...") 
+                    },
                     maxLines      = 6
                 )
 
-                // ── Error ─────────────────────────────────────────────────────
                 if (state is NoticeUiState.Error) {
                     Text(
                         text  = (state as NoticeUiState.Error).message,
@@ -172,14 +297,21 @@ object ComposeNoticeScreen : Screen {
                     )
                 }
 
-                // ── Botón enviar ──────────────────────────────────────────────
                 val isSending = state is NoticeUiState.Sending
+                val canSend = content.isNotBlank() && !isSending && 
+                               (composeMode == ComposeMode.GENERAL || selectedParentId != null)
+                
                 Button(
                     onClick  = {
-                        // Ahora selectedClassId ya es UuidString, cumpliendo el contrato del modelo
-                        model.sendNotice(classId = selectedClassId, content = content, category = selectedCategory)
+                        if (composeMode == ComposeMode.GENERAL) {
+                            model.sendNotice(classId = selectedClassId, content = content, category = selectedCategory)
+                        } else {
+                            selectedParentId?.let { parentId ->
+                                model.sendDirectMessage(parentId = parentId, content = content)
+                            }
+                        }
                     },
-                    enabled  = content.isNotBlank() && !isSending,
+                    enabled  = canSend,
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
                     if (isSending) CircularProgressIndicator(
@@ -187,7 +319,7 @@ object ComposeNoticeScreen : Screen {
                         strokeWidth = 2.dp,
                         color       = MaterialTheme.colorScheme.onPrimary
                     )
-                    else Text("Enviar Comunicación", style = MaterialTheme.typography.labelLarge)
+                    else Text("Enviar Mensaje", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

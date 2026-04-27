@@ -33,6 +33,7 @@ data class ClassRoom(
 data class Student(
     val id: UuidString,
     val fullName: String,
+    val studentRut: String? = null,
     val courseId: UuidString,
     val parentId: UuidString,
     val attendancePercentage: Double = 0.0
@@ -51,14 +52,17 @@ data class Justification(
     val studentId: UuidString,
     val date: Long,
     val reason: String,
-    val status: JustificationStatus
+    val status: JustificationStatus,
+    val documentUrl: String? = null
 )
 
 data class Message(
     val id: UuidString? = null,
     val senderId: UuidString,
     val receiverId: UuidString? = null,
-    val content: String
+    val content: String,
+    val createdAt: String? = null,
+    val readAt: String? = null
 )
 
 data class School(

@@ -38,18 +38,10 @@ import androidx.compose.ui.unit.dp
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Student
 
-// Paleta de avatares — Deep Blue / Slate profesional
-private val avatarPalette = listOf(
-    Color(0xFF1565C0) to Color(0xFFE3F2FD),
-    Color(0xFF37474F) to Color(0xFFECEFF1),
-    Color(0xFF00695C) to Color(0xFFE0F2F1),
-    Color(0xFF4527A0) to Color(0xFFEDE7F6),
-    Color(0xFF558B2F) to Color(0xFFF1F8E9),
-    Color(0xFF6A1B9A) to Color(0xFFF3E5F5),
-)
+import com.tuapp.libreta.ui.theme.AvatarPalette
 
 private fun avatarColors(name: String): Pair<Color, Color> =
-    avatarPalette[name.hashCode().and(0x7FFFFFFF) % avatarPalette.size]
+    AvatarPalette[name.hashCode().and(0x7FFFFFFF) % AvatarPalette.size]
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,15 +65,52 @@ fun StudentCard(
 
     SwipeToDismissBox(
         state            = dismissState,
-        modifier         = modifier,
+        modifier         = modifier.clip(RoundedCornerShape(16.dp)),
         backgroundContent = { SwipeBackground(dismissState) }
     ) {
-        Card(
-            modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+        Surface(
+            modifier = Modifier.fillMaxSize().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp,
+            shadowElevation = 1.dp
         ) {
-            StudentCardContent(student, attendancePercent)
+            val (iconColor, bgColor) = avatarColors(student.fullName)
+            
+            Row(
+                modifier              = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Avatar circular
+                Box(
+                    modifier         = Modifier.size(48.dp).clip(CircleShape).background(bgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text  = student.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = iconColor
+                    )
+                }
+
+                // Nombre + Estado
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text  = student.fullName,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text  = "Registro regular", // En lugar de un ID críptico
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Badge de asistencia
+                AttendanceBadge(percent = attendancePercent)
+            }
         }
     }
 }
@@ -107,54 +136,6 @@ private fun SwipeBackground(state: SwipeToDismissBoxState) {
     ) {
         if (direction != SwipeToDismissBoxValue.Settled) {
             Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-        }
-    }
-}
-
-@Composable
-private fun StudentCardContent(student: Student, attendancePercent: Int) {
-    val (iconColor, bgColor) = avatarColors(student.fullName)
-
-    OutlinedCard(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Row(
-            modifier              = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Avatar circular con color único por alumno
-            Box(
-                modifier         = Modifier.size(48.dp).clip(CircleShape).background(bgColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text  = student.fullName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = iconColor
-                )
-            }
-
-            // Nombre + RUT
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text  = "${student.fullName}",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text  = student.courseId.value,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Badge de asistencia
-            AttendanceBadge(percent = attendancePercent)
         }
     }
 }

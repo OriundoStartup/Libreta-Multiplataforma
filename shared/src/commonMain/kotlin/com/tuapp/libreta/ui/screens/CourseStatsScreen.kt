@@ -58,6 +58,7 @@ import com.tuapp.libreta.domain.usecase.DailyAttendance
 import com.tuapp.libreta.domain.usecase.StudentAbsences
 import com.tuapp.libreta.presentation.StatsScreenModel
 import com.tuapp.libreta.presentation.StatsUiState
+import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.ShimmerCard
 
 private val ColorPresent    = Color(0xFF2E7D32)
@@ -99,9 +100,7 @@ data class CourseStatsScreen(
                     userScrollEnabled = false
                 ) { items(5) { ShimmerCard() } }
 
-                is StatsUiState.Error -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                    Text(s.message, color = MaterialTheme.colorScheme.error)
-                }
+                is StatsUiState.Error -> FullScreenError(s.message, padding) { model.load(classId) }
 
                 is StatsUiState.Success -> StatsContent(s.data, padding)
             }

@@ -1,6 +1,7 @@
 package com.tuapp.libreta.data.remote
 
 import com.tuapp.libreta.data.remote.dto.CourseAssignmentSupabaseDto
+import com.tuapp.libreta.data.remote.dto.InvitationCodeSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
@@ -27,6 +28,27 @@ class SupabaseCourseAssignmentRepository(private val supabase: SupabaseClient) :
             .decodeList<CourseAssignmentSupabaseDto>().map { it.toDomain() })
     }
 
+    override suspend fun assignByCode(code: String, teacherId: UuidString): Result<Unit> = runCatching {
+        // 1. Buscar código válido para profesores
+        val invite = supabase.from("invitation_codes")
+            .select { filter { 
+                eq("code", code.uppercase())
+                eq("target_role", "TEACHER")
+            } }
+            .decodeSingleOrNull<InvitationCodeSupabaseDto>() ?: throw Exception("Código inválido o expirado")
+
+        val courseId = invite.courseId ?: throw Exception("Código no tiene curso asociado")
+
+        // 2. Asignar profesor al curso
+        supabase.from("course_assignments").upsert(
+            CourseAssignmentSupabaseDto(
+                teacherId = teacherId.value,
+                courseId  = courseId,
+                schoolId  = null // Podría heredarse del curso original si se desea
+            )
+        )
+    }
+
     override suspend fun assign(assignment: CourseAssignment) {
         AppLogger.uuid("assign", "courseId", assignment.courseId.value, "VALID")
         val schoolId = assignment.schoolId
@@ -42,11 +64,15 @@ class SupabaseCourseAssignmentRepository(private val supabase: SupabaseClient) :
 
     override suspend fun generateColleagueInvite(courseId: UuidString, schoolId: UuidString, issuedByTeacherId: UuidString): String {
         val code = (1..8).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
-        supabase.from("invitation_codes").insert(mapOf(
-            "code"       to code,
-            "teacher_id" to issuedByTeacherId.value,
-            "expires_at" to epochMsToIso(currentEpochMs() + 48 * 3600 * 1000L)
-        ))
+        supabase.from("invitation_codes").insert(
+            InvitationCodeSupabaseDto(
+                code        = code,
+                courseId    = courseId.value,
+                teacherId   = issuedByTeacherId.value,
+                targetRole  = "TEACHER",
+                expiresAt   = epochMsToIso(currentEpochMs() + 48 * 3600 * 1000L)
+            )
+        )
         return code
     }
 }
