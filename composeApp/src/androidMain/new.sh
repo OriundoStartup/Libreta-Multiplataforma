@@ -1,0 +1,1 @@
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun --continuous

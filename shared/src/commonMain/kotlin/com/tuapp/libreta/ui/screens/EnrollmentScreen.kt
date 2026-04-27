@@ -49,6 +49,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.tuapp.libreta.presentation.EnrollmentScreenModel
 import com.tuapp.libreta.presentation.EnrollmentUiState
 import com.tuapp.libreta.ui.components.EmptyStateView
+import com.tuapp.libreta.data.util.RutUtils
 
 object EnrollmentScreen : Screen {
 
@@ -62,6 +63,7 @@ object EnrollmentScreen : Screen {
         var inviteCode by remember { mutableStateOf("") }
         var studentName by remember { mutableStateOf("") }
         var studentRut by remember { mutableStateOf("") }
+        var rutError by remember { mutableStateOf<String?>(null) }
 
         Scaffold(
             topBar = {
@@ -170,10 +172,22 @@ object EnrollmentScreen : Screen {
 
                                 OutlinedTextField(
                                     value = studentRut,
-                                    onValueChange = { studentRut = it },
+                                    onValueChange = { 
+                                        val formatted = RutUtils.format(it)
+                                        if (formatted.length <= 12) {
+                                            studentRut = formatted
+                                            rutError = if (it.isNotEmpty() && !RutUtils.isValid(formatted)) "RUT inválido" else null
+                                        }
+                                    },
                                     label = { Text("RUT (opcional)") },
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
+                                    singleLine = true,
+                                    isError = rutError != null,
+                                    supportingText = {
+                                        if (rutError != null) {
+                                            Text(rutError!!, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
                                 )
 
                                 Button(
@@ -183,7 +197,7 @@ object EnrollmentScreen : Screen {
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                                    enabled = studentName.isNotBlank()
+                                    enabled = studentName.isNotBlank() && (studentRut.isBlank() || rutError == null)
                                 ) {
                                     Text("Confirmar Inscripción")
                                 }

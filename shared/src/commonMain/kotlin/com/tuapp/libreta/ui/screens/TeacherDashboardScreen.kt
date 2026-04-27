@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -112,7 +113,7 @@ object TeacherDashboardScreen : Screen {
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice()) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { model.logout() }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
                 )
             }
         ) {
@@ -142,7 +143,7 @@ object TeacherDashboardScreen : Screen {
                     ExtendedFloatingActionButton(
                         onClick = { showJoinDialog = true },
                         icon    = { Icon(Icons.Default.Groups, null) },
-                        text    = { Text("Unirse a Curso") },
+                        text    = { Text("Colaborar en Curso") },
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                     )
@@ -188,7 +189,13 @@ object TeacherDashboardScreen : Screen {
                                 ) {
                                     Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary)
                                     Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                                        Text("Bandeja de Trámites", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Bandeja de Trámites", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                                            if (s.pendingJustificationsCount > 0) {
+                                                Spacer(Modifier.width(8.dp))
+                                                Badge { Text(s.pendingJustificationsCount.toString()) }
+                                            }
+                                        }
                                         Text("Revisar todas las justificaciones pendientes", style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
@@ -415,15 +422,15 @@ private fun JoinCourseDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
     var code by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Unirse a Curso", fontWeight = FontWeight.Bold) },
+        title = { Text("Colaborar en Curso", fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                Text("Ingresa el código compartido por tu colega para colaborar en su curso.", style = MaterialTheme.typography.bodyMedium)
+                Text("Ingresa el código compartido por tu colega para colaborar gestionando su curso.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it.uppercase() },
-                    label = { Text("Código de Invitación") },
+                    label = { Text("Código de Colaboración") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )

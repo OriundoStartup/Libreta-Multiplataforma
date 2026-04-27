@@ -2,6 +2,7 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.currentEpochMs
@@ -17,11 +18,9 @@ import com.tuapp.libreta.domain.usecase.GetStudentsByClassUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface StudentListUiState {
     data object Loading                              : StudentListUiState
@@ -41,12 +40,14 @@ sealed interface StudentListEvent {
     data class ToggleAttendance(val id: UuidString)  : StudentListEvent
     data class DeleteStudent(val id: UuidString)     : StudentListEvent
     data class Search(val query: String)         : StudentListEvent
+    data class AddStudent(val name: String, val rut: String?) : StudentListEvent
 }
 
 class StudentListScreenModel(
     private val getStudents: GetStudentsByClassUseCase,
     private val deleteStudent: DeleteStudentUseCase,
     private val attendanceRepo: AttendanceRepository,
+    private val coursesRepo: CoursesRepository,
     private val authService: SupabaseAuthService
 ) : ScreenModel {
 
@@ -54,8 +55,6 @@ class StudentListScreenModel(
     val uiState: StateFlow<StudentListUiState> = _uiState.asStateFlow()
 
     private var currentClassId: String? = null
-
-    // Track which students are marked present today
     private val presentToday = mutableSetOf<UuidString>()
 
     fun onEvent(event: StudentListEvent) {
@@ -64,6 +63,7 @@ class StudentListScreenModel(
             is StudentListEvent.DeleteStudent    -> delete(event.id)
             is StudentListEvent.ToggleAttendance -> toggleAttendance(event.id)
             is StudentListEvent.Search          -> search(event.query)
+            is StudentListEvent.AddStudent      -> addStudent(event.name, event.rut)
         }
     }
 
@@ -75,7 +75,7 @@ class StudentListScreenModel(
     }
 
     private fun load(classId: String) {
-        if (currentClassId == classId) return
+        if (currentClassId == classId && _uiState.value !is StudentListUiState.Loading) return
         currentClassId = classId
 
         val classUuid = classId.toUuidOrNull() ?: run {
@@ -83,14 +83,52 @@ class StudentListScreenModel(
             return
         }
 
-        getStudents(classUuid)
-            .distinctUntilChanged()
-            .onEach { list ->
-                _uiState.value = if (list.isEmpty()) StudentListUiState.Empty
-                                 else StudentListUiState.Success(list)
+        screenModelScope.launch {
+            _uiState.value = StudentListUiState.Loading
+            println("DEBUG StudentList: Iniciando carga remota para $classId")
+            
+            try {
+                // Ahora usamos el repositorio remoto directamente para evitar vacíos locales
+                getStudents(classUuid)
+                    .distinctUntilChanged()
+                    .collect { list ->
+                        println("DEBUG StudentList: Recibidos ${list.size} alumnos desde Supabase")
+                        _uiState.value = if (list.isEmpty()) StudentListUiState.Empty 
+                                         else StudentListUiState.Success(list)
+                    }
+            } catch (e: Exception) {
+                println("ERROR StudentList: ${e.message}")
+                _uiState.value = StudentListUiState.Error("Error al conectar con el servidor")
             }
-            .catch { e -> _uiState.value = StudentListUiState.Error(e.message ?: "Error") }
-            .launchIn(screenModelScope)
+        }
+    }
+
+    private fun addStudent(name: String, rut: String?) {
+        val classId = currentClassId ?: return
+        
+        val current = _uiState.value
+        if (current is StudentListUiState.Success) {
+            val isDuplicate = current.students.any { 
+                (rut != null && it.studentRut == rut) || 
+                (it.fullName.equals(name, ignoreCase = true)) 
+            }
+            if (isDuplicate) {
+                _uiState.value = StudentListUiState.Error("Este alumno ya está registrado")
+                return
+            }
+        }
+
+        screenModelScope.launch {
+            coursesRepo.enrollStudent(classId, name, rut)
+                .onSuccess {
+                    println("DEBUG StudentList: Alumno registrado con éxito")
+                    // La UI se actualizará vía el Flow de load()
+                }
+                .onFailure { e ->
+                    println("ERROR StudentList: Fallo al registrar: ${e.message}")
+                    _uiState.value = StudentListUiState.Error(e.message ?: "Error al registrar")
+                }
+        }
     }
 
     private fun toggleAttendance(id: UuidString) {
@@ -116,12 +154,6 @@ class StudentListScreenModel(
     }
 
     private fun delete(id: UuidString) {
-        val current = _uiState.value
-        if (current is StudentListUiState.Success) {
-            val updated = current.students.filter { it.id != id }
-            _uiState.value = if (updated.isEmpty()) StudentListUiState.Empty
-                             else StudentListUiState.Success(updated)
-        }
         screenModelScope.launch {
             runCatching { deleteStudent(id) }
                 .onFailure { e -> _uiState.value = StudentListUiState.Error(e.message ?: "Error") }
@@ -129,8 +161,6 @@ class StudentListScreenModel(
     }
 
     fun logout() {
-        screenModelScope.launch {
-            authService.signOut()
-        }
+        screenModelScope.launch { authService.signOut() }
     }
 }

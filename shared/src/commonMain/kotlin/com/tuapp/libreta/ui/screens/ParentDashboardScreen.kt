@@ -59,6 +59,7 @@ import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StatusCard
 import com.tuapp.libreta.ui.components.TimelineItem
 import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.data.util.RutUtils
 import kotlinx.coroutines.launch
 
 data class ParentDashboardScreen(val parentId: String) : Screen {
@@ -98,7 +99,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                     onNavigateToCompose = { /* Consistent UI */ },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { model.logout() }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
                 )
             }
         ) {
@@ -308,6 +309,7 @@ fun AddStudentDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var rut by remember { mutableStateOf("") }
+    var rutError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
@@ -327,12 +329,24 @@ fun AddStudentDialog(
                 
                 OutlinedTextField(
                     value = rut,
-                    onValueChange = { rut = it },
+                    onValueChange = { 
+                        val formatted = RutUtils.format(it)
+                        if (formatted.length <= 12) {
+                            rut = formatted
+                            rutError = if (it.isNotEmpty() && !RutUtils.isValid(formatted)) "RUT inválido" else null
+                        }
+                    },
                     label = { Text("RUT (Opcional)") },
                     placeholder = { Text("12.345.678-9") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    isError = rutError != null,
+                    supportingText = {
+                        if (rutError != null) {
+                            Text(rutError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
                 
                 if (error != null) {
@@ -343,7 +357,7 @@ fun AddStudentDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(name, rut.ifBlank { null }) },
-                enabled = name.isNotBlank() && !isLoading
+                enabled = name.isNotBlank() && !isLoading && (rut.isBlank() || rutError == null)
             ) {
                 if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                 else Text("Registrar")

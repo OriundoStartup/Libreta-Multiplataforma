@@ -66,6 +66,14 @@ object RoleSelectionScreen : Screen {
         var selectedRole by remember { mutableStateOf<UserRole?>(null) }
         var invitationCode by remember { mutableStateOf("") }
 
+        // REDIRECCIÓN MANUAL SI EL MODELO REPORTA ÉXITO
+        LaunchedEffect(state) {
+            if (state is RoleSelectionUiState.Success) {
+                val s = state as RoleSelectionUiState.Success
+                navigator.replaceAll(AppNavigation.initialScreen(s.role, s.userId.value))
+            }
+        }
+
 
 
         Box(Modifier.fillMaxSize()) {

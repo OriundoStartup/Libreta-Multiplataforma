@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,6 +20,9 @@ import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.ui.screens.LoginScreen
 import com.tuapp.libreta.ui.screens.RoleSelectionScreen
 import com.tuapp.libreta.navigation.AppNavigation
+import com.tuapp.libreta.navigation.WebPathMapper
+import com.tuapp.libreta.navigation.updateBrowserHistory
+import com.tuapp.libreta.navigation.getInitialPath
 import com.tuapp.libreta.ui.screens.TeacherDashboardScreen
 import com.tuapp.libreta.ui.screens.ParentDashboardScreen
 import com.tuapp.libreta.ui.theme.LibretAppTheme
@@ -30,9 +34,11 @@ import com.tuapp.libreta.ui.util.WindowSizeClass
 import com.tuapp.libreta.ui.util.LocalWindowSize
 
 @Composable
-fun App() {
+fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
     val authService: SupabaseAuthService = koinInject()
     val sessionStatus by authService.sessionStatusFlow.collectAsState(initial = SessionStatus.Loading)
+
+    val startScreen = remember { initialScreen ?: WebPathMapper.fromPath(getInitialPath()) }
 
     LibretAppTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -67,7 +73,12 @@ fun App() {
                                     else Modifier
                                 )
                         ) {
-                            Navigator(LoginScreen) { navigator ->
+                            Navigator(startScreen) { navigator ->
+                                // SINCRONIZAR URL CON EL NAVEGADOR
+                                LaunchedEffect(navigator.lastItem) {
+                                    updateBrowserHistory(WebPathMapper.toPath(navigator.lastItem))
+                                }
+
                                 LaunchedEffect(sessionStatus) {
                                     val currentScreen = navigator.lastItem
                                     when (val status = sessionStatus) {
@@ -75,16 +86,23 @@ fun App() {
                                             val role = status.role
                                             val userId = status.user.id
                                             
-                                            if (role == null) {
-                                                if (currentScreen !is RoleSelectionScreen) {
-                                                    navigator.replaceAll(RoleSelectionScreen)
+                                            // CASO 1: Usuario recién logueado o sin rol
+                                            if (currentScreen is LoginScreen || (role == null && currentScreen !is RoleSelectionScreen)) {
+                                                navigator.replaceAll(RoleSelectionScreen)
+                                                return@LaunchedEffect
+                                            }
+
+                                            // CASO 2: Usuario ya tiene rol y está intentando entrar a una zona prohibida o salir de selección
+                                            if (role != null) {
+                                                val isForbidden = when(role) {
+                                                    com.tuapp.libreta.domain.model.UserRole.TEACHER -> currentScreen is ParentDashboardScreen
+                                                    com.tuapp.libreta.domain.model.UserRole.PARENT -> currentScreen is TeacherDashboardScreen
                                                 }
-                                            } else {
-                                                val isAlreadyInDashboard = when(role) {
-                                                    com.tuapp.libreta.domain.model.UserRole.TEACHER -> currentScreen is TeacherDashboardScreen
-                                                    com.tuapp.libreta.domain.model.UserRole.PARENT -> currentScreen is ParentDashboardScreen
-                                                }
-                                                if (!isAlreadyInDashboard) {
+                                                
+                                                // Si el rol ya está definido y estamos en RoleSelection, ir al Dashboard
+                                                val isSelectionDone = currentScreen is RoleSelectionScreen
+
+                                                if (isForbidden || isSelectionDone) {
                                                     navigator.replaceAll(AppNavigation.initialScreen(role, userId))
                                                 }
                                             }

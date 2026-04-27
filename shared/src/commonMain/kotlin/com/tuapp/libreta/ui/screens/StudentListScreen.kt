@@ -35,6 +35,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -79,6 +83,7 @@ import com.tuapp.libreta.ui.components.EmptyStateView
 import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StudentCard
 import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.data.util.RutUtils
 import kotlinx.coroutines.launch
 
 data class StudentListScreen(
@@ -96,6 +101,7 @@ data class StudentListScreen(
         val scope = rememberCoroutineScope()
         val navigator = LocalNavigator.currentOrThrow
         var searchQuery by remember { mutableStateOf("") }
+        var showAddStudentDialog by remember { mutableStateOf(false) }
 
         // FAB se encoge al hacer scroll
         val fabExpanded by remember { derivedStateOf { !listState.canScrollBackward } }
@@ -109,7 +115,8 @@ data class StudentListScreen(
                     onNavigateToMessages = { navigator.push(AppNavigation.messages()) },
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice(classId = classId)) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
-                    onLogout = { model.logout() }
+                    onLogout = { model.logout() },
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
                 )
             }
         ) {
@@ -160,6 +167,14 @@ data class StudentListScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor   = MaterialTheme.colorScheme.onPrimary,
                                 elevation      = FloatingActionButtonDefaults.elevation(8.dp)
+                            )
+                            ExtendedFloatingActionButton(
+                                onClick        = { showAddStudentDialog = true },
+                                expanded       = fabExpanded,
+                                icon           = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+                                text           = { Text("Nuevo Alumno") },
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor   = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             ExtendedFloatingActionButton(
                                 onClick        = { navigator.push(AppNavigation.attendance(classId, className)) },
@@ -239,9 +254,15 @@ data class StudentListScreen(
                         }
 
                         is StudentListUiState.Error -> {
-                            Snackbar(
-                                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-                            ) { Text(state.message) }
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(state.message, color = MaterialTheme.colorScheme.error)
+                                    Spacer(Modifier.height(16.dp))
+                                    Button(onClick = { model.onEvent(StudentListEvent.LoadClass(classId)) }) {
+                                        Text("Reintentar")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -250,7 +271,73 @@ data class StudentListScreen(
 
         // Carga inicial
         LaunchedEffect(classId) { model.onEvent(StudentListEvent.LoadClass(classId)) }
+
+        if (showAddStudentDialog) {
+            AddStudentDialog(
+                onDismiss = { showAddStudentDialog = false },
+                onConfirm = { name, rut ->
+                    model.onEvent(StudentListEvent.AddStudent(name, rut))
+                    showAddStudentDialog = false
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun AddStudentDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var rut by remember { mutableStateOf("") }
+    var rutError by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Registrar Nuevo Alumno") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Ingresa los datos del alumno para agregarlo a la lista de asistencia.", style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre completo") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = rut,
+                    onValueChange = { 
+                        val formatted = RutUtils.format(it)
+                        if (formatted.length <= 12) {
+                            rut = formatted
+                            rutError = if (it.isNotEmpty() && !RutUtils.isValid(formatted)) "RUT inválido" else null
+                        }
+                    },
+                    label = { Text("RUT (Opcional)") },
+                    placeholder = { Text("12.345.678-9") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = rutError != null,
+                    supportingText = {
+                        if (rutError != null) {
+                            Text(rutError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name, rut.ifBlank { null }) },
+                enabled = name.isNotBlank() && (rut.isBlank() || rutError == null)
+            ) { Text("Registrar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
 
 // ── Shimmer list ──────────────────────────────────────────────────────────────
@@ -265,4 +352,3 @@ private fun ShimmerList() {
         items(7) { ShimmerCard() }
     }
 }
-

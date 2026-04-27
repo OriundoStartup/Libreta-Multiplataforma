@@ -29,7 +29,10 @@ class StudentRepositoryImpl(
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> =
         queries.getStudentsByCourse(classId.value).asFlow().mapToList(getIoDispatcher())
             .map { list -> list.map { it.toDomain() } }
-            .catch { emit(emptyList()) }
+            .catch { 
+                println("ERROR SQLDelight getStudentsByClass: ${it.message}")
+                emit(emptyList()) 
+            }
 
     override fun getStudentsByParent(parentId: UuidString): Flow<List<Student>> =
         queries.getStudentsByParent(parentId.value).asFlow().mapToList(getIoDispatcher())

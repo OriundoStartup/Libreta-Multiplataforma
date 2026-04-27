@@ -41,7 +41,9 @@ sealed interface ProfileUiState {
 
 data class TeacherCourseInfo(
     val courseId: UuidString,
+    val courseName: String,
     val studentCount: Int,
+    val inviteCode: String,
     val generatedCode: String? = null
 )
 
@@ -88,15 +90,15 @@ class ProfileScreenModel(
                     val teacherCoursesResult = coursesRepo.getTeacherCourses()
                     val teacherCourses = teacherCoursesResult.getOrDefault(emptyList())
                     
-                    val courses = teacherCourses.map { c ->
-                        val count = try {
-                            studentRepo.getStudentsByClass(UuidString(c.id)).first().size
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) { 0 }
-                        TeacherCourseInfo(courseId = UuidString(c.id), studentCount = count)
-                    }
-                    _state.value = ProfileUiState.Success(uiData, teacherCourses = courses)
+                    // No bloquear por el conteo de alumnos de cada clase
+                    _state.value = ProfileUiState.Success(uiData, teacherCourses = teacherCourses.map { 
+                        TeacherCourseInfo(
+                            courseId = UuidString(it.id), 
+                            courseName = it.name,
+                            studentCount = 0,
+                            inviteCode = it.inviteCode
+                        )
+                    })
                 } else {
                     // PRIORIDAD 1: Usar getStudentsByParent (enrollments table)
                     val students = studentRepo.getStudentsByParent(uid).first()

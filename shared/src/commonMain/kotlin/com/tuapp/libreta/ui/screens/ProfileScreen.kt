@@ -238,11 +238,26 @@ private fun TeacherCourseCard(course: TeacherCourseInfo, onGenerateCode: () -> U
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("Curso ID: ${course.courseId.value.take(8)}...", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text(course.courseName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("ID: ${course.courseId.value.take(8)}...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 IconButton(onClick = onGenerateCode) { Icon(Icons.Default.Key, null) }
             }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), 
+                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Código para Padres:", style = MaterialTheme.typography.labelSmall)
+                    Text(course.inviteCode, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
             course.generatedCode?.let { code ->
+                Spacer(Modifier.height(8.dp))
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(code, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

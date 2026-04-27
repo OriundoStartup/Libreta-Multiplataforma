@@ -1,5 +1,6 @@
 package com.tuapp.libreta.di
 
+import com.tuapp.libreta.data.remote.SupabaseStudentRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.remote.SupabaseCommunicationRepository
 import com.tuapp.libreta.data.remote.SupabaseCourseAssignmentRepository
@@ -38,7 +39,7 @@ val appModule = module {
 
     // ── Repositories (Symbiosis: Local + Remote) ─────────────────────────────
     single<AttendanceRepository>       { SymbioticAttendanceRepository(get(), get()) }
-    single<StudentRepository>          { StudentRepositoryImpl(get(), get()) }
+    single<StudentRepository>          { SupabaseStudentRepository(get()) }
     single<JustificationRepository>    { JustificationRepositoryImpl(get(), get()) }
     single<ProfileRepository>          { ProfileRepositoryImpl(get(), get()) }
     single<ClassRoomRepository>        { ClassRoomRepositoryImpl(get(), get()) }
@@ -71,8 +72,8 @@ val appModule = module {
     // ── ScreenModels ──────────────────────────────────────────────────────────
     factory { LoginScreenModel(get()) }
     factory { RoleSelectionScreenModel(get(), get()) }
-    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get()) }
-    factory { StudentListScreenModel(get(), get(), get(), get()) }
+    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get(), get()) }
+    factory { StudentListScreenModel(get(), get(), get(), get(), get()) }
     factory { ParentDashboardScreenModel(get(), get(), get(), get(), get()) }
     factory { ProfileScreenModel(get(), get(), get(), get()) }
     factory { MessageScreenModel(get(), get(), get(), get(), get(), get(), get()) }

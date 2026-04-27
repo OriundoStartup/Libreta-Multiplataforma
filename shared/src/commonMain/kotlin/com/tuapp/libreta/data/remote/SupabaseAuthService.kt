@@ -77,7 +77,9 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         )
     }
 
-    suspend fun signInWithGoogle() = supabase.auth.signInWith(Google)
+    suspend fun signInWithGoogle() = supabase.auth.signInWith(Google) {
+        queryParams["prompt"] = "select_account"
+    }
 
     suspend fun getProfile(userId: String): ProfileSupabaseDto? {
         return try {

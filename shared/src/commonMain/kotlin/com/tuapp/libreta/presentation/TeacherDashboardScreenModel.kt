@@ -8,18 +8,24 @@ import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.repository.CourseAssignmentRepository
 import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.domain.repository.JustificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class TeacherProfile(val name: String, val avatarUrl: String?)
 
 sealed interface TeacherDashboardUiState {
     data object Loading : TeacherDashboardUiState
-    data class  Success(val profile: TeacherProfile, val courses: List<Course>) : TeacherDashboardUiState
+    data class  Success(
+        val profile: TeacherProfile, 
+        val courses: List<Course>,
+        val pendingJustificationsCount: Int = 0
+    ) : TeacherDashboardUiState
     data class  Error(val message: String) : TeacherDashboardUiState
 }
 
@@ -27,6 +33,7 @@ class TeacherDashboardScreenModel(
     private val authService: SupabaseAuthService,
     private val coursesRepo: CoursesRepository,
     private val assignmentRepo: CourseAssignmentRepository,
+    private val justificationRepo: JustificationRepository,
     private val dataSeeder: DataSeeder,
     private val supabase: SupabaseClient
 ) : ScreenModel {
@@ -45,13 +52,41 @@ class TeacherDashboardScreenModel(
     fun load() {
         screenModelScope.launch {
             _state.value = TeacherDashboardUiState.Loading
-            runCatching {
-                val user = authService.currentUser() ?: error("No autenticado")
-                val coursesResult = coursesRepo.getTeacherCourses()
-                val courses = coursesResult.getOrThrow()
-                _state.value = TeacherDashboardUiState.Success(user.toTeacherProfile(), courses)
-            }.onFailure { e ->
-                _state.value = TeacherDashboardUiState.Error(e.message ?: "Error al cargar cursos")
+            
+            val user = authService.currentUser() ?: run {
+                _state.value = TeacherDashboardUiState.Error("No autenticado")
+                return@launch
+            }
+
+            // 1. Cargar cursos con Tiempo Límite (7 seg) para no bloquear la UI
+            val courses = try {
+                withTimeoutOrNull(7000) {
+                    coursesRepo.getTeacherCourses().getOrNull()
+                } ?: emptyList<Course>()
+            } catch (e: Exception) {
+                emptyList<Course>()
+            }
+
+            // 2. Mostrar Dashboard inmediatamente
+            _state.value = TeacherDashboardUiState.Success(
+                profile = user.toTeacherProfile(),
+                courses = courses,
+                pendingJustificationsCount = 0
+            )
+
+            // 3. Cargar conteo de justificaciones de forma asíncrona
+            launch {
+                try {
+                    justificationRepo.getPendingByTeacher(UuidString(user.id))
+                        .collect { pendingJusts ->
+                            val current = _state.value
+                            if (current is TeacherDashboardUiState.Success) {
+                                _state.value = current.copy(pendingJustificationsCount = pendingJusts.size)
+                            }
+                        }
+                } catch (e: Exception) {
+                    // Fallo silencioso del badge
+                }
             }
         }
     }
