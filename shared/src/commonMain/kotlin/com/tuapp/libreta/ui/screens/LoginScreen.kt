@@ -59,13 +59,7 @@ object LoginScreen : Screen {
         val state by model.state.collectAsState()
         val googleLauncher = rememberGoogleAuthLauncher()
 
-        LaunchedEffect(state) {
-            when (state) {
-                is LoginUiState.Success          -> navigator.replace(AppNavigation.initialScreen((state as LoginUiState.Success).role, (state as LoginUiState.Success).userId.value))
-                is LoginUiState.NeedsRoleSelection -> navigator.replace(RoleSelectionScreen)
-                else -> Unit
-            }
-        }
+
 
         Box(Modifier.fillMaxSize()) {
 

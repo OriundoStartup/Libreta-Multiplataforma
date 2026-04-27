@@ -18,11 +18,8 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
                 println("Wasm Launcher: Start redirection flow")
                 
                 val currentOrigin = window.location.origin
-                val redirectUrl = if (SupabaseConfig.REDIRECT_URL.isNotBlank()) {
-                    SupabaseConfig.REDIRECT_URL
-                } else {
-                    "$currentOrigin/auth-callback.html"
-                }
+                // En Web, ignoramos el esquema de Android (si existiera) y usamos siempre el origen actual
+                val redirectUrl = "$currentOrigin/auth-callback.html"
                 
                 println("Wasm Launcher: Origin is $currentOrigin")
                 println("Wasm Launcher: Redirecting to $redirectUrl")
@@ -31,10 +28,10 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
                 println("Wasm Launcher: Generated OAuth URL: $url")
                 
                 if (url.isNotBlank()) {
-                    println("Wasm Launcher: Navigating now...")
-                    window.location.href = url
+                    AppLogger.d("Wasm Launcher", "Navigating to: $url")
+                    window.location.assign(url)
                 } else {
-                    println("Wasm Launcher: ERROR - Generated URL is empty")
+                    AppLogger.e("Wasm Launcher", "ERROR - Generated URL is empty")
                 }
             } catch (e: Exception) {
                 println("Wasm Launcher: EXCEPTION -> ${e.message}")

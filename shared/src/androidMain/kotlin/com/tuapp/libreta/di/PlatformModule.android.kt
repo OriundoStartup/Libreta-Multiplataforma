@@ -3,12 +3,8 @@ package com.tuapp.libreta.di
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.tuapp.libreta.data.remote.SupabaseConfig
-import com.tuapp.libreta.data.repository.ClassRoomRepositoryImpl
-import com.tuapp.libreta.data.repository.ProfileRepositoryImpl
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
-import com.tuapp.libreta.domain.repository.ClassRoomRepository
-import com.tuapp.libreta.domain.repository.ProfileRepository
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.ExternalAuthAction
 import io.github.jan.supabase.auth.FlowType

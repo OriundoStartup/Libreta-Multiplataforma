@@ -10,7 +10,6 @@ import org.w3c.dom.HTMLElement
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val loadingScreen = document.getElementById("loading-screen") as? HTMLElement
-    val appRoot = document.getElementById("app-root") as? HTMLElement
     
     println("Web App: Starting...")
     println("Web App: Supabase URL: ${SupabaseConfig.URL}")
@@ -21,12 +20,21 @@ fun main() {
         initKoin()
         println("Web App: Koin OK.")
 
-        if (appRoot != null) {
-            ComposeViewport(appRoot) {
+        val root = document.getElementById("app-root") as? HTMLElement
+        if (root != null) {
+            ComposeViewport(root) {
                 App()
             }
-            // Ocultar pantalla de carga una vez que Compose toma el control
-            loadingScreen?.style?.display = "none"
+            
+            // Ocultar pantalla de carga con un pequeño delay para asegurar el primer frame
+            kotlinx.browser.window.setTimeout({
+                loadingScreen?.style?.opacity = "0"
+                kotlinx.browser.window.setTimeout({
+                    loadingScreen?.style?.display = "none"
+                    null
+                }, 500)
+                null
+            }, 1000)
         } else {
             throw IllegalStateException("No se encontró el elemento #app-root")
         }

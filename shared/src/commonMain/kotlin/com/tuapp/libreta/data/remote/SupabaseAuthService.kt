@@ -14,6 +14,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,7 +31,7 @@ private data class InvitationCodeCheck(
 sealed class SessionStatus {
     data object NotAuthenticated : SessionStatus()
     data object Loading : SessionStatus()
-    data class Authenticated(val user: UserInfo) : SessionStatus()
+    data class Authenticated(val user: UserInfo, val role: UserRole? = null) : SessionStatus()
     
     fun isAuthenticated(): Boolean = this is Authenticated
 }
@@ -43,24 +44,37 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         .map { it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated }
         .distinctUntilChanged()
 
-    val sessionStatusFlow: Flow<SessionStatus> = supabase.auth.sessionStatus.map { status ->
-        when (status) {
-            is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> SessionStatus.NotAuthenticated
-            is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> SessionStatus.Loading
-            is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
-                val user = status.session.user
-                if (user != null) SessionStatus.Authenticated(user) else SessionStatus.NotAuthenticated
+    private val _profileRefreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val sessionStatusFlow: Flow<SessionStatus> = kotlinx.coroutines.flow.combine(
+        supabase.auth.sessionStatus,
+        _profileRefreshTrigger
+    ) { status, _ -> status }.flatMapLatest { status ->
+        kotlinx.coroutines.flow.flow {
+            when (status) {
+                is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> emit(SessionStatus.NotAuthenticated)
+                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.Loading)
+                is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
+                    val user = status.session.user
+                    if (user != null) {
+                        emit(SessionStatus.Loading) // Mostrar loading mientras buscamos el rol
+                        val role = getUserRole(user.id)
+                        emit(SessionStatus.Authenticated(user, role))
+                    } else {
+                        emit(SessionStatus.NotAuthenticated)
+                    }
+                }
+                else -> emit(SessionStatus.NotAuthenticated)
             }
-            else -> SessionStatus.NotAuthenticated
         }
     }.distinctUntilChanged()
 
     fun getGoogleOAuthUrl(redirectTo: String? = null): String {
-        val redirectQuery = redirectTo?.let { "&redirect_to=$it" } ?: ""
-        // Supabase GoTrue espera parámetros adicionales para el proveedor en 'query_params'
-        // Formato: {"prompt":"select_account"} URL-encoded
-        val queryParams = "&query_params=%7B%22prompt%22%3A%22select_account%22%7D"
-        return "${SupabaseConfig.URL}/auth/v1/authorize?provider=google$redirectQuery$queryParams"
+        return supabase.auth.getOAuthUrl(
+            provider = Google,
+            redirectUrl = redirectTo
+        )
     }
 
     suspend fun signInWithGoogle() = supabase.auth.signInWith(Google)
@@ -115,6 +129,9 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
             }
         }.onSuccess {
             AppLogger.d("updateRole", "Update EXITOSO para $uid")
+            
+            // Forzar actualización del flujo de sesión
+            _profileRefreshTrigger.value += 1
             
             // Verificación inmediata
             val check = getUserRole(uid)

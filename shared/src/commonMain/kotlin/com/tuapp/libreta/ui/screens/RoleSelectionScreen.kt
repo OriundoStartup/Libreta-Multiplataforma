@@ -66,10 +66,7 @@ object RoleSelectionScreen : Screen {
         var selectedRole by remember { mutableStateOf<UserRole?>(null) }
         var invitationCode by remember { mutableStateOf("") }
 
-        LaunchedEffect(state) {
-            if (state is RoleSelectionUiState.Success)
-                navigator.replaceAll(AppNavigation.initialScreen((state as RoleSelectionUiState.Success).role, (state as RoleSelectionUiState.Success).userId.value))
-        }
+
 
         Box(Modifier.fillMaxSize()) {
             Image(

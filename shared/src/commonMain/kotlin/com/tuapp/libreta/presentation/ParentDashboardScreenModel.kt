@@ -67,6 +67,12 @@ class ParentDashboardScreenModel(
     private val authService: SupabaseAuthService
 ) : ScreenModel {
 
+    fun logout() {
+        screenModelScope.launch {
+            authService.signOut()
+        }
+    }
+
     private val _state = MutableStateFlow(ParentDashboardState())
     val state: StateFlow<ParentDashboardState> = _state.asStateFlow()
 

@@ -17,7 +17,8 @@ fun AppDrawer(
     onNavigateToMessages: () -> Unit,
     onNavigateToCompose: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSwitchAccount: () -> Unit = {}
 ) {
     ModalDrawerSheet {
         Spacer(Modifier.height(24.dp))
@@ -64,6 +65,12 @@ fun AppDrawer(
 
         Spacer(Modifier.weight(1f))
         HorizontalDivider()
+        NavigationDrawerItem(
+            icon    = { Icon(Icons.Default.SwitchAccount, null) },
+            label   = { Text("Cambiar de Cuenta") },
+            selected = false,
+            onClick  = { onSwitchAccount(); onClose() }
+        )
         NavigationDrawerItem(
             icon    = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
             label   = { Text("Cerrar Sesión", color = MaterialTheme.colorScheme.error) },

@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -81,6 +83,8 @@ import com.tuapp.libreta.ui.components.EmptyStateView
 import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.FullScreenLoading
 import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.ui.util.LocalWindowSize
+import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
 
 object TeacherDashboardScreen : Screen {
@@ -107,7 +111,8 @@ object TeacherDashboardScreen : Screen {
                     onNavigateToMessages = { navigator.push(AppNavigation.messages()) },
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice()) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
-                    onLogout = { model.logout() }
+                    onLogout = { model.logout() },
+                    onSwitchAccount = { model.logout() }
                 )
             }
         ) {
@@ -153,102 +158,113 @@ object TeacherDashboardScreen : Screen {
                 is TeacherDashboardUiState.Loading -> FullScreenLoading(padding)
                 is TeacherDashboardUiState.Error -> FullScreenError(s.message, padding) { model.load() }
 
-                is TeacherDashboardUiState.Success -> LazyColumn(
-                    modifier       = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item { ProfileHeader(name = s.profile.name) }
+                is TeacherDashboardUiState.Success -> {
+                    val windowSize = LocalWindowSize.current
+                    val columns = when (windowSize.widthSizeClass) {
+                        WindowSizeClass.COMPACT -> 1
+                        WindowSizeClass.MEDIUM -> 2
+                        WindowSizeClass.EXPANDED -> 2 // O incluso 3 si el max-width lo permite
+                    }
 
-                    item {
-                        Card(
-                            onClick = { navigator.push(AppNavigation.globalJustificationReview()) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        modifier       = Modifier.fillMaxSize().padding(padding),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item(span = { GridItemSpan(columns) }) { ProfileHeader(name = s.profile.name) }
+
+                        item(span = { GridItemSpan(columns) }) {
+                            Card(
+                                onClick = { navigator.push(AppNavigation.globalJustificationReview()) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
-                                Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary)
-                                Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                                    Text("Bandeja de Trámites", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                                    Text("Revisar todas las justificaciones pendientes", style = MaterialTheme.typography.labelSmall)
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary)
+                                    Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+                                        Text("Bandeja de Trámites", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                                        Text("Revisar todas las justificaciones pendientes", style = MaterialTheme.typography.labelSmall)
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    item {
-                        Text(
-                            text  = "Mis Cursos (${s.courses.size})",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-
-                    if (s.courses.isEmpty()) {
-                        item {
-                            EmptyStateView(
-                                icon = Icons.Default.Groups,
-                                title = "Aún no tienes cursos",
-                                description = "Toca + para crear tu primer curso"
+                        item(span = { GridItemSpan(columns) }) {
+                            Text(
+                                text  = "Mis Cursos (${s.courses.size})",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                modifier = Modifier.padding(top = 8.dp)
                             )
                         }
-                    } else {
-                        val grouped = s.courses.groupBy { it.schoolName ?: "Institución General" }
-                        grouped.forEach { (school, courses) ->
-                            item {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.padding(top = 8.dp)
-                                ) {
-                                    Text(
-                                        text = school.uppercase(),
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+
+                        if (s.courses.isEmpty()) {
+                            item(span = { GridItemSpan(columns) }) {
+                                EmptyStateView(
+                                    icon = Icons.Default.Groups,
+                                    title = "Aún no tienes cursos",
+                                    description = "Toca + para crear tu primer curso"
+                                )
+                            }
+                        } else {
+                            val grouped = s.courses.groupBy { it.schoolName ?: "Institución General" }
+                            grouped.forEach { (school, courses) ->
+                                item(span = { GridItemSpan(columns) }) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = school.uppercase(),
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+
+                                items(courses, key = { it.id }) { course ->
+                                    CourseCard(
+                                        course         = course,
+                                        onClick        = {
+                                            navigator.push(
+                                                StudentListScreen(classId = course.id, className = course.name)
+                                            )
+                                        },
+                                        onGenerateCode = { model.generateInviteCodeForCourse(course) },
+                                        onTakeAttendance = {
+                                            navigator.push(
+                                                AppNavigation.attendance(courseId = course.id, courseName = course.name)
+                                            )
+                                        },
+                                        onEdit = {
+                                            navigator.push(
+                                                AppNavigation.courseEdit(courseId = course.id, courseName = course.name, course = course)
+                                            )
+                                        },
+                                        onSendMessage = {
+                                            navigator.push(
+                                                AppNavigation.composeNotice(classId = course.id)
+                                            )
+                                        },
+                                        onInviteColleague = { model.generateColleagueInvite(course) },
+                                        onShowReport = {
+                                            navigator.push(
+                                                AppNavigation.attendanceReport(courseId = course.id, courseName = course.name)
+                                            )
+                                        }
                                     )
                                 }
                             }
-
-                            items(courses, key = { it.id }) { course ->
-                                CourseCard(
-                                    course         = course,
-                                    onClick        = {
-                                        navigator.push(
-                                            StudentListScreen(classId = course.id, className = course.name)
-                                        )
-                                    },
-                                    onGenerateCode = { model.generateInviteCodeForCourse(course) },
-                                    onTakeAttendance = {
-                                        navigator.push(
-                                            AppNavigation.attendance(courseId = course.id, courseName = course.name)
-                                        )
-                                    },
-                                    onEdit = {
-                                        navigator.push(
-                                            AppNavigation.courseEdit(courseId = course.id, courseName = course.name, course = course)
-                                        )
-                                    },
-                                    onSendMessage = {
-                                        navigator.push(
-                                            AppNavigation.composeNotice(classId = course.id)
-                                        )
-                                    },
-                                    onInviteColleague = { model.generateColleagueInvite(course) },
-                                    onShowReport = {
-                                        navigator.push(
-                                            AppNavigation.attendanceReport(courseId = course.id, courseName = course.name)
-                                        )
-                                    }
-                                )
-                            }
                         }
+                        item(span = { GridItemSpan(columns) }) { Spacer(Modifier.height(80.dp)) }
                     }
-                    item { Spacer(Modifier.height(80.dp)) }
                 }
             }
             }

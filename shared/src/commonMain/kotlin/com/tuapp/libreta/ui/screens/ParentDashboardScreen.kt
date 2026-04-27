@@ -35,36 +35,9 @@ import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,6 +58,8 @@ import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StatusCard
 import com.tuapp.libreta.ui.components.TimelineItem
+import com.tuapp.libreta.ui.components.AppDrawer
+import kotlinx.coroutines.launch
 
 data class ParentDashboardScreen(val parentId: String) : Screen {
 
@@ -98,6 +73,8 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
         val fabExpanded by remember { derivedStateOf { !listState.canScrollBackward } }
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
+        val drawerState = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) { model.load() }
 
@@ -111,181 +88,201 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
             }
         }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Panel Apoderado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
-                    actions = {
-                        IconButton(onClick = { 
-                            if (uiState is ParentDashboardUiState.Success) {
-                                val ids = uiState.students.map { it.id.value }
-                                navigator.push(AppNavigation.notificationScreen(parentId, ids))
-                            }
-                        }) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
-                        }
-                        IconButton(onClick = { navigator.push(AppNavigation.profile()) }) {
-                            Icon(Icons.Default.AccountCircle, contentDescription = "Perfil", modifier = Modifier.size(28.dp))
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                AppDrawer(
+                    onClose = { scope.launch { drawerState.close() } },
+                    onNavigateToDashboard = { },
+                    onNavigateToMessages = { navigator.push(AppNavigation.messages()) },
+                    onNavigateToCompose = { /* Consistent UI */ },
+                    onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
+                    onLogout = { model.logout() },
+                    onSwitchAccount = { model.logout() }
                 )
-            },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            floatingActionButton = {
-                if (uiState is ParentDashboardUiState.Success || uiState is ParentDashboardUiState.NoStudents) {
-                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ExtendedFloatingActionButton(
-                            onClick        = { navigator.push(AppNavigation.enrollment()) },
-                            expanded       = fabExpanded,
-                            icon           = { Icon(Icons.Default.School, contentDescription = null) },
-                            text           = { Text("Inscribir Curso") },
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        if (uiState is ParentDashboardUiState.Success) {
+            }
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menú")
+                            }
+                        },
+                        title = { Text("Panel Apoderado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                        actions = {
+                            IconButton(onClick = { 
+                                if (uiState is ParentDashboardUiState.Success) {
+                                    val ids = uiState.students.map { it.id.value }
+                                    navigator.push(AppNavigation.notificationScreen(parentId, ids))
+                                }
+                            }) {
+                                Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
+                            }
+                            IconButton(onClick = { navigator.push(AppNavigation.profile()) }) {
+                                Icon(Icons.Default.AccountCircle, contentDescription = "Perfil", modifier = Modifier.size(28.dp))
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                    )
+                },
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                floatingActionButton = {
+                    if (uiState is ParentDashboardUiState.Success || uiState is ParentDashboardUiState.NoStudents) {
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             ExtendedFloatingActionButton(
-                                onClick        = { navigator.push(AppNavigation.messages()) },
+                                onClick        = { navigator.push(AppNavigation.enrollment()) },
                                 expanded       = fabExpanded,
-                                icon           = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
-                                text           = { Text("Enviar Comunicación") },
-                                containerColor = MaterialTheme.colorScheme.primary
+                                icon           = { Icon(Icons.Default.School, contentDescription = null) },
+                                text           = { Text("Inscribir Curso") },
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                             )
+                            if (uiState is ParentDashboardUiState.Success) {
+                                ExtendedFloatingActionButton(
+                                    onClick        = { navigator.push(AppNavigation.messages()) },
+                                    expanded       = fabExpanded,
+                                    icon           = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                                    text           = { Text("Enviar Comunicación") },
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-        ) { padding ->
-            when (uiState) {
-                ParentDashboardUiState.Loading    -> ParentShimmer(padding)
-                ParentDashboardUiState.NoStudents -> EmptyStateView(
-                    icon = Icons.Default.PersonAdd,
-                    title = "Sin alumnos vinculados",
-                    description = "Registra a tus hijos para ver su asistencia y comunicaciones escolares.",
-                    actionText = "Ir a mi perfil",
-                    onAction = { navigator.push(AppNavigation.profile()) },
-                    modifier = Modifier.padding(padding)
-                )
+                },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            ) { padding ->
+                when (uiState) {
+                    ParentDashboardUiState.Loading    -> ParentShimmer(padding)
+                    ParentDashboardUiState.NoStudents -> EmptyStateView(
+                        icon = Icons.Default.PersonAdd,
+                        title = "Sin alumnos vinculados",
+                        description = "Registra a tus hijos para ver su asistencia y comunicaciones escolares.",
+                        actionText = "Ir a mi perfil",
+                        onAction = { navigator.push(AppNavigation.profile()) },
+                        modifier = Modifier.padding(padding)
+                    )
 
-                is ParentDashboardUiState.Error   -> FullScreenError(uiState.message, padding) { model.load() }
-                is ParentDashboardUiState.Success -> {
-                    val student = uiState.students[uiState.selectedIndex]
+                    is ParentDashboardUiState.Error   -> FullScreenError(uiState.message, padding) { model.load() }
+                    is ParentDashboardUiState.Success -> {
+                        val student = uiState.students[uiState.selectedIndex]
 
-                    LazyColumn(
-                        state               = listState,
-                        contentPadding      = PaddingValues(
-                            start  = 16.dp, end = 16.dp,
-                            top    = padding.calculateTopPadding() + 8.dp,
-                            bottom = padding.calculateBottomPadding() + 88.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // ── Selector de pupilo (tabs) ─────────────────────
-                        if (uiState.students.size > 1) {
+                        LazyColumn(
+                            state               = listState,
+                            contentPadding      = PaddingValues(
+                                start  = 16.dp, end = 16.dp,
+                                top    = padding.calculateTopPadding() + 8.dp,
+                                bottom = padding.calculateBottomPadding() + 88.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // ── Selector de pupilo (tabs) ─────────────────────
+                            if (uiState.students.size > 1) {
+                                item {
+                                    ScrollableTabRow(
+                                        selectedTabIndex = uiState.selectedIndex,
+                                        edgePadding      = 0.dp,
+                                        containerColor   = Color.Transparent,
+                                        divider          = {}
+                                    ) {
+                                        uiState.students.forEachIndexed { index, pupil ->
+                                            Tab(
+                                                selected = index == uiState.selectedIndex,
+                                                onClick  = { model.selectStudent(index) },
+                                                text     = { Text(pupil.name.split(" ")[0]) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Header del estudiante ─────────────────────────
                             item {
-                                ScrollableTabRow(
-                                    selectedTabIndex = uiState.selectedIndex,
-                                    edgePadding      = 0.dp,
-                                    containerColor   = Color.Transparent,
-                                    divider          = {}
+                                StudentHeader(
+                                    name = student.name,
+                                    percent = student.attendancePercent,
+                                    studentId = student.id.value,
+                                    studentRut = student.rut,
+                                    navigator = navigator,
+                                    onViewHistory = {
+                                        navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
+                                    }
+                                )
+                            }
+
+                            // ── Status cards ──────────────────────────────────
+                            item {
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    StatusCard(
+                                        icon           = Icons.Default.CheckCircle,
+                                        value          = "${student.attendancePercent}%",
+                                        label          = "Asistencia",
+                                        containerColor = Color(0xFFE8F5E9),
+                                        contentColor   = Color(0xFF2E7D32),
+                                        modifier       = Modifier.weight(1f)
+                                    )
+                                    StatusCard(
+                                        icon           = Icons.Default.MailOutline,
+                                        value          = "${student.pendingMessages}",
+                                        label          = "Mensajes",
+                                        containerColor = Color(0xFFE3F2FD),
+                                        contentColor   = Color(0xFF1565C0),
+                                        modifier       = Modifier.weight(1f)
+                                    )
+                                    StatusCard(
+                                        icon           = Icons.Default.EditNote,
+                                        value          = "Trámites",
+                                        label          = "Justificaciones",
+                                        containerColor = Color(0xFFFFF8E1),
+                                        contentColor   = Color(0xFFF57F17),
+                                        modifier       = Modifier.weight(1f).clickable { 
+                                            navigator.push(AppNavigation.justificationList(student.id.value)) 
+                                        }
+                                    )
+                                }
+                            }
+
+                            // ── Última anotación ──────────────────────────────
+                            item {
+                                Card(
+                                    shape  = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                                 ) {
-                                    uiState.students.forEachIndexed { index, pupil ->
-                                        Tab(
-                                            selected = index == uiState.selectedIndex,
-                                            onClick  = { model.selectStudent(index) },
-                                            text     = { Text(pupil.name.split(" ")[0]) }
-                                        )
+                                    Row(
+                                        Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.Info, contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary)
+                                        Column {
+                                            Text("Última anotación",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(student.lastNote,
+                                                style = MaterialTheme.typography.bodyMedium)
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        // ── Header del estudiante ─────────────────────────
-                        item {
-                            StudentHeader(
-                                name = student.name,
-                                percent = student.attendancePercent,
-                                studentId = student.id.value,
-                                studentRut = student.rut,
-                                navigator = navigator,
-                                onViewHistory = {
-                                    navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
-                                }
-                            )
-                        }
-
-                        // ── Status cards ──────────────────────────────────
-                        item {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                StatusCard(
-                                    icon           = Icons.Default.CheckCircle,
-                                    value          = "${student.attendancePercent}%",
-                                    label          = "Asistencia",
-                                    containerColor = Color(0xFFE8F5E9),
-                                    contentColor   = Color(0xFF2E7D32),
-                                    modifier       = Modifier.weight(1f)
-                                )
-                                StatusCard(
-                                    icon           = Icons.Default.MailOutline,
-                                    value          = "${student.pendingMessages}",
-                                    label          = "Mensajes",
-                                    containerColor = Color(0xFFE3F2FD),
-                                    contentColor   = Color(0xFF1565C0),
-                                    modifier       = Modifier.weight(1f)
-                                )
-                                StatusCard(
-                                    icon           = Icons.Default.EditNote,
-                                    value          = "Trámites",
-                                    label          = "Justificaciones",
-                                    containerColor = Color(0xFFFFF8E1),
-                                    contentColor   = Color(0xFFF57F17),
-                                    modifier       = Modifier.weight(1f).clickable { 
-                                        navigator.push(AppNavigation.justificationList(student.id.value)) 
-                                    }
+                            // ── Timeline ──────────────────────────────────────
+                            item {
+                                Text(
+                                    "Actividad Reciente",
+                                    style    = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
-                        }
 
-                        // ── Última anotación ──────────────────────────────
-                        item {
-                            Card(
-                                shape  = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-                            ) {
-                                Row(
-                                    Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Info, contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary)
-                                    Column {
-                                        Text("Última anotación",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(student.lastNote,
-                                            style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
+                            itemsIndexed(uiState.timeline, key = { _, e -> e.id }) { index, event ->
+                                TimelineItem(
+                                    event    = event,
+                                    isLast   = index == uiState.timeline.lastIndex,
+                                    onJustify = { navigator.push(AppNavigation.justificationForm(parentId = parentId)) }
+                                )
                             }
-                        }
-
-                        // ── Timeline ──────────────────────────────────────
-                        item {
-                            Text(
-                                "Actividad Reciente",
-                                style    = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
-                        }
-
-                        itemsIndexed(uiState.timeline, key = { _, e -> e.id }) { index, event ->
-                            TimelineItem(
-                                event    = event,
-                                isLast   = index == uiState.timeline.lastIndex,
-                                onJustify = { navigator.push(AppNavigation.justificationForm(parentId = parentId)) }
-                            )
                         }
                     }
                 }
