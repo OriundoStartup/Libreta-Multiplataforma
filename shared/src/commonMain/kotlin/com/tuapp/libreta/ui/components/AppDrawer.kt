@@ -66,14 +66,14 @@ fun AppDrawer(
         Spacer(Modifier.weight(1f))
         HorizontalDivider()
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.SwitchAccount, null) },
-            label   = { Text("Cambiar de Cuenta") },
+            icon    = { Icon(Icons.Default.ManageAccounts, null) },
+            label   = { Text("Cambiar de Perfil (Rol)") },
             selected = false,
             onClick  = { onSwitchAccount(); onClose() }
         )
         NavigationDrawerItem(
             icon    = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
-            label   = { Text("Cerrar Sesión", color = MaterialTheme.colorScheme.error) },
+            label   = { Text("Cerrar Sesión / Salir", color = MaterialTheme.colorScheme.error) },
             selected = false,
             onClick  = { onLogout(); onClose() },
             modifier = Modifier.padding(bottom = 8.dp)

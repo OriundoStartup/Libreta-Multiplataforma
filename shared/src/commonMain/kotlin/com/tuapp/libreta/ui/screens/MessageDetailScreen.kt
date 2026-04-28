@@ -1,6 +1,6 @@
 package com.tuapp.libreta.ui.screens
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,13 +16,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -45,7 +45,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,7 +56,6 @@ import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.presentation.ConversationUiState
 import com.tuapp.libreta.presentation.MessageScreenModel
-import com.tuapp.libreta.ui.components.FullScreenError
 
 data class MessageDetailScreen(
     val contactId: UuidString,
@@ -142,10 +140,23 @@ data class MessageDetailScreen(
 
 @Composable
 private fun ChatBubble(message: Message, isMine: Boolean) {
-    val bubbleColor = if (isMine) MaterialTheme.colorScheme.primary
-                     else         MaterialTheme.colorScheme.surfaceContainerHigh
-    val textColor   = if (isMine) MaterialTheme.colorScheme.onPrimary
-                     else         MaterialTheme.colorScheme.onSurface
+    val isPositiveNote = message.content.startsWith("[🌟")
+    val isNegativeNote = message.content.startsWith("[⚠️")
+    val isAnnotation   = isPositiveNote || isNegativeNote
+
+    val bubbleColor = when {
+        isPositiveNote -> Color(0xFFFFFDE7) // Amarillo muy claro
+        isNegativeNote -> Color(0xFFFFF3F3) // Rojo muy claro
+        isMine         -> MaterialTheme.colorScheme.primary
+        else           -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+
+    val textColor = when {
+        isAnnotation -> MaterialTheme.colorScheme.onSurface
+        isMine       -> MaterialTheme.colorScheme.onPrimary
+        else         -> MaterialTheme.colorScheme.onSurface
+    }
+
     val shape = if (isMine)
         RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
     else
@@ -158,17 +169,47 @@ private fun ChatBubble(message: Message, isMine: Boolean) {
         Surface(
             shape = shape,
             color = bubbleColor,
-            modifier = Modifier.widthIn(max = 280.dp)
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                Text(
-                    text = message.content,
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyMedium
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .then(
+                    if (isAnnotation) Modifier.border(
+                        1.dp, 
+                        if (isPositiveNote) Color(0xFFFBC02D) else Color(0xFFD32F2F), 
+                        shape
+                    ) else Modifier
                 )
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                if (isAnnotation) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                        Icon(
+                            imageVector = if (isPositiveNote) Icons.Default.Stars else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = if (isPositiveNote) Color(0xFFFBC02D) else Color(0xFFD32F2F),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (isPositiveNote) "ANOTACIÓN POSITIVA" else "ANOTACIÓN NEGATIVA",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                            color = if (isPositiveNote) Color(0xFFFBC02D) else Color(0xFFD32F2F)
+                        )
+                    }
+                }
+                
+                Text(
+                    text = if (isAnnotation) {
+                        // Quitamos el tag del contenido para mostrarlo limpio
+                        message.content.substringAfter("] ").trim()
+                    } else message.content,
+                    color = textColor,
+                    style = if (isAnnotation) MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium) 
+                            else MaterialTheme.typography.bodyMedium
+                )
+                
                 message.createdAt?.let { time ->
                     Row(
-                        modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+                        modifier = Modifier.align(Alignment.End).padding(top = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {

@@ -137,6 +137,10 @@ private fun NotificationRow(item: NotificationItem, onClick: () -> Unit) {
         NotificationType.ATTENDANCE    -> Icons.Default.EventBusy to Color(0xFFC62828)
         NotificationType.JUSTIFICATION -> Icons.Default.AssignmentTurnedIn to Color(0xFF2E7D32)
         NotificationType.NOTICE        -> Icons.Default.Notifications to Color(0xFFF57F17)
+        NotificationType.ANNOTATION    -> {
+            if (item.content.contains("⚠️")) Icons.Default.Notifications to Color(0xFFD32F2F)
+            else Icons.Default.Notifications to Color(0xFFFBC02D)
+        }
     }
 
     Card(

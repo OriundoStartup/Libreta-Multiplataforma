@@ -70,11 +70,17 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         }
     }.distinctUntilChanged()
 
-    fun getGoogleOAuthUrl(redirectTo: String? = null): String {
-        return supabase.auth.getOAuthUrl(
+    fun getGoogleOAuthUrl(redirectTo: String? = null, prompt: String? = null): String {
+        val url = supabase.auth.getOAuthUrl(
             provider = Google,
             redirectUrl = redirectTo
         )
+        return if (prompt != null) {
+            val separator = if (url.contains("?")) "&" else "?"
+            "$url${separator}prompt=$prompt"
+        } else {
+            url
+        }
     }
 
     suspend fun signInWithGoogle() = supabase.auth.signInWith(Google) {

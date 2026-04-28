@@ -9,6 +9,7 @@ import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.repository.CourseAssignmentRepository
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.repository.JustificationRepository
+import com.tuapp.libreta.domain.usecase.GetInboxUseCase
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,8 @@ sealed interface TeacherDashboardUiState {
     data class  Success(
         val profile: TeacherProfile, 
         val courses: List<Course>,
-        val pendingJustificationsCount: Int = 0
+        val pendingJustificationsCount: Int = 0,
+        val unreadMessagesCount: Int = 0
     ) : TeacherDashboardUiState
     data class  Error(val message: String) : TeacherDashboardUiState
 }
@@ -34,6 +36,7 @@ class TeacherDashboardScreenModel(
     private val coursesRepo: CoursesRepository,
     private val assignmentRepo: CourseAssignmentRepository,
     private val justificationRepo: JustificationRepository,
+    private val getInbox: GetInboxUseCase,
     private val dataSeeder: DataSeeder,
     private val supabase: SupabaseClient
 ) : ScreenModel {
@@ -84,9 +87,19 @@ class TeacherDashboardScreenModel(
                                 _state.value = current.copy(pendingJustificationsCount = pendingJusts.size)
                             }
                         }
-                } catch (e: Exception) {
-                    // Fallo silencioso del badge
-                }
+                } catch (e: Exception) { /* Fallo silencioso */ }
+            }
+
+            // 4. Cargar conteo de mensajes no leídos
+            launch {
+                try {
+                    val threads = getInbox(UuidString(user.id))
+                    val unreadCount = threads.count { it.unread }
+                    val current = _state.value
+                    if (current is TeacherDashboardUiState.Success) {
+                        _state.value = current.copy(unreadMessagesCount = unreadCount)
+                    }
+                } catch (e: Exception) { /* Fallo silencioso */ }
             }
         }
     }

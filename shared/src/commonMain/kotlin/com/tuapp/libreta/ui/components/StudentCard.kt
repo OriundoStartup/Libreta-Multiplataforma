@@ -25,6 +25,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,15 +50,24 @@ fun StudentCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> { onMarkPresent(student.id); false }
-                SwipeToDismissBoxValue.EndToStart -> { onMarkAbsent(student.id);  false }
-                else -> false
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    // Manejo de la acción post-swipe para evitar el confirmValueChange deprecado
+    LaunchedEffect(dismissState.currentValue) {
+        when (dismissState.currentValue) {
+            SwipeToDismissBoxValue.StartToEnd -> {
+                onMarkPresent(student.id)
+                // Regresar la tarjeta a su posición original (no descartar)
+                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
+            SwipeToDismissBoxValue.EndToStart -> {
+                onMarkAbsent(student.id)
+                // Regresar la tarjeta a su posición original
+                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+            }
+            SwipeToDismissBoxValue.Settled -> { /* Nada que hacer */ }
         }
-    )
+    }
 
     SwipeToDismissBox(
         state            = dismissState,
@@ -98,7 +108,7 @@ fun StudentCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text  = "Registro regular", // En lugar de un ID críptico
+                        text  = "Registro regular", 
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -114,11 +124,12 @@ fun StudentCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeBackground(state: SwipeToDismissBoxState) {
+    // Usamos targetValue para que el color cambie mientras el usuario arrastra
     val direction = state.dismissDirection
     val color by animateColorAsState(
         targetValue = when (direction) {
-            SwipeToDismissBoxValue.StartToEnd -> Color(0xFF2E7D32)
-            SwipeToDismissBoxValue.EndToStart -> Color(0xFFC62828)
+            SwipeToDismissBoxValue.StartToEnd -> Color(0xFF2E7D32) // Verde
+            SwipeToDismissBoxValue.EndToStart -> Color(0xFFC62828) // Rojo
             else                              -> Color.Transparent
         },
         label = "swipeBg"

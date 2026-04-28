@@ -10,7 +10,9 @@ import com.tuapp.libreta.ui.screens.StudentListScreen
 
 object WebPathMapper {
     fun fromPath(path: String): Screen {
-        val segments = path.split("/").filter { it.isNotEmpty() }
+        // Limpiamos la ruta de posibles prefijos de hash o slashes duplicados
+        val cleanPath = path.removePrefix("#").removePrefix("/")
+        val segments = cleanPath.split("/").filter { it.isNotEmpty() }
         
         return when {
             segments.isEmpty() -> LoginScreen

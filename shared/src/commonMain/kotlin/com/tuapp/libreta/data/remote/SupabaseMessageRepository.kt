@@ -50,7 +50,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
     override suspend fun getInbox(currentUserId: String): List<MessageThread> {
         return try {
             val messages = supabase.from("messages")
-                .select(columns = Columns.raw("id,sender_id,receiver_id,message_text,created_at,read_at")) {
+                .select(columns = Columns.raw("id,sender_id,receiver_id,content,created_at,read_at")) {
                     filter {
                         or {
                             eq("sender_id", currentUserId)
@@ -83,13 +83,15 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
 
             grouped.map { (contactId, msgs) ->
                 val lastMsg    = msgs.first()
+                val isMine     = lastMsg.senderId == currentUserId
                 val unreadCount = msgs.count { it.receiverId == currentUserId && it.readAt == null }
                 val profile    = profiles[contactId]
                 MessageThread(
                     contactId   = UuidString(contactId),
                     contactName = profile?.fullName ?: "Usuario",
                     lastMessage = lastMsg.messageText ?: "",
-                    unread      = unreadCount > 0
+                    unread      = unreadCount > 0,
+                    isLastMessageMine = isMine
                 )
             }
         } catch (e: Exception) {
@@ -101,7 +103,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
     override suspend fun getConversation(currentUserId: String, contactId: String): List<Message> {
         return try {
             supabase.from("messages")
-                .select(columns = Columns.raw("id,sender_id,receiver_id,message_text,created_at,read_at")) {
+                .select(columns = Columns.raw("id,sender_id,receiver_id,content,created_at,read_at")) {
                     filter {
                         or {
                             and {

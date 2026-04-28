@@ -6,6 +6,7 @@ import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.AttendanceStatus
+import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.MessageRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
@@ -13,11 +14,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.cancellation.CancellationException
 
 data class StudentSummary(
@@ -67,19 +69,12 @@ class ParentDashboardScreenModel(
     private val authService: SupabaseAuthService
 ) : ScreenModel {
 
-    fun logout() {
-        screenModelScope.launch {
-            authService.signOut()
-        }
-    }
-
     private val _state = MutableStateFlow(ParentDashboardState())
     val state: StateFlow<ParentDashboardState> = _state.asStateFlow()
 
     private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
-        println("DEBUG init: ParentDashboardScreenModel creado")
         load()
     }
 
@@ -88,130 +83,103 @@ class ParentDashboardScreenModel(
         val userId = authService.currentUserId()
         
         if (userId == null) {
-            println("DEBUG load: Sesión nula")
             _state.update { it.copy(uiState = ParentDashboardUiState.Error("No hay sesión activa")) }
             return
         }
 
-        println("DEBUG load: Cargando alumnos para $userId")
         loadJob = studentRepo.getStudentsByParent(userId)
             .onEach { students ->
-                println("DEBUG load: Recibidos ${students.size} alumnos del repo")
-                
                 if (students.isEmpty()) {
-                    println("DEBUG load: Cambiando a estado NoStudents")
                     _state.update { it.copy(uiState = ParentDashboardUiState.NoStudents) }
                     return@onEach
                 }
 
                 try {
-                    // Procesar datos adicionales
-                    val summaries = students.map { student ->
-                        val attendance = attendanceRepo.getByStudent(student.id).first()
-                        val total = attendance.size.coerceAtLeast(1)
-                        val present = attendance.count { it.status == AttendanceStatus.PRESENT }
-                        val msgs = messageRepo.getInbox(userId.value)
-                            .count { it.unread }
-                        
+                    // 1. Mostrar estado inicial de ÉXITO con datos básicos
+                    val initialSummaries = students.map { student ->
                         StudentSummary(
                             id = student.id,
                             courseId = student.courseId,
                             name = student.fullName,
                             rut = student.studentRut,
-                            attendancePercent = present * 100 / total,
-                            lastNote = "Sin anotaciones recientes",
-                            pendingMessages = msgs
+                            attendancePercent = 100,
+                            lastNote = "Cargando...",
+                            pendingMessages = 0
                         )
                     }
 
-                    val success = ParentDashboardUiState.Success(
-                        students = summaries,
-                        selectedIndex = 0,
-                        timeline = buildTimeline(students.first().id, userId)
-                    )
-                    
-                    println("DEBUG load: Cambiando a estado SUCCESS con ${summaries.size} alumnos")
-                    _state.update { it.copy(uiState = success) }
-                } catch (e: CancellationException) {
-                    throw e
+                    _state.update { it.copy(
+                        uiState = ParentDashboardUiState.Success(
+                            students = initialSummaries,
+                            selectedIndex = 0,
+                            timeline = emptyList()
+                        )
+                    )}
+
+                    // 2. Cargar detalles (asistencia, inbox) en segundo plano
+                    enrichStudentData(students, userId)
+
                 } catch (e: Exception) {
-                    println("ERROR load processing: ${e.message}")
                     _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error al procesar datos")) }
                 }
             }
             .catch { e ->
-                if (e is CancellationException) {
-                    println("DEBUG load: Flow cancelado correctamente")
-                    throw e
+                if (e !is CancellationException) {
+                    _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error de red")) }
                 }
-                println("ERROR load: ${e.message}")
-                _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error desconocido")) }
             }
             .launchIn(screenModelScope)
     }
 
-    fun onAddStudentClick() {
-        _state.update { it.copy(showAddStudentDialog = true) }
-    }
-
-    fun onDismissDialog() {
-        _state.update { it.copy(showAddStudentDialog = false, error = null) }
-    }
-
-    fun clearSuccessMessage() {
-        _state.update { it.copy(successMessage = null) }
-    }
-
-    fun enrollStudent(name: String, rut: String?) {
-        val userId = authService.currentUserId() ?: return
-        
-        screenModelScope.launch {
-            _state.update { it.copy(isActionLoading = true, error = null) }
-            try {
-                val profile = authService.getProfile(userId.value)
-                val courseId = profile?.courseId ?: throw Exception("No se encontró curso vinculado")
-
-                coursesRepo.enrollStudent(courseId, name, rut)
-                    .onSuccess {
-                        _state.update { it.copy(
-                            showAddStudentDialog = false, 
-                            isActionLoading = false,
-                            successMessage = "Registrado: $name"
-                        ) }
-                        load()
-                    }
-                    .onFailure { e ->
-                        _state.update { it.copy(isActionLoading = false, error = e.message) }
-                    }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _state.update { it.copy(isActionLoading = false, error = e.message) }
-            }
-        }
-    }
-
-    fun selectStudent(index: Int) {
-        val current = _state.value.uiState as? ParentDashboardUiState.Success ?: return
-        val userId = authService.currentUserId() ?: return
-        
+    private fun enrichStudentData(students: List<Student>, userId: UuidString) {
         screenModelScope.launch {
             try {
-                val updatedSuccess = current.copy(
-                    selectedIndex = index,
-                    timeline = buildTimeline(current.students[index].id, userId)
-                )
-                _state.update { it.copy(uiState = updatedSuccess) }
-            } catch (e: CancellationException) {
-                throw e
+                val summaries = students.map { student ->
+                    val attendance = withTimeoutOrNull(3000) {
+                        attendanceRepo.getByStudent(student.id).firstOrNull()
+                    } ?: emptyList()
+                    
+                    val total = attendance.size.coerceAtLeast(1)
+                    val present = attendance.count { it.status == AttendanceStatus.PRESENT }
+                    
+                    val msgsCount = try {
+                        withTimeoutOrNull(3000) {
+                            messageRepo.getInbox(userId.value).count { it.unread }
+                        } ?: 0
+                    } catch (e: Exception) { 0 }
+
+                    StudentSummary(
+                        id = student.id,
+                        courseId = student.courseId,
+                        name = student.fullName,
+                        rut = student.studentRut,
+                        attendancePercent = present * 100 / total,
+                        lastNote = "Sin anotaciones recientes",
+                        pendingMessages = msgsCount
+                    )
+                }
+
+                val timeline = try {
+                    withTimeoutOrNull(3000) {
+                        buildTimeline(students.first().id, userId)
+                    } ?: emptyList()
+                } catch (e: Exception) { emptyList() }
+
+                _state.update { it.copy(
+                    uiState = ParentDashboardUiState.Success(
+                        students = summaries,
+                        selectedIndex = 0,
+                        timeline = timeline
+                    )
+                )}
             } catch (e: Exception) {
-                println("ERROR selectStudent: ${e.message}")
+                // Silencioso
             }
         }
     }
 
     private suspend fun buildTimeline(studentId: UuidString, parentId: UuidString): List<TimelineEvent> {
-        val attendanceEvents = attendanceRepo.getByStudent(studentId).first()
+        val attendanceEvents = (attendanceRepo.getByStudent(studentId).firstOrNull() ?: emptyList())
             .takeLast(5).mapIndexed { i, record ->
                 val present = record.status == AttendanceStatus.PRESENT
                 TimelineEvent(
@@ -235,5 +203,56 @@ class ParentDashboardScreenModel(
         }
 
         return (attendanceEvents + messageEvents).sortedByDescending { it.id }
+    }
+
+    fun logout() {
+        screenModelScope.launch { authService.signOut() }
+    }
+
+    fun onAddStudentClick() {
+        _state.update { it.copy(showAddStudentDialog = true) }
+    }
+
+    fun onDismissDialog() {
+        _state.update { it.copy(showAddStudentDialog = false, error = null) }
+    }
+
+    fun clearSuccessMessage() {
+        _state.update { it.copy(successMessage = null) }
+    }
+
+    fun enrollStudent(name: String, rut: String?) {
+        val userId = authService.currentUserId() ?: return
+        screenModelScope.launch {
+            _state.update { it.copy(isActionLoading = true, error = null) }
+            try {
+                val profile = authService.getProfile(userId.value)
+                val courseId = profile?.courseId ?: throw Exception("No se encontró curso vinculado")
+                coursesRepo.enrollStudent(courseId, name, rut)
+                    .onSuccess {
+                        _state.update { it.copy(showAddStudentDialog = false, isActionLoading = false, successMessage = "Registrado: $name") }
+                        load()
+                    }
+                    .onFailure { e -> _state.update { it.copy(isActionLoading = false, error = e.message) } }
+            } catch (e: Exception) {
+                _state.update { it.copy(isActionLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun selectStudent(index: Int) {
+        val current = _state.value.uiState as? ParentDashboardUiState.Success ?: return
+        val userId = authService.currentUserId() ?: return
+        screenModelScope.launch {
+            try {
+                val updatedSuccess = current.copy(
+                    selectedIndex = index,
+                    timeline = buildTimeline(current.students[index].id, userId)
+                )
+                _state.update { it.copy(uiState = updatedSuccess) }
+            } catch (e: Exception) {
+                println("ERROR selectStudent: ${e.message}")
+            }
+        }
     }
 }

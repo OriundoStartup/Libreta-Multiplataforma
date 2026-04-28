@@ -24,7 +24,10 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
                 println("Wasm Launcher: Origin is $currentOrigin")
                 println("Wasm Launcher: Redirecting to $redirectUrl")
                 
-                val url = authService.getGoogleOAuthUrl(redirectTo = redirectUrl)
+                val url = authService.getGoogleOAuthUrl(
+                    redirectTo = redirectUrl,
+                    prompt = "select_account"
+                )
                 println("Wasm Launcher: Generated OAuth URL: $url")
                 
                 if (url.isNotBlank()) {

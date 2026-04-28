@@ -15,37 +15,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
@@ -58,6 +56,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,10 +79,11 @@ import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.navigation.AppNavigation
 import com.tuapp.libreta.presentation.TeacherDashboardScreenModel
 import com.tuapp.libreta.presentation.TeacherDashboardUiState
+import com.tuapp.libreta.ui.components.AppDrawer
 import com.tuapp.libreta.ui.components.EmptyStateView
 import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.FullScreenLoading
-import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.ui.components.StatusCard
 import com.tuapp.libreta.ui.util.LocalWindowSize
 import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
@@ -102,6 +102,9 @@ object TeacherDashboardScreen : Screen {
         val scope = rememberCoroutineScope()
         var showCreateDialog by remember { mutableStateOf(false) }
         var showJoinDialog by remember { mutableStateOf(false) }
+        
+        // REFRESCAR AL VOLVER A LA PANTALLA
+        LaunchedEffect(Unit) { model.load() }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -177,27 +180,52 @@ object TeacherDashboardScreen : Screen {
                         item(span = { GridItemSpan(columns) }) { ProfileHeader(name = s.profile.name) }
 
                         item(span = { GridItemSpan(columns) }) {
-                            Card(
-                                onClick = { navigator.push(AppNavigation.globalJustificationReview()) },
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(16.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary)
-                                    Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("Bandeja de Trámites", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                                            if (s.pendingJustificationsCount > 0) {
-                                                Spacer(Modifier.width(8.dp))
-                                                Badge { Text(s.pendingJustificationsCount.toString()) }
-                                            }
-                                        }
-                                        Text("Revisar todas las justificaciones pendientes", style = MaterialTheme.typography.labelSmall)
+                                // TARJETA DE TRÁMITES
+                                StatusCard(
+                                    icon = Icons.Default.AssignmentTurnedIn,
+                                    value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
+                                    label = "Trámites",
+                                    containerColor = if (s.pendingJustificationsCount > 0) 
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f) 
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    contentColor = if (s.pendingJustificationsCount > 0)
+                                        MaterialTheme.colorScheme.onErrorContainer
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f).clickable { 
+                                        navigator.push(AppNavigation.globalJustificationReview()) 
                                     }
+                                )
+
+                                // TARJETA DE MENSAJES (MEJORADA)
+                                StatusCard(
+                                    icon = Icons.Default.MailOutline,
+                                    value = if (s.unreadMessagesCount > 0) "${s.unreadMessagesCount}" else "Al día",
+                                    label = if (s.unreadMessagesCount > 0) "Mensajes Nuevos" else "Mensajes",
+                                    containerColor = if (s.unreadMessagesCount > 0) 
+                                        MaterialTheme.colorScheme.primaryContainer 
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    contentColor = if (s.unreadMessagesCount > 0)
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f).clickable { 
+                                        navigator.push(AppNavigation.messages()) 
+                                    }
+                                )
+
+                                // TARJETA DE CURSOS
+                                if (columns > 1) {
+                                    StatusCard(
+                                        icon = Icons.Default.Groups,
+                                        value = "${s.courses.size}",
+                                        label = "Mis Cursos",
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 }
                             }
                         }
@@ -257,7 +285,7 @@ object TeacherDashboardScreen : Screen {
                                         },
                                         onSendMessage = {
                                             navigator.push(
-                                                AppNavigation.composeNotice(classId = course.id)
+                                                AppNavigation.composeNotice(classId = course.id, className = course.name)
                                             )
                                         },
                                         onInviteColleague = { model.generateColleagueInvite(course) },
@@ -279,20 +307,18 @@ object TeacherDashboardScreen : Screen {
 
         if (showCreateDialog) {
             CreateCourseDialog(
-                onDismiss = { showCreateDialog = false },
+                onDismiss = { },
                 onCreate  = { name, grade, school ->
                     model.createCourse(name, grade, school)
-                    showCreateDialog = false
                 }
             )
         }
 
         if (showJoinDialog) {
             JoinCourseDialog(
-                onDismiss = { showJoinDialog = false },
+                onDismiss = { },
                 onJoin = { code ->
                     model.joinCourse(code)
-                    showJoinDialog = false
                 }
             )
         }
@@ -371,46 +397,86 @@ private fun CourseCard(
     onShowReport: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick),
-        shape    = RoundedCornerShape(12.dp)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
+        shape    = RoundedCornerShape(16.dp),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(course.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Text("Nivel: ${course.grade ?: "N/A"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                course.schoolName?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                // Avatar circular (Igual al de apoderado)
+                Box(
+                    modifier         = Modifier.size(56.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text  = course.name.firstOrNull()?.uppercaseChar()?.toString() ?: "C",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+
+                // Info del Curso
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(course.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    
+                    // Barra de progreso estética (Igual al de apoderado)
+                    LinearProgressIndicator(
+                        progress       = { 1f }, // Representa curso activo
+                        modifier       = Modifier.fillMaxWidth().padding(top = 6.dp).height(6.dp).clip(RoundedCornerShape(4.dp)),
+                        color          = MaterialTheme.colorScheme.primary,
+                        trackColor     = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                    
+                    Text(
+                        text = "${course.grade ?: "Nivel N/A"} • ${course.schoolName ?: "Institución"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                // Acción rápida de Asistencia (Botón destacado)
+                IconButton(
+                    onClick = onTakeAttendance,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.HowToReg, contentDescription = "Pasar Asistencia")
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = onSendMessage) {
-                    Icon(Icons.Default.EditNote, contentDescription = "Redactar", tint = MaterialTheme.colorScheme.secondary)
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            
+            // Fila de acciones secundarias
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = onSendMessage) {
+                        Icon(Icons.Default.MailOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onShowReport) {
+                        Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onInviteColleague) {
+                        Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onGenerateCode) {
+                        Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
                 }
-                IconButton(onClick = onTakeAttendance) {
-                    Icon(Icons.Default.HowToReg, contentDescription = "Tomar asistencia", tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = onInviteColleague) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = "Invitar colega", tint = MaterialTheme.colorScheme.tertiary)
-                }
-                IconButton(onClick = onGenerateCode) {
-                    Icon(Icons.Default.Add, contentDescription = "Ver código", tint = MaterialTheme.colorScheme.tertiary)
-                }
-                IconButton(onClick = onShowReport) {
-                    Icon(Icons.Default.TableChart, contentDescription = "Ver reporte", tint = MaterialTheme.colorScheme.primary)
-                }
+
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar curso", tint = MaterialTheme.colorScheme.outline)
+                    Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
                 }
             }
         }

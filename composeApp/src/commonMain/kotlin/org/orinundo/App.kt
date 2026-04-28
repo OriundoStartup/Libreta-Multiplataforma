@@ -1,9 +1,14 @@
 package org.orinundo
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -92,17 +97,17 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                                 return@LaunchedEffect
                                             }
 
-                                            // CASO 2: Usuario ya tiene rol y está intentando entrar a una zona prohibida o salir de selección
+                                            // CASO 2: Usuario ya tiene rol y está intentando entrar a una zona prohibida
                                             if (role != null) {
                                                 val isForbidden = when(role) {
                                                     com.tuapp.libreta.domain.model.UserRole.TEACHER -> currentScreen is ParentDashboardScreen
                                                     com.tuapp.libreta.domain.model.UserRole.PARENT -> currentScreen is TeacherDashboardScreen
                                                 }
                                                 
-                                                // Si el rol ya está definido y estamos en RoleSelection, ir al Dashboard
-                                                val isSelectionDone = currentScreen is RoleSelectionScreen
-
-                                                if (isForbidden || isSelectionDone) {
+                                                // Si está en una pantalla prohibida para su rol actual, lo sacamos.
+                                                // Pero NO lo sacamos de RoleSelectionScreen automáticamente, 
+                                                // dejamos que la pantalla maneje la lógica de "Continuar".
+                                                if (isForbidden) {
                                                     navigator.replaceAll(AppNavigation.initialScreen(role, userId))
                                                 }
                                             }
@@ -116,6 +121,19 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     }
                                 }
                                 SlideTransition(navigator)
+
+                                // OVERLAY GLOBAL DE CARGA
+                                if (sessionStatus is SessionStatus.Loading) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.3f))
+                                            .clickable(enabled = false) {}, // Bloquear clics
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             }
                         }
                     }

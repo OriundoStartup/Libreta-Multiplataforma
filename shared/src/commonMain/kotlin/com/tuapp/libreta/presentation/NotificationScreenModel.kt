@@ -25,7 +25,7 @@ data class NotificationItem(
     val studentId: String? = null
 )
 
-enum class NotificationType { MESSAGE, ATTENDANCE, JUSTIFICATION, NOTICE }
+enum class NotificationType { MESSAGE, ATTENDANCE, JUSTIFICATION, NOTICE, ANNOTATION }
 
 sealed interface NotificationUiState {
     data object Loading : NotificationUiState
@@ -51,10 +51,11 @@ class NotificationScreenModel(
                 // 1. Mensajes del inbox
                 val inbox = messageRepo.getInbox(parentId)
                 notifications.addAll(inbox.map { thread ->
+                    val isAnnotation = thread.lastMessage.startsWith("[🌟") || thread.lastMessage.startsWith("[⚠️")
                     NotificationItem(
                         id = "msg-${thread.contactId}",
-                        type = NotificationType.MESSAGE,
-                        title = "Mensaje de ${thread.contactName}",
+                        type = if (isAnnotation) NotificationType.ANNOTATION else NotificationType.MESSAGE,
+                        title = if (isAnnotation) "Nueva Anotación Registrada" else "Mensaje de ${thread.contactName}",
                         content = thread.lastMessage,
                         date = if (thread.unread) "Sin leer" else "Leído",
                         isRead = !thread.unread,

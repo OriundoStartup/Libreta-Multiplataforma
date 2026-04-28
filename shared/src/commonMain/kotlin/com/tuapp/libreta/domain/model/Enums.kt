@@ -8,5 +8,7 @@ enum class SyncStatus { SYNCED, PENDING_INSERT, PENDING_UPDATE, PENDING_DELETE }
 enum class NoticeCategory(val label: String, val emoji: String) {
     URGENT("Urgente",     "🚨"),
     INFO("Informativo",   "ℹ️"),
-    ACADEMIC("Académico", "📚")
+    ACADEMIC("Académico", "📚"),
+    POSITIVE_NOTE("Anotación Positiva", "🌟"),
+    NEGATIVE_NOTE("Anotación Negativa", "⚠️")
 }

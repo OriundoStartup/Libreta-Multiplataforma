@@ -71,8 +71,8 @@ val appModule = module {
 
     // ── ScreenModels ──────────────────────────────────────────────────────────
     factory { LoginScreenModel(get()) }
-    factory { RoleSelectionScreenModel(get(), get()) }
-    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get(), get()) }
+    factory { RoleSelectionScreenModel(get(), get(), get()) }
+    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get(), get(), get()) }
     factory { StudentListScreenModel(get(), get(), get(), get(), get()) }
     factory { ParentDashboardScreenModel(get(), get(), get(), get(), get()) }
     factory { ProfileScreenModel(get(), get(), get(), get()) }
@@ -82,7 +82,7 @@ val appModule = module {
     factory { JustificationListScreenModel(get()) }
     factory { NotificationScreenModel(get(), get(), get()) }
     factory { GlobalJustificationScreenModel(get(), get(), get()) }
-    factory { NoticeScreenModel(get(), get(), get(), get(), get()) }
+    factory { NoticeScreenModel(get(), get(), get(), get(), get(), get()) }
     factory { NoticeListScreenModel(get()) }
     factory { StatsScreenModel(get()) }
     factory { (params: org.koin.core.parameter.ParametersHolder) -> AttendanceScreenModel(get(), get(), params.get(), params.get()) }

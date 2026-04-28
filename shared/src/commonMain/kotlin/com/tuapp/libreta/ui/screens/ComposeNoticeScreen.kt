@@ -1,50 +1,29 @@
 package com.tuapp.libreta.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tuapp.libreta.domain.model.NoticeCategory
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -57,10 +36,12 @@ import com.tuapp.libreta.navigation.AppConfig
 import com.tuapp.libreta.presentation.ComposeMode
 import com.tuapp.libreta.presentation.NoticeScreenModel
 import com.tuapp.libreta.presentation.NoticeUiState
+import com.tuapp.libreta.domain.model.UserRole
 
 data class ComposeNoticeScreen(
     val preselectedClassId: String? = null,
-    val preselectedStudentId: String? = null
+    val preselectedStudentId: String? = null,
+    val preselectedClassName: String? = null
 ) : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -71,51 +52,43 @@ data class ComposeNoticeScreen(
         val state       by model.state.collectAsState()
         val classes     by model.classes.collectAsState()
         val students    by model.students.collectAsState()
+        val isStudentsLoading by model.isStudentsLoading.collectAsState()
         val composeMode by model.composeMode.collectAsState()
-
-        val defaultClassId = AppConfig.DEMO_CLASS_ID.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000")
-        val defaultTeacherId = AppConfig.DEMO_TEACHER_ID.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000")
+        val userRole    by model.userRole.collectAsState()
 
         var content          by remember { mutableStateOf("") }
-        var selectedCategory by remember { mutableStateOf(NoticeCategory.INFO) }
+        var selectedCategory by remember { mutableStateOf<NoticeCategory?>(null) }
         var classExpanded    by remember { mutableStateOf(false) }
         
-        var selectedClassId   by remember { mutableStateOf(defaultClassId) }
-        var selectedClassName by remember { mutableStateOf(AppConfig.DEMO_CLASS_NAME) }
-
+        var selectedClassId   by remember { mutableStateOf<UuidString?>(preselectedClassId?.let { UuidString(it) }) }
+        var selectedClassName by remember { mutableStateOf(preselectedClassName ?: "Cargando curso...") }
         var selectedParentId  by remember { mutableStateOf<UuidString?>(null) }
-        var studentQuery      by remember { mutableStateOf("") }
-        
-        val filteredStudents by remember(studentQuery, students) {
-            derivedStateOf {
-                if (studentQuery.isEmpty()) students
-                else students.filter { it.fullName.contains(studentQuery, ignoreCase = true) }
-            }
-        }
+        var selectedStudentName by remember { mutableStateOf("") }
 
-        LaunchedEffect(classes) {
-            val preId = preselectedClassId?.let { UuidString(it) }
-            val foundClass = classes.find { it.id == preId?.value } ?: classes.firstOrNull()
-            
-            foundClass?.let { 
-                selectedClassId = UuidString(it.id) 
-                selectedClassName = it.name 
-            }
-        }
-
+        // 1. CARGA DE ALUMNOS (Si ya tenemos el ID)
         LaunchedEffect(selectedClassId) {
-            model.loadStudents(selectedClassId)
-            if (preselectedStudentId == null) {
-                selectedParentId = null
-                studentQuery = ""
+            selectedClassId?.let { model.loadStudents(it) }
+        }
+
+        // 2. SINCRONIZACIÓN DE NOMBRE DE CURSO (Solo si no lo tenemos ya)
+        LaunchedEffect(classes) {
+            if (selectedClassId != null && (selectedClassName == "Cargando curso..." || selectedClassName.isEmpty())) {
+                val found = classes.find { it.id == selectedClassId?.value }
+                if (found != null) {
+                    selectedClassName = found.name
+                }
+            } else if (classes.isNotEmpty() && selectedClassId == null) {
+                selectedClassId = UuidString(classes.first().id)
+                selectedClassName = classes.first().name
             }
         }
 
+        // 3. SELECCIÓN DE ALUMNO PREESTABLECIDO
         LaunchedEffect(students) {
             if (preselectedStudentId != null && selectedParentId == null) {
                 students.find { it.id.value == preselectedStudentId }?.let { std ->
                     selectedParentId = std.parentId
-                    studentQuery = std.fullName
+                    selectedStudentName = std.fullName
                     model.setComposeMode(ComposeMode.DIRECT)
                 }
             }
@@ -131,195 +104,184 @@ data class ComposeNoticeScreen(
                     navigationIcon = { IconButton(onClick = { navigator.pop() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }},
-                    title  = { Text("Redactar Mensaje",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                    title  = { Text("Enviar Comunicación", fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
             }
         ) { padding ->
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // ── Selector de curso ─────────────────────────────────────────
-                SectionLabel("Curso destinatario")
-                ExposedDropdownMenuBox(
-                    expanded         = classExpanded,
-                    onExpandedChange = { classExpanded = it }
+            if (userRole == null) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    OutlinedTextField(
-                        value         = selectedClassName,
-                        onValueChange = {},
-                        readOnly      = true,
-                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(classExpanded) },
-                        modifier      = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
+                    // ── PASO 1: CURSO ─────────────────────────────────────────
+                    SectionLabel("1. Curso")
+                    ExposedDropdownMenuBox(
                         expanded         = classExpanded,
-                        onDismissRequest = { classExpanded = false }
+                        onExpandedChange = { if (preselectedClassId == null) classExpanded = it }
                     ) {
-                        classes.forEach { cls ->
-                            DropdownMenuItem(
-                                text    = { Text(cls.name) },
-                                onClick = { 
-                                    selectedClassId = UuidString(cls.id)
-                                    selectedClassName = cls.name 
-                                    classExpanded = false 
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // ── Modo de envío ─────────────────────────────────────────────
-                TabRow(selectedTabIndex = if (composeMode == ComposeMode.GENERAL) 0 else 1) {
-                    Tab(
-                        selected = composeMode == ComposeMode.GENERAL,
-                        onClick  = { model.setComposeMode(ComposeMode.GENERAL) },
-                        text     = { Text("Aviso al Curso") }
-                    )
-                    Tab(
-                        selected = composeMode == ComposeMode.DIRECT,
-                        onClick  = { model.setComposeMode(ComposeMode.DIRECT) },
-                        text     = { Text("Mensaje Directo") }
-                    )
-                }
-
-                if (composeMode == ComposeMode.DIRECT) {
-                    // ── Búsqueda de Alumno (Buscador Ligero) ───────────────────
-                    SectionLabel("Buscar alumno")
-                    OutlinedTextField(
-                        value         = studentQuery,
-                        onValueChange = { 
-                            studentQuery = it
-                            if (it.isEmpty()) selectedParentId = null
-                        },
-                        placeholder   = { Text("Escribe el nombre del alumno...") },
-                        modifier      = Modifier.fillMaxWidth(),
-                        singleLine    = true,
-                        trailingIcon  = {
-                            if (studentQuery.isNotEmpty()) {
-                                IconButton(onClick = { studentQuery = ""; selectedParentId = null }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Limpiar")
-                                }
+                        OutlinedTextField(
+                            value         = selectedClassName,
+                            onValueChange = {},
+                            readOnly      = true,
+                            enabled       = preselectedClassId == null,
+                            trailingIcon  = { if (preselectedClassId == null) ExposedDropdownMenuDefaults.TrailingIcon(classExpanded) },
+                            modifier      = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                            shape         = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded         = classExpanded,
+                            onDismissRequest = { classExpanded = false }
+                        ) {
+                            classes.forEach { cls ->
+                                DropdownMenuItem(
+                                    text    = { Text(cls.name) },
+                                    onClick = { 
+                                        selectedClassId = UuidString(cls.id)
+                                        selectedClassName = cls.name 
+                                        classExpanded = false 
+                                    }
+                                )
                             }
                         }
-                    )
+                    }
 
-                    if (selectedParentId == null) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    // ── PASO 2: DESTINATARIO ──────────────────────────────────
+                    if (userRole == UserRole.TEACHER) {
+                        SectionLabel("2. ¿A quién va dirigido?")
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                if (filteredStudents.isEmpty()) {
-                                    Text(
-                                        "No hay alumnos en este curso", 
-                                        modifier = Modifier.padding(16.dp),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
+                            ComposeModeButton(
+                                text = "Todo el Curso",
+                                icon = Icons.Default.Groups,
+                                isSelected = composeMode == ComposeMode.GENERAL,
+                                modifier = Modifier.weight(1f),
+                                onClick = { model.setComposeMode(ComposeMode.GENERAL) }
+                            )
+                            ComposeModeButton(
+                                text = "Alumno/a",
+                                icon = Icons.Default.Person,
+                                isSelected = composeMode == ComposeMode.DIRECT,
+                                modifier = Modifier.weight(1f),
+                                onClick = { model.setComposeMode(ComposeMode.DIRECT) }
+                            )
+                        }
+
+                        // CATEGORÍAS (Ahora visibles en ambos modos para Profesores)
+                        SectionLabel("Categoría (Opcional)")
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                FilterChip(
+                                    selected = selectedCategory == null,
+                                    onClick  = { selectedCategory = null },
+                                    label    = { Text("📝 Mensaje Simple") }
+                                )
+                            }
+                            items(NoticeCategory.entries) { cat ->
+                                FilterChip(
+                                    selected = selectedCategory == cat,
+                                    onClick  = { selectedCategory = cat },
+                                    label    = { Text("${cat.emoji} ${cat.label}") }
+                                )
+                            }
+                        }
+
+                        if (composeMode == ComposeMode.DIRECT) {
+                            if (selectedParentId == null) {
+                                if (isStudentsLoading) {
+                                    Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(Modifier.size(32.dp))
+                                    }
                                 } else {
-                                    filteredStudents.forEach { std ->
-                                        DropdownMenuItem(
-                                            text    = { 
-                                                Column {
-                                                    Text(std.fullName, fontWeight = FontWeight.SemiBold)
-                                                    Text("Apoderado vinculado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    Text("Selecciona un alumno para el mensaje directo:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                                    ) {
+                                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                                            if (students.isEmpty()) {
+                                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                                    Text("No se encontraron alumnos.", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
-                                            },
-                                            onClick = { 
-                                                selectedParentId = std.parentId 
-                                                studentQuery = std.fullName
+                                            } else {
+                                                students.forEach { std ->
+                                                    ListItem(
+                                                        headlineContent = { Text(std.fullName, fontWeight = FontWeight.Medium) },
+                                                        leadingContent = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                                                        modifier = Modifier.clickable { 
+                                                            selectedParentId = std.parentId
+                                                            selectedStudentName = std.fullName
+                                                        }
+                                                    )
+                                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                                }
                                             }
-                                        )
+                                        }
                                     }
                                 }
+                            } else {
+                                DestinatarioCard(
+                                    name = selectedStudentName, 
+                                    subtext = "Mensaje llegará al apoderado",
+                                    onClear = { if (preselectedStudentId == null) { selectedParentId = null; selectedStudentName = "" } }
+                                )
                             }
                         }
                     } else {
-                        // Tarjeta de destinatario seleccionado
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Destinatario", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                    Text(studentQuery, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("Mensaje llegará al apoderado", style = MaterialTheme.typography.bodySmall)
-                                }
-                                IconButton(onClick = { selectedParentId = null; studentQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Cambiar")
+                        DestinatarioCard(name = "Profesor Jefe", subtext = "Mensaje directo al docente del curso")
+                    }
+
+                    // ── PASO 3: EL MENSAJE ──────────────────────────────────────
+                    SectionLabel("3. Escribe tu mensaje")
+                    OutlinedTextField(
+                        value         = content,
+                        onValueChange = { content = it },
+                        modifier      = Modifier.fillMaxWidth().height(160.dp),
+                        placeholder   = { Text("Contenido de la comunicación...") },
+                        shape         = RoundedCornerShape(12.dp),
+                        maxLines      = 10
+                    )
+
+                    if (state is NoticeUiState.Error) {
+                        Text((state as NoticeUiState.Error).message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    val isSending = state is NoticeUiState.Sending
+                    
+                    val isCourseSelected = selectedClassId != null
+                    val isRecipientReady = if (userRole == UserRole.TEACHER) {
+                        if (composeMode == ComposeMode.GENERAL) true else selectedParentId != null
+                    } else true
+
+                    val canSend = content.isNotBlank() && !isSending && isCourseSelected && isRecipientReady
+                    
+                    Button(
+                        onClick  = {
+                            selectedClassId?.let { classId ->
+                                if (userRole == UserRole.TEACHER && composeMode == ComposeMode.GENERAL) {
+                                    model.sendNotice(classId = classId, content = content, category = selectedCategory ?: NoticeCategory.INFO)
+                                } else {
+                                    model.sendDirectMessage(classId = classId, parentId = selectedParentId, content = content, category = selectedCategory)
                                 }
                             }
-                        }
+                        },
+                        enabled  = canSend,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape    = RoundedCornerShape(16.dp)
+                    ) {
+                        if (isSending) CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                        else Text("Enviar Comunicación", fontWeight = FontWeight.Bold)
                     }
-                } else {
-                    SectionLabel("Categoría")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (cat in NoticeCategory.entries) {
-                            FilterChip(
-                                selected = selectedCategory == cat,
-                                onClick  = { selectedCategory = cat },
-                                label    = { Text("${cat.emoji} ${cat.label}") }
-                            )
-                        }
-                    }
-                }
-
-                SectionLabel("Mensaje")
-                OutlinedTextField(
-                    value         = content,
-                    onValueChange = { content = it },
-                    modifier      = Modifier.fillMaxWidth().height(140.dp),
-                    placeholder   = { 
-                        if (composeMode == ComposeMode.GENERAL) Text("Escribe el aviso para el curso...") 
-                        else Text("Escribe un mensaje directo al apoderado...") 
-                    },
-                    maxLines      = 6
-                )
-
-                if (state is NoticeUiState.Error) {
-                    Text(
-                        text  = (state as NoticeUiState.Error).message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                val isSending = state is NoticeUiState.Sending
-                val canSend = content.isNotBlank() && !isSending && 
-                               (composeMode == ComposeMode.GENERAL || selectedParentId != null)
-                
-                Button(
-                    onClick  = {
-                        if (composeMode == ComposeMode.GENERAL) {
-                            model.sendNotice(classId = selectedClassId, content = content, category = selectedCategory)
-                        } else {
-                            selectedParentId?.let { parentId ->
-                                model.sendDirectMessage(parentId = parentId, content = content)
-                            }
-                        }
-                    },
-                    enabled  = canSend,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    if (isSending) CircularProgressIndicator(
-                        modifier    = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary
-                    )
-                    else Text("Enviar Mensaje", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -327,8 +289,47 @@ data class ComposeNoticeScreen(
 }
 
 @Composable
+private fun ComposeModeButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, isSelected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val bgColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    
+    Box(
+        modifier = modifier.fillMaxHeight().clip(RoundedCornerShape(24.dp)).background(bgColor).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Icon(icon, null, modifier = Modifier.size(18.dp), tint = contentColor)
+            Spacer(Modifier.width(8.dp))
+            Text(text, color = contentColor, style = MaterialTheme.typography.labelLarge, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+        }
+    }
+}
+
+@Composable
+private fun DestinatarioCard(name: String, subtext: String, onClear: (() -> Unit)? = null) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onPrimary)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Para: $name", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(subtext, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (onClear != null) {
+                IconButton(onClick = onClear) { Icon(Icons.Default.Close, null) }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SectionLabel(text: String) {
-    Text(text,
-        style    = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-        color    = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
 }

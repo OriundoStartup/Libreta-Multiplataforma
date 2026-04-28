@@ -85,8 +85,8 @@ object AppNavigation {
     fun courseStats(classId: String = AppConfig.DEMO_CLASS_ID, className: String = AppConfig.DEMO_CLASS_NAME): Screen =
         CourseStatsScreen(classId = classId, className = className)
 
-    fun composeNotice(classId: String? = null, studentId: String? = null): Screen = 
-        ComposeNoticeScreen(preselectedClassId = classId, preselectedStudentId = studentId)
+    fun composeNotice(classId: String? = null, studentId: String? = null, className: String? = null): Screen = 
+        ComposeNoticeScreen(preselectedClassId = classId, preselectedStudentId = studentId, preselectedClassName = className)
 
     fun noticeList(classId: UuidString): Screen = NoticeListScreen(classId = classId)
 

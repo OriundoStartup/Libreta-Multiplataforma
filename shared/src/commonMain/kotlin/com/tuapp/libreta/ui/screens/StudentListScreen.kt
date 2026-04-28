@@ -113,7 +113,7 @@ data class StudentListScreen(
                     onClose = { scope.launch { drawerState.close() } },
                     onNavigateToDashboard = { navigator.popUntilRoot() },
                     onNavigateToMessages = { navigator.push(AppNavigation.messages()) },
-                    onNavigateToCompose = { navigator.push(AppNavigation.composeNotice(classId = classId)) },
+                    onNavigateToCompose = { navigator.push(AppNavigation.composeNotice(classId = classId, className = className)) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
                     onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }

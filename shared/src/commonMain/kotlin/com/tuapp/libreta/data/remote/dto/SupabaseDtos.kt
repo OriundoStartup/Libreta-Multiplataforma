@@ -118,9 +118,12 @@ data class CommunicationSupabaseDto(
     val id: String? = null,
     @SerialName("sender_id") val senderId: String,
     @SerialName("course_id") val courseId: String,
-    @SerialName("message_text") val messageText: String,
+    @SerialName("content") val messageText: String, // Cambiado de message_text a content
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("is_internal") val isInternal: Boolean = false,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("created_at") val createdAt: String? = null
 )
 
@@ -130,11 +133,17 @@ data class MessageSupabaseDto(
     val id: String? = null,
     @SerialName("sender_id") val senderId: String? = null,
     @SerialName("receiver_id") val receiverId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("student_id") val studentId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("course_id") val courseId: String? = null,
-    @SerialName("message_text") val messageText: String? = null,
+    @SerialName("content") val messageText: String? = null, // Cambiado de message_text a content
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
-    @SerialName("is_internal") val isInternal: Boolean = true,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("is_internal") val isInternal: Boolean = false,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("created_at") val createdAt: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("read_at") val readAt: String? = null
 )

@@ -65,12 +65,20 @@ object RoleSelectionScreen : Screen {
 
         var selectedRole by remember { mutableStateOf<UserRole?>(null) }
         var invitationCode by remember { mutableStateOf("") }
+        var isExistingParent by remember { mutableStateOf(false) }
+        var userEmail by remember { mutableStateOf("") }
 
-        // REDIRECCIÓN MANUAL SI EL MODELO REPORTA ÉXITO
+        // DETECTAR ESTADO DEL PERFIL
         LaunchedEffect(state) {
-            if (state is RoleSelectionUiState.Success) {
-                val s = state as RoleSelectionUiState.Success
-                navigator.replaceAll(AppNavigation.initialScreen(s.role, s.userId.value))
+            when (val s = state) {
+                is RoleSelectionUiState.ProfileStatus -> {
+                    isExistingParent = s.hasStudents
+                    userEmail = s.userEmail
+                }
+                is RoleSelectionUiState.Success -> {
+                    navigator.replaceAll(AppNavigation.initialScreen(s.role, s.userId.value))
+                }
+                else -> {}
             }
         }
 
@@ -122,8 +130,8 @@ object RoleSelectionScreen : Screen {
                     onClick = { selectedRole = UserRole.PARENT }
                 )
 
-                // Invitation code field — only for PARENT
-                if (selectedRole == UserRole.PARENT) {
+                // Invitation code field — only for PARENT without students
+                if (selectedRole == UserRole.PARENT && !isExistingParent) {
                     Spacer(Modifier.height(24.dp))
                     OutlinedTextField(
                         value = invitationCode,
@@ -139,6 +147,14 @@ object RoleSelectionScreen : Screen {
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+                } else if (selectedRole == UserRole.PARENT && isExistingParent) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Ya tienes alumnos vinculados a esta cuenta ($userEmail). Puedes entrar directamente.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
                 }
 
                 Spacer(Modifier.height(32.dp))
@@ -149,12 +165,36 @@ object RoleSelectionScreen : Screen {
                         Button(
                             onClick = { selectedRole?.let { model.confirmRole(it, invitationCode) } },
                             enabled = selectedRole != null &&
-                                    (selectedRole != UserRole.PARENT || invitationCode.length == 6),
+                                    (selectedRole != UserRole.PARENT || isExistingParent || invitationCode.length == 6),
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ChileBlue)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ChileBlue,
+                                contentColor = Color.White // Mejora de legibilidad: Texto siempre blanco
+                            )
                         ) {
-                            Text("Continuar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            val buttonText = if (selectedRole == UserRole.PARENT && isExistingParent) "Entrar a mi Cuenta" else "Continuar"
+                            Text(
+                                text = buttonText, 
+                                fontWeight = FontWeight.Bold, 
+                                fontSize = 16.sp,
+                                color = Color.White // Doble refuerzo de color para el texto
+                            )
+                        }
+                        
+                        // OPCIÓN PARA CAMBIAR DE CUENTA SI SE LOGUEÓ CON EL MAIL EQUIVOCADO
+                        if (userEmail.isNotEmpty()) {
+                            Spacer(Modifier.height(20.dp))
+                            androidx.compose.material3.TextButton(
+                                onClick = { model.signOut() },
+                                enabled = state !is RoleSelectionUiState.Loading
+                            ) {
+                                Text(
+                                    "¿No eres $userEmail? Usar otra cuenta",
+                                    color = Color.White.copy(alpha = if (state is RoleSelectionUiState.Loading) 0.3f else 0.6f),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         }
                         if (state is RoleSelectionUiState.Error) {
                             Spacer(Modifier.height(12.dp))

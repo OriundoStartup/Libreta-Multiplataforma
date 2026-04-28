@@ -9,7 +9,8 @@ data class MessageThread(
     val contactId: UuidString,
     val contactName: String,
     val lastMessage: String,
-    val unread: Boolean
+    val unread: Boolean,
+    val isLastMessageMine: Boolean = false
 )
 
 class GetInboxUseCase(private val repository: MessageRepository) {
