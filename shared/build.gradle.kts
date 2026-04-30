@@ -88,17 +88,21 @@ android {
     }
 }
 
-// ── BuildKonfig — lee local.properties y genera BuildKonfig.kt en commonMain ─
+// ── BuildKonfig — lee de variables de entorno (CI) o local.properties (Local) ─
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) load(f.inputStream())
 }
 
+fun getProp(name: String): String {
+    return System.getenv(name) ?: localProps.getProperty(name, "")
+}
+
 buildkonfig {
     packageName = "com.tuapp.libreta"
     defaultConfigs {
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_URL", localProps.getProperty("SUPABASE_URL", ""))
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_KEY", localProps.getProperty("SUPABASE_KEY", ""))
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_REDIRECT_URL", localProps.getProperty("SUPABASE_REDIRECT_URL", ""))
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_URL", getProp("SUPABASE_URL"))
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_KEY", getProp("SUPABASE_KEY"))
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_REDIRECT_URL", getProp("SUPABASE_REDIRECT_URL"))
     }
 }

@@ -8,10 +8,12 @@ import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.repository.JustificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.filter.*
 import com.tuapp.libreta.data.util.currentEpochMs
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 
 class SupabaseJustificationRepository(private val supabase: SupabaseClient) : JustificationRepository {
 
