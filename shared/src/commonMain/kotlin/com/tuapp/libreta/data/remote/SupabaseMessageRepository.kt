@@ -13,7 +13,11 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.query.filter.*
+import io.github.jan.supabase.postgrest.query.filter.isIn
+import io.github.jan.supabase.postgrest.query.filter.eq
+import io.github.jan.supabase.postgrest.query.filter.or
+import io.github.jan.supabase.postgrest.query.filter.and
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.selectAsFlow

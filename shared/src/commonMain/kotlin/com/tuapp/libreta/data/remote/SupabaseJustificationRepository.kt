@@ -8,9 +8,12 @@ import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.repository.JustificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.filter.*
+import io.github.jan.supabase.postgrest.query.filter.isIn
+import io.github.jan.supabase.postgrest.query.filter.eq
 import com.tuapp.libreta.data.util.currentEpochMs
 import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
+import io.github.jan.supabase.storage.publicUrl
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -41,7 +44,11 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
 
             // 2. Obtener IDs de alumnos (enrollments) de esos cursos
             val enrollments = supabase.from("enrollments")
-                .select { filter { isIn("course_id", courseIds) } }
+                .select { 
+                    filter { 
+                        isIn("course_id", courseIds) 
+                    } 
+                }
                 .decodeList<EnrollmentSupabaseDto>()
             
             if (enrollments.isEmpty()) {
@@ -54,10 +61,12 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
             // 3. Obtener justificaciones pendientes de esos alumnos
             val studentIds = enrollments.map { it.id ?: "" }
             val justifications = supabase.from("justifications")
-                .select { filter { 
-                    isIn("student_id", studentIds)
-                    eq("status", "PENDING")
-                } }
+                .select { 
+                    filter { 
+                        isIn("student_id", studentIds)
+                        eq("status", "PENDING")
+                    } 
+                }
                 .decodeList<JustificationSupabaseDto>()
             
             emit(justifications.map { 
