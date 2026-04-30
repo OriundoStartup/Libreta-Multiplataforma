@@ -184,46 +184,42 @@ object TeacherDashboardScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // TARJETA DE TRÁMITES
+                                // TARJETA DE TRÁMITES (ESTILO APODERADO - AMARILLO)
                                 StatusCard(
                                     icon = Icons.Default.AssignmentTurnedIn,
                                     value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
                                     label = "Trámites",
                                     containerColor = if (s.pendingJustificationsCount > 0)
-                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    contentColor = if (s.pendingJustificationsCount > 0)
-                                        MaterialTheme.colorScheme.onErrorContainer
-                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        androidx.compose.ui.graphics.Color(0xFFFFF8E1) // Amarillo suave (Parent)
+                                        else androidx.compose.ui.graphics.Color(0xFFFFF8E1).copy(alpha = 0.5f),
+                                    contentColor = androidx.compose.ui.graphics.Color(0xFFF57F17), // Naranja oscuro (Parent)
                                     modifier = Modifier.weight(1f).clickable {
                                         navigator.push(AppNavigation.globalJustificationReview())
                                     }
                                 )
 
-                                // TARJETA DE MENSAJES (MEJORADA)
+                                // TARJETA DE MENSAJES (ESTILO APODERADO - AZUL)
                                 StatusCard(
                                     icon = Icons.Default.MailOutline,
                                     value = if (s.unreadMessagesCount > 0) "${s.unreadMessagesCount}" else "Al día",
                                     label = if (s.unreadMessagesCount > 0) "Mensajes Nuevos" else "Mensajes",
                                     containerColor = if (s.unreadMessagesCount > 0)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    contentColor = if (s.unreadMessagesCount > 0)
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        androidx.compose.ui.graphics.Color(0xFFE3F2FD) // Azul suave (Parent)
+                                        else androidx.compose.ui.graphics.Color(0xFFE3F2FD).copy(alpha = 0.5f),
+                                    contentColor = androidx.compose.ui.graphics.Color(0xFF1565C0), // Azul oscuro (Parent)
                                     modifier = Modifier.weight(1f).clickable {
                                         navigator.push(AppNavigation.messages())
                                     }
                                 )
 
-                                // TARJETA DE CURSOS
+                                // TARJETA DE CURSOS (ESTILO APODERADO - PÚRPURA)
                                 if (columns > 1) {
                                     StatusCard(
                                         icon = Icons.Default.Groups,
                                         value = "${s.courses.size}",
                                         label = "Mis Cursos",
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        containerColor = androidx.compose.ui.graphics.Color(0xFFF3E5F5), // Púrpura suave (Parent)
+                                        contentColor = androidx.compose.ui.graphics.Color(0xFF7B1FA2), // Púrpura oscuro (Parent)
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
