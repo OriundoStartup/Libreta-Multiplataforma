@@ -50,6 +50,8 @@ data class Attendance(
 data class Justification(
     val id: UuidString? = null,
     val studentId: UuidString,
+    val studentName: String? = null,
+    val courseName: String? = null, // Agregado para contexto del profesor
     val date: Long,
     val reason: String,
     val status: JustificationStatus,
@@ -94,4 +96,22 @@ data class Communication(
     val content: String,
     val category: String?,
     val createdAt: Long
+)
+
+data class Grade(
+    val id: UuidString? = null,
+    val studentId: UuidString,
+    val courseId: UuidString,
+    val title: String,
+    val score: Double,
+    val weight: Double = 1.0,
+    val term: String? = null,
+    val subject: String? = null,
+    val date: Long = 0L // Se asocia con currentEpochMs al crear
+)
+
+data class SubjectAverage(
+    val subject: String,
+    val average: Double,
+    val grades: List<Grade>
 )

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MailOutline
@@ -230,6 +231,16 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         containerColor = Color(0xFFE3F2FD),
                                         contentColor   = Color(0xFF1565C0),
                                         modifier       = Modifier.weight(1f)
+                                    )
+                                    StatusCard(
+                                        icon           = Icons.Default.Grade,
+                                        value          = "Notas",
+                                        label          = "Libreta",
+                                        containerColor = Color(0xFFF3E5F5),
+                                        contentColor   = Color(0xFF7B1FA2),
+                                        modifier       = Modifier.weight(1f).clickable { 
+                                            navigator.push(AppNavigation.studentGrades(student.id.value, student.name, "", isTeacher = false)) 
+                                        }
                                     )
                                     StatusCard(
                                         icon           = Icons.Default.EditNote,

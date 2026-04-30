@@ -4,6 +4,7 @@ import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.model.CourseAssignment
+import com.tuapp.libreta.domain.model.Grade
 import com.tuapp.libreta.domain.model.InvitationCode
 import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.model.Message
@@ -80,4 +81,11 @@ interface SchoolRepository {
 interface CommunicationRepository {
     suspend fun sendGeneralNotice(senderId: UuidString, classId: UuidString, content: String)
     fun getByClass(classId: UuidString): Flow<List<Message>>
+}
+
+interface GradeRepository {
+    fun getByStudent(studentId: UuidString): Flow<List<Grade>>
+    fun getByCourse(courseId: UuidString): Flow<List<Grade>>
+    suspend fun save(grade: Grade)
+    suspend fun delete(id: UuidString)
 }

@@ -5,6 +5,7 @@ import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.db.AttendanceEntity
 import com.tuapp.libreta.db.CommunicationEntity
 import com.tuapp.libreta.db.CourseEntity
+import com.tuapp.libreta.db.GradeEntity
 import com.tuapp.libreta.db.InvitationCodeEntity
 import com.tuapp.libreta.db.JustificationEntity
 import com.tuapp.libreta.db.MessageEntity
@@ -15,6 +16,7 @@ import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.model.Communication
 import com.tuapp.libreta.domain.model.Course
+import com.tuapp.libreta.domain.model.Grade
 import com.tuapp.libreta.domain.model.InvitationCode
 import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.model.JustificationStatus
@@ -60,6 +62,8 @@ fun AttendanceEntity.toDomain() = Attendance(
 fun JustificationEntity.toDomain() = Justification(
     id = UuidString(id),
     studentId = UuidString(student_id),
+    studentName = student_name,
+    courseName = course_name,
     date = date.toLongOrNull() ?: 0L,
     reason = reason,
     status = runCatching { JustificationStatus.valueOf(status) }.getOrElse { JustificationStatus.PENDING }
@@ -87,6 +91,18 @@ fun InvitationCodeEntity.toDomain() = InvitationCode(
     teacherId = UuidString(teacher_id),
     claimedBy = claimed_by?.let { UuidString(it) },
     expiresAt = expires_at
+)
+
+fun GradeEntity.toDomain() = Grade(
+    id = UuidString(id),
+    studentId = UuidString(student_id),
+    courseId = UuidString(course_id),
+    title = title,
+    score = score,
+    weight = weight,
+    term = term,
+    subject = subject,
+    date = created_at
 )
 
 fun SchoolEntity.toDomain() = School(UuidString(id), name, address ?: "")

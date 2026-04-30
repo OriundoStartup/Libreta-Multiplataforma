@@ -5,6 +5,11 @@ html, body {
     padding: 0;
     overflow: hidden; /* Evita scrolls dobles innecesarios */
     background-color: #ffffff;
+
+    /* Optimización para PWA: previene el 'overscroll' y gestos nativos que rompen la UX */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 #app-root {

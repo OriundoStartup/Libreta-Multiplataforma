@@ -32,13 +32,20 @@ class GlobalJustificationScreenModel(
     fun load() {
         screenModelScope.launch {
             _state.value = GlobalJustificationUiState.Loading
-            val user = authService.currentUser() ?: return@launch
+            val user = authService.currentUser() ?: run {
+                _state.value = GlobalJustificationUiState.Error("No se pudo obtener el usuario actual")
+                return@launch
+            }
             
-            justificationRepo.getPendingByTeacher(UuidString(user.id))
-                .catch { e -> _state.value = GlobalJustificationUiState.Error(e.message ?: "Error") }
-                .collect { items ->
-                    _state.value = GlobalJustificationUiState.Success(items.sortedBy { it.date })
-                }
+            try {
+                justificationRepo.getPendingByTeacher(UuidString(user.id))
+                    .catch { e -> _state.value = GlobalJustificationUiState.Error(e.message ?: "Error al cargar trámites") }
+                    .collect { items ->
+                        _state.value = GlobalJustificationUiState.Success(items.sortedBy { it.date })
+                    }
+            } catch (e: Exception) {
+                _state.value = GlobalJustificationUiState.Error(e.message ?: "Error inesperado")
+            }
         }
     }
 

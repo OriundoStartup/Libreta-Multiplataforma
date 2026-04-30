@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -206,6 +207,12 @@ data class StudentDetailScreen(
                                     icon = Icons.Default.History,
                                     label = "Historial",
                                     onClick = { navigator.push(AppNavigation.attendanceHistory(s.studentId, s.studentName)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                QuickActionCard(
+                                    icon = Icons.Default.Grade,
+                                    label = "Notas",
+                                    onClick = { navigator.push(AppNavigation.studentGrades(s.studentId, s.studentName, s.courseId, isTeacher = true)) },
                                     modifier = Modifier.weight(1f)
                                 )
                             }

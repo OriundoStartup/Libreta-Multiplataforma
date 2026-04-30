@@ -189,14 +189,14 @@ object TeacherDashboardScreen : Screen {
                                     icon = Icons.Default.AssignmentTurnedIn,
                                     value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
                                     label = "Trámites",
-                                    containerColor = if (s.pendingJustificationsCount > 0) 
-                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f) 
+                                    containerColor = if (s.pendingJustificationsCount > 0)
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
                                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     contentColor = if (s.pendingJustificationsCount > 0)
                                         MaterialTheme.colorScheme.onErrorContainer
                                         else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f).clickable { 
-                                        navigator.push(AppNavigation.globalJustificationReview()) 
+                                    modifier = Modifier.weight(1f).clickable {
+                                        navigator.push(AppNavigation.globalJustificationReview())
                                     }
                                 )
 
@@ -205,14 +205,14 @@ object TeacherDashboardScreen : Screen {
                                     icon = Icons.Default.MailOutline,
                                     value = if (s.unreadMessagesCount > 0) "${s.unreadMessagesCount}" else "Al día",
                                     label = if (s.unreadMessagesCount > 0) "Mensajes Nuevos" else "Mensajes",
-                                    containerColor = if (s.unreadMessagesCount > 0) 
-                                        MaterialTheme.colorScheme.primaryContainer 
+                                    containerColor = if (s.unreadMessagesCount > 0)
+                                        MaterialTheme.colorScheme.primaryContainer
                                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     contentColor = if (s.unreadMessagesCount > 0)
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                         else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f).clickable { 
-                                        navigator.push(AppNavigation.messages()) 
+                                    modifier = Modifier.weight(1f).clickable {
+                                        navigator.push(AppNavigation.messages())
                                     }
                                 )
 
@@ -292,6 +292,11 @@ object TeacherDashboardScreen : Screen {
                                         onShowReport = {
                                             navigator.push(
                                                 AppNavigation.attendanceReport(courseId = course.id, courseName = course.name)
+                                            )
+                                        },
+                                        onShowStats = {
+                                            navigator.push(
+                                                AppNavigation.courseStats(classId = course.id, className = course.name)
                                             )
                                         }
                                     )
@@ -394,7 +399,8 @@ private fun CourseCard(
     onEdit: () -> Unit,
     onSendMessage: () -> Unit,
     onInviteColleague: () -> Unit,
-    onShowReport: () -> Unit
+    onShowReport: () -> Unit,
+    onShowStats: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
@@ -466,6 +472,9 @@ private fun CourseCard(
                     }
                     IconButton(onClick = onShowReport) {
                         Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onShowStats) {
+                        Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onInviteColleague) {
                         Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))

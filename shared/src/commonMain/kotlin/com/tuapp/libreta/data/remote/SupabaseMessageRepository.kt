@@ -14,7 +14,6 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
-import io.github.jan.supabase.postgrest.query.filter.*
 
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.selectAsFlow
@@ -43,7 +42,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
                 }
         } catch (e: Exception) {
             AppLogger.e("MessageRepository", "Error en realtime: ${e.message}")
-            flow { emit(emptyList()) }
+            flow { emit(emptyList<Message>()) }
         }
     }
 

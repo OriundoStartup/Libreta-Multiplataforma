@@ -42,6 +42,8 @@ class JustificationRepositoryImpl(
             queries.insertOrReplaceJustification(
                 id = justificationId.value,
                 student_id = justification.studentId.value,
+                student_name = justification.studentName,
+                course_name = justification.courseName,
                 date = justification.date.toString(),
                 reason = justification.reason,
                 status = justification.status.name,

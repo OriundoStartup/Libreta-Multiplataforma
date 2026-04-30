@@ -25,3 +25,13 @@ fun formatIsoToTime(iso: String?): String {
         ""
     }
 }
+
+fun formatEpochToDate(ms: Long): String {
+    return try {
+        val instant = Instant.fromEpochMilliseconds(ms)
+        val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+        "${localDateTime.dayOfMonth.toString().padStart(2, '0')}/${localDateTime.monthNumber.toString().padStart(2, '0')}/${localDateTime.year}"
+    } catch (e: Exception) {
+        "Fecha inválida"
+    }
+}

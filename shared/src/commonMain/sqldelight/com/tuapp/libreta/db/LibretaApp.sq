@@ -146,6 +146,8 @@ DELETE FROM CommunicationEntity WHERE id = ?;
 CREATE TABLE JustificationEntity (
     id          TEXT    NOT NULL PRIMARY KEY,
     student_id  TEXT    NOT NULL,
+    student_name TEXT, -- Caché del nombre para la vista del profesor
+    course_name TEXT,  -- Caché del curso
     date        TEXT    NOT NULL,
     reason      TEXT    NOT NULL,
     status      TEXT    NOT NULL DEFAULT 'PENDING',
@@ -164,13 +166,15 @@ getPendingJustifications:
 SELECT * FROM JustificationEntity WHERE status = 'PENDING' AND sync_status != 'PENDING_DELETE';
 
 getPendingJustificationsByTeacher:
-SELECT j.* FROM JustificationEntity j
-JOIN StudentEntity s ON s.id = j.student_id
-JOIN CourseEntity c ON c.id = s.course_id
-WHERE c.teacher_id = ? AND j.status = 'PENDING' AND j.sync_status != 'PENDING_DELETE';
+SELECT * FROM JustificationEntity
+WHERE student_id IN (
+    SELECT s.id FROM StudentEntity s
+    JOIN CourseEntity c ON c.id = s.course_id
+    WHERE c.teacher_id = ?
+) AND status = 'PENDING' AND sync_status != 'PENDING_DELETE';
 
 insertOrReplaceJustification:
-INSERT OR REPLACE INTO JustificationEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO JustificationEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 markJustificationAsPendingDelete:
 UPDATE JustificationEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
@@ -268,3 +272,36 @@ SELECT * FROM SchoolEntity;
 
 insertOrReplaceSchool:
 INSERT OR REPLACE INTO SchoolEntity VALUES (?, ?, ?, ?);
+
+-- ── GRADES ────────────────────────────────────────────────────────────
+CREATE TABLE GradeEntity (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    student_id  TEXT    NOT NULL,
+    course_id   TEXT    NOT NULL,
+    title       TEXT    NOT NULL,
+    score       REAL    NOT NULL,
+    weight      REAL    NOT NULL DEFAULT 1.0,
+    term        TEXT,
+    subject     TEXT,
+    sync_status TEXT    NOT NULL DEFAULT 'SYNCED',
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+);
+
+getGradesByStudent:
+SELECT * FROM GradeEntity WHERE student_id = ? AND sync_status != 'PENDING_DELETE' ORDER BY created_at DESC;
+
+getGradesByCourse:
+SELECT * FROM GradeEntity WHERE course_id = ? AND sync_status != 'PENDING_DELETE' ORDER BY created_at DESC;
+
+insertOrReplaceGrade:
+INSERT OR REPLACE INTO GradeEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+markGradeAsPendingDelete:
+UPDATE GradeEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id = ?;
+
+getUnsyncedGradeEntities:
+SELECT * FROM GradeEntity WHERE sync_status != 'SYNCED';
+
+deleteGradeEntity:
+DELETE FROM GradeEntity WHERE id = ?;

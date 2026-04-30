@@ -27,6 +27,7 @@ class SyncManager(
             syncAttendance()
             syncStudents()
             syncProfiles()
+            syncGrades()
             AppLogger.d("SyncManager", "Synchronization completed successfully.")
         } catch (e: Exception) {
             AppLogger.e("SyncManager", "Sync failed: ${e.message}")
@@ -129,6 +130,44 @@ class SyncManager(
                 }
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Failed to sync profile ${entity.id}: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun syncGrades() {
+        val pending = queries.getUnsyncedGradeEntities().executeAsList()
+        if (pending.isEmpty()) return
+
+        pending.forEach { entity ->
+            try {
+                when (entity.sync_status) {
+                    SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
+                        val dto = mapOf(
+                            "id" to entity.id,
+                            "student_id" to entity.student_id,
+                            "course_id" to entity.course_id,
+                            "title" to entity.title,
+                            "score" to entity.score,
+                            "weight" to entity.weight,
+                            "term" to entity.term,
+                            "subject" to entity.subject,
+                            "updated_at" to epochMsToIso(entity.updated_at)
+                        )
+                        supabase.from("grades").upsert(dto)
+                        queries.insertOrReplaceGrade(
+                            entity.id, entity.student_id, entity.course_id,
+                            entity.title, entity.score, entity.weight,
+                            entity.term, entity.subject, SyncStatus.SYNCED.name,
+                            entity.created_at, entity.updated_at
+                        )
+                    }
+                    SyncStatus.PENDING_DELETE.name -> {
+                        supabase.from("grades").delete { filter { eq("id", entity.id) } }
+                        queries.deleteGradeEntity(entity.id)
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Failed to sync grade ${entity.id}: ${e.message}")
             }
         }
     }

@@ -44,6 +44,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.tuapp.libreta.data.util.formatEpochToDate
 import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.presentation.GlobalJustificationScreenModel
 import com.tuapp.libreta.presentation.GlobalJustificationUiState
@@ -131,8 +132,20 @@ private fun PendingJustificationItem(
                     }
                 }
                 Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                    Text("Inasistencia del ${item.date}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(item.reason, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        text = item.studentName ?: "Alumno Desconocido", 
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = "${item.courseName ?: "Sin curso"} • Justifica ${formatEpochToDate(item.date)}", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Motivo: ${item.reason}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
             }
 

@@ -10,6 +10,7 @@ import com.tuapp.libreta.data.remote.SupabaseMessageRepository
 import com.tuapp.libreta.data.remote.SupabaseSchoolRepository
 import com.tuapp.libreta.data.repository.AttendanceRepositoryImpl
 import com.tuapp.libreta.data.repository.ClassRoomRepositoryImpl
+import com.tuapp.libreta.data.repository.GradeRepositoryImpl
 import com.tuapp.libreta.data.repository.JustificationRepositoryImpl
 import com.tuapp.libreta.data.repository.ProfileRepositoryImpl
 import com.tuapp.libreta.data.repository.StudentRepositoryImpl
@@ -18,6 +19,7 @@ import com.tuapp.libreta.data.sync.SymbioticAttendanceRepository
 import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.CommunicationRepository
 import com.tuapp.libreta.domain.repository.CourseAssignmentRepository
+import com.tuapp.libreta.domain.repository.GradeRepository
 import com.tuapp.libreta.domain.repository.InvitationCodeRepository
 import com.tuapp.libreta.domain.repository.JustificationRepository
 import com.tuapp.libreta.domain.repository.MessageRepository
@@ -43,6 +45,7 @@ val appModule = module {
     single<JustificationRepository>    { JustificationRepositoryImpl(get(), get()) }
     single<ProfileRepository>          { ProfileRepositoryImpl(get(), get()) }
     single<ClassRoomRepository>        { ClassRoomRepositoryImpl(get(), get()) }
+    single<GradeRepository>            { GradeRepositoryImpl(get(), get()) }
 
     // ── Supabase direct repositories ──────────────────────────────────────────
     single<InvitationCodeRepository>   { SupabaseInvitationRepository(get()) }
@@ -68,6 +71,9 @@ val appModule = module {
     factory { ClaimInvitationCodeUseCase(get()) }
     factory { GetTeacherInvitationsUseCase(get()) }
     factory { GetConsolidatedReportUseCase(get(), get()) }
+    factory { GetStudentGradesUseCase(get()) }
+    factory { SaveGradeUseCase(get()) }
+    factory { DeleteGradeUseCase(get()) }
 
     // ── ScreenModels ──────────────────────────────────────────────────────────
     factory { LoginScreenModel(get()) }
@@ -85,6 +91,7 @@ val appModule = module {
     factory { NoticeScreenModel(get(), get(), get(), get(), get(), get()) }
     factory { NoticeListScreenModel(get()) }
     factory { StatsScreenModel(get()) }
+    factory { GradeScreenModel(get(), get(), get()) }
     factory { (params: org.koin.core.parameter.ParametersHolder) -> AttendanceScreenModel(get(), get(), params.get(), params.get()) }
     factory { (params: org.koin.core.parameter.ParametersHolder) -> AttendanceHistoryScreenModel(get(), params.get<String>(), params.get<String>()) }
     factory { (params: org.koin.core.parameter.ParametersHolder) -> 

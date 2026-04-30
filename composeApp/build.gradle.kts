@@ -34,6 +34,7 @@ kotlin {
             dependencies {
                 implementation(libs.ktor.client.js)
                 implementation(libs.supabase.auth)
+                implementation(libs.sqldriver.web)
             }
         }
         androidMain.dependencies {
@@ -97,4 +98,24 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+val wasmJsCopyWorker = tasks.register<Copy>("wasmJsCopyWorker") {
+    val workerFiles = configurations.getByName("wasmJsRuntimeClasspath")
+        .filter { it.name.contains("sqldelight-web-worker-driver") || it.name.contains("web-worker-driver") }
+        .map { zipTree(it) }
+
+    from(workerFiles) {
+        include("**/sqldelight-worker.js")
+        eachFile { path = name }
+    }
+    into(layout.buildDirectory.dir("distributions"))
+}
+
+tasks.named("wasmJsBrowserDistribution").configure {
+    dependsOn(wasmJsCopyWorker)
+}
+
+tasks.named("wasmJsBrowserDevelopmentExecutableDistribution").configure {
+    dependsOn(wasmJsCopyWorker)
 }
