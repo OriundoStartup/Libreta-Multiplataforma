@@ -12,18 +12,12 @@ plugins {
 allprojects {
     configurations.all {
         resolutionStrategy {
-            eachDependency {
-                if (requested.group == "org.jetbrains.kotlin" && 
-                    (requested.name.startsWith("kotlin-stdlib") || 
-                     requested.name.startsWith("kotlin-reflect") ||
-                     requested.name.startsWith("kotlin-test") ||
-                     requested.name.startsWith("kotlin-wasm-stdlib-wasm-js"))) {
-                    useVersion(libs.versions.kotlin.get())
-                }
-                if (requested.name == "kotlinx-datetime") {
-                    useVersion("0.6.0")
-                }
-            }
+            force("androidx.browser:browser:1.8.0")
+            force("androidx.activity:activity:1.9.3")
+            force("androidx.activity:activity-ktx:1.9.3")
+            force("androidx.activity:activity-compose:1.9.3")
+            force("androidx.core:core:1.13.1")
+            force("androidx.core:core-ktx:1.13.1")
         }
     }
 }
