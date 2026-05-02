@@ -25,6 +25,11 @@ kotlin {
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
         browser {
+            commonWebpackConfig {
+                devServer = (devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer()).apply {
+                    static(project.projectDir.path)
+                }
+            }
         }
         binaries.executable()
     }
@@ -35,6 +40,8 @@ kotlin {
                 implementation(libs.ktor.client.js)
                 implementation(libs.supabase.auth)
                 implementation(libs.sqldriver.web)
+                implementation(compose.ui)
+                implementation(compose.runtime)
             }
         }
         androidMain.dependencies {

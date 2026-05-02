@@ -118,4 +118,8 @@ class JustificationScreenModel(
             }
         }
     }
+
+    suspend fun getSignedUrl(path: String): String {
+        return submitUseCase.getAttachmentUrl(path)
+    }
 }

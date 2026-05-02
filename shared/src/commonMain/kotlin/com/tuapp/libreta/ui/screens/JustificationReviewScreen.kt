@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -51,6 +52,7 @@ import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.presentation.JustificationReviewState
 import com.tuapp.libreta.presentation.JustificationScreenModel
 import com.tuapp.libreta.ui.components.ShimmerCard
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -107,9 +109,10 @@ data class JustificationReviewScreen(
                 ) {
                     items(s.pending, key = { it.id?.value ?: it.hashCode() }) { justification ->
                         JustificationCard(
-                            justification = justification,
-                            onApprove     = { model.approve(justification, parentId) },
-                            onReject      = { model.reject(justification, parentId) }
+                            justification   = justification,
+                            onApprove       = { model.approve(justification, parentId) },
+                            onReject        = { model.reject(justification, parentId) },
+                            onGetSignedUrl  = { model.getSignedUrl(it) }
                         )
                     }
                 }
@@ -122,7 +125,8 @@ data class JustificationReviewScreen(
 private fun JustificationCard(
     justification: Justification,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    onGetSignedUrl: suspend (String) -> String
 ) {
     val dt = Instant.fromEpochMilliseconds(justification.date)
         .toLocalDateTime(TimeZone.currentSystemDefault())
@@ -153,6 +157,30 @@ private fun JustificationCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+
+            if (!justification.documentUrl.isNullOrBlank()) {
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                OutlinedButton(
+                    onClick = { 
+                        scope.launch {
+                            val url = onGetSignedUrl(justification.documentUrl)
+                            if (url.isNotBlank()) {
+                                com.tuapp.libreta.ui.util.openUrl(url)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AttachFile, 
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp).padding(end = 8.dp)
+                    )
+                    Text("Ver Certificado Adjunto", style = MaterialTheme.typography.labelLarge)
+                }
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()

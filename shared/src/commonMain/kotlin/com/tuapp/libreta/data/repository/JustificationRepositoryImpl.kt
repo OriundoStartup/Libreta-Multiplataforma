@@ -75,4 +75,9 @@ class JustificationRepositoryImpl(
             scope.launch { syncManager.syncAll() }
         }
     }
+
+    override suspend fun getAttachmentUrl(path: String): String {
+        // En local solo retornamos el path por ahora
+        return path
+    }
 }

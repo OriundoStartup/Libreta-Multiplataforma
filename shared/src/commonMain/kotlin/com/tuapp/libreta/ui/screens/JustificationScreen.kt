@@ -139,12 +139,13 @@ data class JustificationScreen(
                 var selectedFileName by remember { mutableStateOf<String?>(null) }
                 var selectedFileBytes by remember { mutableStateOf<ByteArray?>(null) }
 
+                val filePickerLauncher = com.tuapp.libreta.ui.util.rememberFilePickerLauncher { bytes, name ->
+                    selectedFileName = name
+                    selectedFileBytes = bytes
+                }
+
                 OutlinedButton(
-                    onClick = { 
-                        // Simulación de selección de archivo para la auditoría
-                        selectedFileName = "certificado_medico.pdf"
-                        selectedFileBytes = "Simulated File Content".encodeToByteArray()
-                    }, 
+                    onClick = { filePickerLauncher() }, 
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(

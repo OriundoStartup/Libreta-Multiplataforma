@@ -8,15 +8,15 @@ import com.tuapp.libreta.domain.model.Justification
 import com.tuapp.libreta.domain.repository.JustificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.filter.isIn
-import io.github.jan.supabase.postgrest.query.filter.eq
+
 import com.tuapp.libreta.data.util.currentEpochMs
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.storage.storage
-import io.github.jan.supabase.storage.upload
-import io.github.jan.supabase.storage.publicUrl
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlin.time.Duration.Companion.hours
 
 class SupabaseJustificationRepository(private val supabase: SupabaseClient) : JustificationRepository {
 
@@ -100,13 +100,15 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
         fileBytes: ByteArray?,
         fileName: String?
     ): Result<Unit> = runCatching {
-        var documentUrl: String? = null
+        var documentPath: String? = null
         
         if (fileBytes != null && fileName != null) {
-            val path = "certificados/${justification.studentId.value}/${currentEpochMs()}_$fileName"
+            // Guardamos con una estructura que permita RLS: {owner_id}/{filename}
+            val userId = supabase.storage.from("justifications").supabaseClient.auth.currentUserOrNull()?.id ?: "unknown"
+            documentPath = "$userId/${currentEpochMs()}_$fileName"
+            
             val bucket = supabase.storage.from("justifications")
-            bucket.upload(path, fileBytes) { upsert = true }
-            documentUrl = bucket.publicUrl(path)
+            bucket.upload(documentPath, fileBytes) { upsert = true }
         }
 
         supabase.from("justifications").insert(
@@ -115,10 +117,18 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
                 date        = justification.date.toString(),
                 reason      = justification.reason,
                 status      = justification.status.name,
-                documentUrl = documentUrl
+                documentUrl = documentPath // Guardamos el PATH en la columna document_url
             )
         )
     }
+
+    override suspend fun getAttachmentUrl(path: String): String = runCatching {
+        if (path.startsWith("http")) return path // Compatibilidad con datos antiguos
+        
+        val bucket = supabase.storage.from("justifications")
+        // Generamos una URL firmada válida por 1 hora
+        bucket.createSignedUrl(path, expiresIn = 1.hours)
+    }.getOrElse { "" }
 
     override suspend fun delete(id: UuidString) {
         supabase.from("justifications").delete { filter { eq("id", id.value) } }

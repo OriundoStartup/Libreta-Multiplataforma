@@ -9,19 +9,13 @@ import com.tuapp.libreta.domain.model.Message
 import com.tuapp.libreta.domain.repository.MessageRepository
 import com.tuapp.libreta.domain.usecase.MessageThread
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.annotations.SupabaseExperimental
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.query.filter.isIn
-import io.github.jan.supabase.postgrest.query.filter.eq
-import io.github.jan.supabase.postgrest.query.filter.or
-import io.github.jan.supabase.postgrest.query.filter.and
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
-
-import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.selectAsFlow
-import io.github.jan.supabase.annotations.SupabaseExperimental
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf

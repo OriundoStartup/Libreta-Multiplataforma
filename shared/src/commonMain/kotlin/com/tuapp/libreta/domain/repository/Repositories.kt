@@ -47,6 +47,7 @@ interface JustificationRepository {
     fun getPendingByTeacher(teacherId: UuidString): Flow<List<Justification>>
     suspend fun save(justification: Justification)
     suspend fun saveWithAttachment(justification: Justification, fileBytes: ByteArray?, fileName: String?): Result<Unit>
+    suspend fun getAttachmentUrl(path: String): String
     suspend fun delete(id: UuidString)
 }
 

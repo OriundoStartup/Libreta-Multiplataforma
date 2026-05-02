@@ -27,6 +27,8 @@ class SubmitJustificationUseCase(private val repository: JustificationRepository
         fileBytes = fileBytes,
         fileName  = fileName
     )
+
+    suspend fun getAttachmentUrl(path: String): String = repository.getAttachmentUrl(path)
 }
 
 class GetPendingJustificationsUseCase(private val repository: JustificationRepository) {
