@@ -7,6 +7,7 @@ import com.tuapp.libreta.ui.screens.TeacherDashboardScreen
 import com.tuapp.libreta.ui.screens.ParentDashboardScreen
 import com.tuapp.libreta.ui.screens.MessageListScreen
 import com.tuapp.libreta.ui.screens.StudentListScreen
+import com.tuapp.libreta.ui.screens.CourseDashboardScreen
 
 object WebPathMapper {
     fun fromPath(path: String): Screen {
@@ -21,6 +22,7 @@ object WebPathMapper {
             segments[0] == "teacher" -> TeacherDashboardScreen
             segments[0] == "parent" -> ParentDashboardScreen(parentId = segments.getOrNull(1) ?: "user-current")
             segments[0] == "messages" -> MessageListScreen
+            segments[0] == "course" && segments.size > 2 -> CourseDashboardScreen(courseId = segments[1], courseName = segments[2])
             segments[0] == "students" && segments.size > 1 -> StudentListScreen(classId = segments[1])
             else -> LoginScreen
         }
@@ -32,6 +34,7 @@ object WebPathMapper {
             is TeacherDashboardScreen -> "/teacher"
             is ParentDashboardScreen -> "/parent/${screen.parentId}"
             is MessageListScreen -> "/messages"
+            is CourseDashboardScreen -> "/course/${screen.courseId}/${screen.courseName}"
             is StudentListScreen -> "/students/${screen.classId}"
             is LoginScreen -> "/login"
             else -> "/"

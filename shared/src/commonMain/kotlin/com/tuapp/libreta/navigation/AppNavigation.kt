@@ -25,6 +25,7 @@ import com.tuapp.libreta.ui.screens.JustificationListScreen
 import com.tuapp.libreta.ui.screens.NotificationScreen
 import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen
 import com.tuapp.libreta.ui.screens.AttendanceReportScreen
+import com.tuapp.libreta.ui.screens.CourseDashboardScreen
 import com.tuapp.libreta.ui.screens.GlobalJustificationReviewScreen
 import com.tuapp.libreta.ui.screens.GradeScreen
 import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen as ParentStudentDetailScreenUI
@@ -77,6 +78,9 @@ object AppNavigation {
 
     fun attendanceReport(courseId: String, courseName: String): Screen = 
         AttendanceReportScreen(courseId, courseName)
+
+    fun courseDashboard(courseId: String, courseName: String): Screen =
+        CourseDashboardScreen(courseId = courseId, courseName = courseName)
 
     fun globalJustificationReview(): Screen = GlobalJustificationReviewScreen
 

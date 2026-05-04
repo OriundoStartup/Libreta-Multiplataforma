@@ -39,7 +39,7 @@ fun CourseEntity.toDomain() = Course(
     grade = grade,
     schoolName = school_id,
     inviteCode = invite_code ?: "",
-    isActive = is_active.toLong() == 1L,
+    isActive = is_active == 1L,
     createdAt = ""
 )
 
@@ -72,7 +72,7 @@ fun JustificationEntity.toDomain() = Justification(
 fun MessageEntity.toDomain() = Message(
     id = UuidString(id),
     senderId = UuidString(sender_id),
-    receiverId = receiver_id.let { UuidString(it) },
+    receiverId = UuidString(receiver_id),
     content = message_text
 )
 

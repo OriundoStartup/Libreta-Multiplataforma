@@ -5,10 +5,8 @@ import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 data class StudentAbsences(val student: Student, val absenceCount: Int)
@@ -32,15 +30,11 @@ class GetCourseAnalyticsUseCase(
     private val studentRepo: StudentRepository,
     private val attendanceRepo: AttendanceRepository
 ) {
-    operator fun invoke(classId: UuidString): Flow<CourseAnalytics> =
-        studentRepo.getStudentsByClass(classId).map { students ->
-            // Carga la asistencia de todos los alumnos en paralelo (evita N+1 secuencial)
-            val allAttendance = coroutineScope {
-                students.map { student ->
-                    async { attendanceRepo.getByStudent(student.id).first() }
-                }.flatMap { it.await() }
-            }
-
+    operator fun invoke(classId: UuidString): Flow<CourseAnalytics> {
+        return combine(
+            studentRepo.getStudentsByClass(classId),
+            attendanceRepo.getByCourse(classId)
+        ) { students, allAttendance ->
             val presentCount   = allAttendance.count { it.status == AttendanceStatus.PRESENT }
             val absentCount    = allAttendance.count { it.status == AttendanceStatus.ABSENT }
             val justifiedCount = allAttendance.count { it.status == AttendanceStatus.LATE }
@@ -54,30 +48,27 @@ class GetCourseAnalyticsUseCase(
             }
 
             val atRisk = absencesByStudent.filter { sa ->
-                val studentTotal   = allAttendance.count { it.studentId == sa.student.id }.coerceAtLeast(1)
-                val studentPresent = allAttendance.count {
-                    it.studentId == sa.student.id && it.status == AttendanceStatus.PRESENT
-                }
-                (studentPresent / studentTotal.toFloat()) < 0.75f
+                val studentRecords = allAttendance.filter { it.studentId == sa.student.id }
+                val studentTotal = studentRecords.size.coerceAtLeast(1)
+                val studentPresent = studentRecords.count { it.status == AttendanceStatus.PRESENT }
+                (studentPresent.toFloat() / studentTotal) < 0.75f
             }
 
-            // Últimos 5 días con datos REALES agrupados por fecha
             val last5Days = allAttendance
                 .groupBy { it.date }
-                .entries
-                .sortedByDescending { it.key }
-                .take(5)
                 .map { (date, records) ->
                     val dayPresent = records.count { it.status == AttendanceStatus.PRESENT }
                     val dayTotal   = records.size.coerceAtLeast(1)
-                    val label      = date.takeLast(5)   // muestra MM-DD del ISO date
+                    val label      = date.takeLast(5)
                     DailyAttendance(label, dayPresent, dayTotal)
                 }
-                .reversed()   // orden cronológico ascendente para el gráfico
+                .sortedByDescending { it.label }
+                .take(5)
+                .reversed()
 
             CourseAnalytics(
                 totalStudents            = students.size,
-                overallAttendancePercent = presentCount / total.toFloat(),
+                overallAttendancePercent = presentCount.toFloat() / total,
                 presentCount             = presentCount,
                 absentCount              = absentCount,
                 justifiedCount           = justifiedCount,
@@ -86,4 +77,5 @@ class GetCourseAnalyticsUseCase(
                 last5Days                = last5Days
             )
         }
+    }
 }
