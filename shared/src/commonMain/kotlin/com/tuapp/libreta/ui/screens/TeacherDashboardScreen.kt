@@ -265,7 +265,7 @@ object TeacherDashboardScreen : Screen {
                                         course         = course,
                                         onClick        = {
                                             navigator.push(
-                                                StudentListScreen(classId = course.id, className = course.name)
+                                                AppNavigation.courseDashboard(courseId = course.id, courseName = course.name)
                                             )
                                         },
                                         onGenerateCode = { model.generateInviteCodeForCourse(course) },
