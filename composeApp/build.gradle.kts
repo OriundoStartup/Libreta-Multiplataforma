@@ -24,10 +24,13 @@ kotlin {
 
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
+        compilerOptions {
+            outputModuleName.set("composeApp")
+        }
         browser {
             commonWebpackConfig {
                 devServer = (devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer()).apply {
-                    static(project.projectDir.path)
+                    port = 8080
                 }
             }
         }
@@ -40,6 +43,8 @@ kotlin {
                 implementation(libs.ktor.client.js)
                 implementation(libs.supabase.auth)
                 implementation(libs.sqldriver.web)
+                implementation(libs.kotlinx.browser)
+                implementation(libs.kotlinx.datetime)
                 implementation(compose.ui)
                 implementation(compose.runtime)
             }
@@ -54,6 +59,8 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(project(":shared"))
+            implementation(libs.supabase.auth)
+            implementation(libs.supabase.postgrest)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
@@ -116,7 +123,13 @@ val wasmJsCopyWorker = tasks.register<Copy>("wasmJsCopyWorker") {
         include("**/sqldelight-worker.js")
         eachFile { path = name }
     }
-    into(layout.buildDirectory.dir("distributions"))
+    // Copiar a ambos destinos para asegurar compatibilidad con Run y Distribution
+    into(layout.buildDirectory.dir("distributions/composeApp"))
+    into(layout.buildDirectory.dir("processedResources/wasmJs/main"))
+}
+
+tasks.named("wasmJsProcessResources").configure {
+    dependsOn(wasmJsCopyWorker)
 }
 
 tasks.named("wasmJsBrowserDistribution").configure {
@@ -126,3 +139,5 @@ tasks.named("wasmJsBrowserDistribution").configure {
 tasks.named("wasmJsBrowserDevelopmentExecutableDistribution").configure {
     dependsOn(wasmJsCopyWorker)
 }
+
+

@@ -7,7 +7,16 @@
     <link type="text/css" rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Pantalla de carga integrada -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p id="loading-text">Iniciando LibretApp...</p>
+    </div>
+
+    <!-- Contenedor para Compose -->
     <div id="app-root"></div>
-    <script type="module" src="LibretaMultiplataformAws-composeApp.js"></script>
+
+    <!-- EL ÚNICO SCRIPT NECESARIO -->
+    <script type="module" src="composeApp.js"></script>
 </body>
 </html>

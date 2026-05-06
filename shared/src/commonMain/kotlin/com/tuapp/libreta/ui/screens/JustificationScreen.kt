@@ -10,7 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
@@ -149,7 +149,7 @@ data class JustificationScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        if (selectedFileName == null) Icons.Default.AttachFile else Icons.Default.CheckCircle, 
+                        if (selectedFileName == null) Icons.Default.Add else Icons.Default.CheckCircle, 
                         null, 
                         modifier = Modifier.padding(end = 8.dp),
                         tint = if (selectedFileName == null) MaterialTheme.colorScheme.primary else Color(0xFF2E7D32)

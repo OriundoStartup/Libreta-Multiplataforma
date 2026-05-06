@@ -17,9 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -133,9 +133,9 @@ data class NotificationScreen(
 @Composable
 private fun NotificationRow(item: NotificationItem, onClick: () -> Unit) {
     val (icon, color) = when (item.type) {
-        NotificationType.MESSAGE       -> Icons.Default.Chat to Color(0xFF1565C0)
-        NotificationType.ATTENDANCE    -> Icons.Default.EventBusy to Color(0xFFC62828)
-        NotificationType.JUSTIFICATION -> Icons.Default.AssignmentTurnedIn to Color(0xFF2E7D32)
+        NotificationType.MESSAGE       -> Icons.Default.Email to Color(0xFF1565C0)
+        NotificationType.ATTENDANCE    -> Icons.Default.Close to Color(0xFFC62828)
+        NotificationType.JUSTIFICATION -> Icons.Default.Done to Color(0xFF2E7D32)
         NotificationType.NOTICE        -> Icons.Default.Notifications to Color(0xFFF57F17)
         NotificationType.ANNOTATION    -> {
             if (item.content.contains("⚠️")) Icons.Default.Notifications to Color(0xFFD32F2F)

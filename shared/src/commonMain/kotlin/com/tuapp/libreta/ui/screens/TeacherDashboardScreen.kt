@@ -22,16 +22,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -138,14 +138,14 @@ object TeacherDashboardScreen : Screen {
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ExtendedFloatingActionButton(
                         onClick = { navigator.push(AppNavigation.messages()) },
-                        icon    = { Icon(Icons.Default.MailOutline, null) },
+                        icon    = { Icon(Icons.Default.Email, null) },
                         text    = { Text("Ver Mensajes") },
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     ExtendedFloatingActionButton(
                         onClick = { showJoinDialog = true },
-                        icon    = { Icon(Icons.Default.Groups, null) },
+                        icon    = { Icon(Icons.Default.Person, null) },
                         text    = { Text("Colaborar en Curso") },
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -186,7 +186,7 @@ object TeacherDashboardScreen : Screen {
                             ) {
                                 // TARJETA DE TRÁMITES (ESTILO APODERADO - AMARILLO)
                                 StatusCard(
-                                    icon = Icons.Default.AssignmentTurnedIn,
+                                    icon = Icons.Default.Done,
                                     value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
                                     label = "Trámites",
                                     containerColor = if (s.pendingJustificationsCount > 0)
@@ -200,7 +200,7 @@ object TeacherDashboardScreen : Screen {
 
                                 // TARJETA DE MENSAJES (ESTILO APODERADO - AZUL)
                                 StatusCard(
-                                    icon = Icons.Default.MailOutline,
+                                    icon = Icons.Default.Email,
                                     value = if (s.unreadMessagesCount > 0) "${s.unreadMessagesCount}" else "Al día",
                                     label = if (s.unreadMessagesCount > 0) "Mensajes Nuevos" else "Mensajes",
                                     containerColor = if (s.unreadMessagesCount > 0)
@@ -215,7 +215,7 @@ object TeacherDashboardScreen : Screen {
                                 // TARJETA DE CURSOS (ESTILO APODERADO - PÚRPURA)
                                 if (columns > 1) {
                                     StatusCard(
-                                        icon = Icons.Default.Groups,
+                                        icon = Icons.Default.Person,
                                         value = "${s.courses.size}",
                                         label = "Mis Cursos",
                                         containerColor = androidx.compose.ui.graphics.Color(0xFFF3E5F5), // Púrpura suave (Parent)
@@ -237,7 +237,7 @@ object TeacherDashboardScreen : Screen {
                         if (s.courses.isEmpty()) {
                             item(span = { GridItemSpan(columns) }) {
                                 EmptyStateView(
-                                    icon = Icons.Default.Groups,
+                                    icon = Icons.Default.Person,
                                     title = "Aún no tienes cursos",
                                     description = "Toca + para crear tu primer curso"
                                 )
@@ -464,13 +464,13 @@ private fun CourseCard(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(onClick = onSendMessage) {
-                        Icon(Icons.Default.MailOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onShowReport) {
-                        Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onShowStats) {
-                        Icon(Icons.Default.AssignmentTurnedIn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Done, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onInviteColleague) {
                         Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
@@ -532,7 +532,7 @@ private fun InviteCodeDialog(title: String = "Código", description: String? = n
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { com.tuapp.libreta.data.util.ClipboardHelper.copyToClipboard(code) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
-                        Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.Create, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Copiar")
                     }

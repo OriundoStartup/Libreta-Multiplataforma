@@ -21,8 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -183,7 +182,7 @@ private fun ChatBubble(message: Message, isMine: Boolean) {
                 if (isAnnotation) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                         Icon(
-                            imageVector = if (isPositiveNote) Icons.Default.Stars else Icons.Default.Warning,
+                            imageVector = if (isPositiveNote) Icons.Default.Star else Icons.Default.Warning,
                             contentDescription = null,
                             tint = if (isPositiveNote) Color(0xFFFBC02D) else Color(0xFFD32F2F),
                             modifier = Modifier.size(16.dp)
@@ -222,7 +221,7 @@ private fun ChatBubble(message: Message, isMine: Boolean) {
                         if (isMine) {
                             val isRead = message.readAt != null
                             Icon(
-                                imageVector = if (isRead) Icons.Default.DoneAll else Icons.Default.Done,
+                                imageVector = if (isRead) Icons.Default.Done else Icons.Default.Done,
                                 contentDescription = if (isRead) "Leído" else "Enviado",
                                 modifier = Modifier.size(14.dp),
                                 tint = if (isRead) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)

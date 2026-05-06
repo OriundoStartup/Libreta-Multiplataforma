@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -162,7 +161,7 @@ data class ComposeNoticeScreen(
                         ) {
                             ComposeModeButton(
                                 text = "Todo el Curso",
-                                icon = Icons.Default.Groups,
+                                icon = Icons.Default.Person,
                                 isSelected = composeMode == ComposeMode.GENERAL,
                                 modifier = Modifier.weight(1f),
                                 onClick = { model.setComposeMode(ComposeMode.GENERAL) }

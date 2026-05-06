@@ -32,8 +32,8 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
-            implementation(libs.compose.materialIconsExtended)
             implementation(libs.compose.resources)
+            implementation(libs.compose.materialIconsExtended)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
             implementation(libs.kotlinx.datetime)
@@ -60,8 +60,8 @@ kotlin {
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
-            implementation(libs.kotlinx.browser)
             implementation(libs.sqldriver.web)
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

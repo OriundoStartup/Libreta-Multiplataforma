@@ -16,8 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -41,8 +41,8 @@ fun TimelineItem(
     val (icon, iconBg, iconTint) = when (event.type) {
         TimelineEventType.ATTENDANCE_PRESENT -> Triple(Icons.Default.CheckCircle, Color(0xFFE8F5E9), Color(0xFF2E7D32))
         TimelineEventType.ATTENDANCE_ABSENT  -> Triple(Icons.Default.Cancel,      Color(0xFFFFEBEE), Color(0xFFC62828))
-        TimelineEventType.MESSAGE            -> Triple(Icons.Default.MailOutline,  Color(0xFFE3F2FD), Color(0xFF1565C0))
-        TimelineEventType.JUSTIFICATION      -> Triple(Icons.Default.Description,  Color(0xFFFFF8E1), Color(0xFFF57F17))
+        TimelineEventType.MESSAGE            -> Triple(Icons.Default.Email,  Color(0xFFE3F2FD), Color(0xFF1565C0))
+        TimelineEventType.JUSTIFICATION      -> Triple(Icons.Default.Info,  Color(0xFFFFF8E1), Color(0xFFF57F17))
     }
 
     Row(modifier = Modifier.fillMaxWidth()) {

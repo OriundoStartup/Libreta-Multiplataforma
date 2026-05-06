@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,7 +77,7 @@ data class JustificationListScreen(val studentId: String) : Screen {
                 is JustificationListUiState.Success -> {
                     if (s.items.isEmpty()) {
                         EmptyStateView(
-                            icon = Icons.Default.Description,
+                            icon = Icons.Default.Info,
                             title = "Sin justificaciones",
                             description = "Aún no has enviado trámites de inasistencia.",
                             modifier = Modifier.padding(padding)

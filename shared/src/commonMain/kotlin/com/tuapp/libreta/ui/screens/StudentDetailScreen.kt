@@ -21,9 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Grade
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -185,7 +185,7 @@ data class StudentDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 QuickActionCard(
-                                    icon = Icons.Default.EditNote,
+                                    icon = Icons.Default.Edit,
                                     label = "Justificación",
                                     onClick = { navigator.push(AppNavigation.justificationForm(parentId = s.parentId, studentId = s.studentId)) },
                                     modifier = Modifier.weight(1f)
@@ -204,7 +204,7 @@ data class StudentDetailScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                                 QuickActionCard(
-                                    icon = Icons.Default.History,
+                                    icon = Icons.Default.Refresh,
                                     label = "Historial",
                                     onClick = { navigator.push(AppNavigation.attendanceHistory(s.studentId, s.studentName)) },
                                     modifier = Modifier.weight(1f)
@@ -294,7 +294,7 @@ data class StudentDetailScreen(
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             ) {
-                                Icon(Icons.Default.EditNote, contentDescription = null)
+                                Icon(Icons.Default.Edit, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Añadir Nota Interna")
                             }

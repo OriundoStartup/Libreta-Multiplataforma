@@ -11,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Grade
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -103,7 +103,7 @@ data class ParentStudentDetailScreen(
                 ) {
                     if (state.isLoading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     else {
-                        Icon(Icons.Default.Save, null, modifier = Modifier.padding(end = 8.dp))
+                        Icon(Icons.Default.Check, null, modifier = Modifier.padding(end = 8.dp))
                         Text("Guardar Cambios")
                     }
                 }

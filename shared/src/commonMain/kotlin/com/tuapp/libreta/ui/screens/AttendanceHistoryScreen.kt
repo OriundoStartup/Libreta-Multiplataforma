@@ -20,7 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -116,7 +116,7 @@ data class AttendanceHistoryScreen(
                 is AttendanceHistoryUiState.Success -> {
                     if (s.records.isEmpty()) {
                         EmptyStateView(
-                            icon = Icons.Default.EditNote,
+                            icon = Icons.Default.Edit,
                             title = "Sin registros",
                             description = "No hay asistencia registrada",
                             modifier = Modifier.padding(padding)
@@ -223,7 +223,7 @@ private fun AttendanceHistoryRow(
     val statusIcon = when (record.status) {
         AttendanceStatus.PRESENT -> Icons.Default.Check
         AttendanceStatus.ABSENT -> Icons.Default.Close
-        AttendanceStatus.LATE -> Icons.Default.EditNote
+        AttendanceStatus.LATE -> Icons.Default.Edit
     }
 
     Card(
@@ -289,7 +289,7 @@ private fun AttendanceHistoryRow(
                                     when(status) {
                                         AttendanceStatus.PRESENT -> Icons.Default.Check
                                         AttendanceStatus.ABSENT -> Icons.Default.Close
-                                        AttendanceStatus.LATE -> Icons.Default.EditNote
+                                        AttendanceStatus.LATE -> Icons.Default.Edit
                                     },
                                     contentDescription = null,
                                     tint = when(status) {

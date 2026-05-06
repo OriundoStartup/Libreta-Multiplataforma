@@ -11,10 +11,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,7 +84,7 @@ data class AttendanceScreen(
                     },
                     actions = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "Cambiar fecha")
+                            Icon(Icons.Default.DateRange, contentDescription = "Cambiar fecha")
                         }
                     }
                 )
@@ -179,7 +179,7 @@ private fun DateSelectorHeader(date: String, onDateClick: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.DateRange, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "Fecha: $date",
@@ -298,7 +298,7 @@ private fun AttendanceRow(
                 )
                 StatusButton(
                     selected = status == AttendanceStatus.LATE,
-                    icon = Icons.Default.EditNote,
+                    icon = Icons.Default.Edit,
                     label = "T",
                     color = StatusWarning,
                     onClick = { onStatusChange(AttendanceStatus.LATE) }

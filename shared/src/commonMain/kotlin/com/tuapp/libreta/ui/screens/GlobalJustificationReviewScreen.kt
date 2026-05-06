@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -80,7 +80,7 @@ object GlobalJustificationReviewScreen : Screen {
                 is GlobalJustificationUiState.Success -> {
                     if (s.pending.isEmpty()) {
                         EmptyStateView(
-                            icon = Icons.Default.AssignmentTurnedIn,
+                            icon = Icons.Default.Done,
                             title = "Todo al día",
                             description = "No hay justificaciones pendientes por revisar.",
                             modifier = Modifier.padding(padding)
@@ -128,7 +128,7 @@ private fun PendingJustificationItem(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
                     }
                 }
                 Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {

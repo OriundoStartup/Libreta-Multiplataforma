@@ -28,11 +28,10 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Grade
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.School
@@ -225,7 +224,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         modifier       = Modifier.weight(1f)
                                     )
                                     StatusCard(
-                                        icon           = Icons.Default.MailOutline,
+                                        icon           = Icons.Default.Email,
                                         value          = "${student.pendingMessages}",
                                         label          = "Mensajes",
                                         containerColor = Color(0xFFE3F2FD),
@@ -243,7 +242,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         }
                                     )
                                     StatusCard(
-                                        icon           = Icons.Default.EditNote,
+                                        icon           = Icons.Default.Edit,
                                         value          = "Trámites",
                                         label          = "Justificaciones",
                                         containerColor = Color(0xFFFFF8E1),
@@ -434,7 +433,7 @@ private fun StudentHeader(
         }
         IconButton(onClick = onViewHistory) {
             Icon(
-                Icons.Default.History,
+                Icons.Default.Refresh,
                 contentDescription = "Ver historial",
                 tint = MaterialTheme.colorScheme.primary
             )

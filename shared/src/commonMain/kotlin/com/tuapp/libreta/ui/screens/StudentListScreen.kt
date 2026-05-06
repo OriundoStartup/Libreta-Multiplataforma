@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,12 +24,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.AssignmentLate
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -162,7 +161,7 @@ data class StudentListScreen(
                             ExtendedFloatingActionButton(
                                 onClick        = { navigator.push(AppNavigation.composeNotice(classId = classId)) },
                                 expanded       = fabExpanded,
-                                icon           = { Icon(Icons.Default.EditNote, contentDescription = null) },
+                                icon           = { Icon(Icons.Default.Edit, contentDescription = null) },
                                 text           = { Text("Redactar") },
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor   = MaterialTheme.colorScheme.onPrimary,
@@ -192,7 +191,7 @@ data class StudentListScreen(
                     when (val state = uiState) {
                         StudentListUiState.Loading -> ShimmerList()
                         StudentListUiState.Empty   -> EmptyStateView(
-                            icon = Icons.Default.Groups,
+                            icon = Icons.Default.Person,
                             title = "Sin alumnos registrados",
                             description = "Agrega alumnos para comenzar a pasar asistencia"
                         )

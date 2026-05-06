@@ -20,10 +20,12 @@ class LibretaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppContextHolder.init(this)
-        startKoin {
+        
+        // Inicialización unificada de Koin
+        com.tuapp.libreta.initKoin {
             androidContext(this@LibretaApplication)
-            modules(platformModule, appModule)
         }
+        
         applicationScope.launch { seeder.seedIfEmpty() }
     }
 }

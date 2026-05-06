@@ -10,7 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +55,7 @@ data class AttendanceReportScreen(val courseId: String, val courseName: String) 
                     title = { Text("Reporte: $courseName") },
                     actions = {
                         IconButton(onClick = { /* Export functionality could be added here */ }) {
-                            Icon(Icons.Default.FileDownload, "Exportar")
+                            Icon(Icons.Default.ArrowDropDown, "Exportar")
                         }
                     }
                 )

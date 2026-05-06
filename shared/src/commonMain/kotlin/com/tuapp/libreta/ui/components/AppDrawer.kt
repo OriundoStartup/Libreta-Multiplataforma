@@ -37,7 +37,7 @@ fun AppDrawer(
         
         SectionHeader("Gestión")
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.Dashboard, null) },
+            icon    = { Icon(Icons.Default.Home, null) },
             label   = { Text("Inicio / Mis Cursos") },
             selected = false,
             onClick  = { onNavigateToDashboard(); onClose() }
@@ -51,13 +51,13 @@ fun AppDrawer(
 
         SectionHeader("Comunicación")
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.MailOutline, null) },
+            icon    = { Icon(Icons.Default.Email, null) },
             label   = { Text("Bandeja de Entrada") },
             selected = false,
             onClick  = { onNavigateToMessages(); onClose() }
         )
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.EditNote, null) },
+            icon    = { Icon(Icons.Default.Edit, null) },
             label   = { Text("Redactar Mensaje") },
             selected = false,
             onClick  = { onNavigateToCompose(); onClose() }
@@ -66,7 +66,7 @@ fun AppDrawer(
         Spacer(Modifier.weight(1f))
         HorizontalDivider()
         NavigationDrawerItem(
-            icon    = { Icon(Icons.Default.ManageAccounts, null) },
+            icon    = { Icon(Icons.Default.Settings, null) },
             label   = { Text("Cambiar de Perfil (Rol)") },
             selected = false,
             onClick  = { onSwitchAccount(); onClose() }

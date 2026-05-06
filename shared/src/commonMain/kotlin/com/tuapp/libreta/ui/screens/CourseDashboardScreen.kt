@@ -81,7 +81,7 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 StatusCard(
-                                    icon = Icons.Default.Groups,
+                                    icon = Icons.Default.Person,
                                     value = "${s.studentCount}",
                                     label = "Alumnos",
                                     containerColor = Color(0xFFE3F2FD),
@@ -89,7 +89,7 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                                     modifier = Modifier.weight(1f)
                                 )
                                 StatusCard(
-                                    icon = Icons.Default.TableChart,
+                                    icon = Icons.Default.List,
                                     value = "${(s.attendanceRate * 100).toInt()}%",
                                     label = "Asistencia",
                                     containerColor = Color(0xFFE8F5E9),
@@ -97,7 +97,7 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                                     modifier = Modifier.weight(1f)
                                 )
                                 StatusCard(
-                                    icon = Icons.Default.AssignmentTurnedIn,
+                                    icon = Icons.Default.Done,
                                     value = "${s.pendingJustificationsCount}",
                                     label = "Pendientes",
                                     containerColor = Color(0xFFFFF8E1),
@@ -117,19 +117,19 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                             val isCompact = windowSize.widthSizeClass == WindowSizeClass.COMPACT
                             
                             if (isCompact) {
-                                ActionButton("Lista de Alumnos", "Ver y gestionar estudiantes", Icons.Default.Groups, MaterialTheme.colorScheme.primaryContainer) {
+                                ActionButton("Lista de Alumnos", "Ver y gestionar estudiantes", Icons.Default.Person, MaterialTheme.colorScheme.primaryContainer) {
                                     navigator.push(AppNavigation.studentList(courseId))
                                 }
                                 ActionButton("Pasar Asistencia", "Registro diario de clase", Icons.Default.HowToReg, MaterialTheme.colorScheme.secondaryContainer) {
                                     navigator.push(AppNavigation.attendance(courseId, courseName))
                                 }
-                                ActionButton("Estadísticas", "Analíticas de asistencia", Icons.Default.TableChart, MaterialTheme.colorScheme.tertiaryContainer) {
+                                ActionButton("Estadísticas", "Analíticas de asistencia", Icons.Default.List, MaterialTheme.colorScheme.tertiaryContainer) {
                                     navigator.push(AppNavigation.courseStats(courseId, courseName))
                                 }
-                                ActionButton("Enviar Aviso", "Comunicar a todo el curso", Icons.Default.MailOutline, MaterialTheme.colorScheme.surfaceVariant) {
+                                ActionButton("Enviar Aviso", "Comunicar a todo el curso", Icons.Default.Email, MaterialTheme.colorScheme.surfaceVariant) {
                                     navigator.push(AppNavigation.composeNotice(classId = courseId))
                                 }
-                                ActionButton("Historial de Avisos", "Ver comunicaciones enviadas", Icons.Default.History, MaterialTheme.colorScheme.surfaceVariant) {
+                                ActionButton("Historial de Avisos", "Ver comunicaciones enviadas", Icons.Default.Refresh, MaterialTheme.colorScheme.surfaceVariant) {
                                     navigator.push(AppNavigation.noticeList(com.tuapp.libreta.data.util.UuidString(courseId)))
                                 }
                                 ActionButton("Editar Curso", "Modificar datos básicos", Icons.Default.Edit, MaterialTheme.colorScheme.errorContainer) {
@@ -138,7 +138,7 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                             } else {
                                 // Grid de 2 columnas manual
                                 GridRow {
-                                    ActionButton("Lista de Alumnos", "Ver y gestionar estudiantes", Icons.Default.Groups, MaterialTheme.colorScheme.primaryContainer, Modifier.weight(1f)) {
+                                    ActionButton("Lista de Alumnos", "Ver y gestionar estudiantes", Icons.Default.Person, MaterialTheme.colorScheme.primaryContainer, Modifier.weight(1f)) {
                                         navigator.push(AppNavigation.studentList(courseId))
                                     }
                                     ActionButton("Pasar Asistencia", "Registro diario de clase", Icons.Default.HowToReg, MaterialTheme.colorScheme.secondaryContainer, Modifier.weight(1f)) {
@@ -146,15 +146,15 @@ data class CourseDashboardScreen(val courseId: String, val courseName: String) :
                                     }
                                 }
                                 GridRow {
-                                    ActionButton("Estadísticas", "Analíticas de asistencia", Icons.Default.TableChart, MaterialTheme.colorScheme.tertiaryContainer, Modifier.weight(1f)) {
+                                    ActionButton("Estadísticas", "Analíticas de asistencia", Icons.Default.List, MaterialTheme.colorScheme.tertiaryContainer, Modifier.weight(1f)) {
                                         navigator.push(AppNavigation.courseStats(courseId, courseName))
                                     }
-                                    ActionButton("Enviar Aviso", "Comunicar a todo el curso", Icons.Default.MailOutline, MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f)) {
+                                    ActionButton("Enviar Aviso", "Comunicar a todo el curso", Icons.Default.Email, MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f)) {
                                         navigator.push(AppNavigation.composeNotice(classId = courseId))
                                     }
                                 }
                                 GridRow {
-                                    ActionButton("Historial de Avisos", "Ver comunicaciones enviadas", Icons.Default.History, MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f)) {
+                                    ActionButton("Historial de Avisos", "Ver comunicaciones enviadas", Icons.Default.Refresh, MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f)) {
                                         navigator.push(AppNavigation.noticeList(com.tuapp.libreta.data.util.UuidString(courseId)))
                                     }
                                     ActionButton("Editar Curso", "Modificar datos básicos", Icons.Default.Edit, MaterialTheme.colorScheme.errorContainer, Modifier.weight(1f)) {

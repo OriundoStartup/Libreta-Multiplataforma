@@ -3,6 +3,7 @@ package org.orinundo
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import kotlinx.browser.document
+import kotlinx.browser.window
 import com.tuapp.libreta.initKoin
 import com.tuapp.libreta.data.remote.SupabaseConfig
 import org.w3c.dom.HTMLElement
@@ -11,44 +12,52 @@ import org.w3c.dom.HTMLElement
 fun main() {
     val loadingScreen = document.getElementById("loading-screen") as? HTMLElement
     
-    println("Web App: Starting...")
-    println("Web App: Supabase URL: ${SupabaseConfig.URL}")
-
+    println("Web App: Starting Boot Sequence...")
+    
     try {
-        // Intentar inicializar Koin
+        // 1. Validación de Configuración
+        if (SupabaseConfig.URL.isBlank() || SupabaseConfig.ANON_KEY.isBlank()) {
+            throw IllegalStateException("Supabase URL/Key no configuradas en local.properties")
+        }
+        
+        // 2. Inicialización de Koin
         println("Web App: Initializing Koin...")
         initKoin()
-        println("Web App: Koin OK.")
-
+        
+        // 3. Montar App en el DOM
         val root = document.getElementById("app-root") as? HTMLElement
         if (root != null) {
             ComposeViewport(root) {
                 App()
             }
             
-            // Ocultar pantalla de carga con un pequeño delay para asegurar el primer frame
-            kotlinx.browser.window.setTimeout({
+            // 4. Ocultar pantalla de carga una vez Compose tome el control
+            window.setTimeout({
                 loadingScreen?.style?.opacity = "0"
-                kotlinx.browser.window.setTimeout({
+                window.setTimeout({
                     loadingScreen?.style?.display = "none"
                     null
                 }, 500)
                 null
-            }, 1000)
+            }, 500)
+            
+            println("Web App: Successfully started.")
         } else {
-            throw IllegalStateException("No se encontró el elemento #app-root")
+            throw IllegalStateException("No se encontró el contenedor #app-root en el HTML")
         }
 
     } catch (e: Throwable) {
-        println("Web App: FATAL ERROR -> ${e.message}")
+        println("Web App: FATAL ERROR during startup")
         e.printStackTrace()
         
+        // Mostrar el error visualmente para salir de la carga infinita
         if (loadingScreen != null) {
             loadingScreen.innerHTML = """
-                <div style="color: #d32f2f; text-align: center; padding: 20px;">
-                    <h3>Error de Inicialización</h3>
-                    <p style="font-family: monospace; font-size: 13px;">${e.message}</p>
-                    <button onclick="location.reload()" style="padding: 10px 20px;">Reintentar</button>
+                <div style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 80%; color: #d32f2f; font-family: sans-serif;">
+                    <h2 style="margin-top: 0;">Error de Arranque</h2>
+                    <p style="color: #444;">La aplicación no pudo iniciarse correctamente.</p>
+                    <pre style="background: #f5f5f5; padding: 10px; font-size: 12px; overflow: auto; max-height: 200px; border: 1px solid #ddd;">${e.message}\n$e</pre>
+                    <button onclick="location.reload()" style="background: #6750a4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Reintentar</button>
                 </div>
             """.trimIndent()
         }
