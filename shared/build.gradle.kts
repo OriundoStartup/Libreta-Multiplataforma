@@ -5,7 +5,7 @@ val isVercel = System.getenv("VERCEL") != null
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary) apply !isVercel
+    alias(libs.plugins.androidLibrary) apply (System.getenv("VERCEL") == null)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sqldelight)
