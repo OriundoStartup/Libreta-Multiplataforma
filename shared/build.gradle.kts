@@ -1,17 +1,17 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
-val isVercel = System.getenv("VERCEL") == "1"
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary) apply !isVercel
+    alias(libs.plugins.androidLibrary) apply (System.getenv("VERCEL") == null)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.kotlinSerialization)
 }
+
+val isVercel = System.getenv("VERCEL") != null
 
 kotlin {
     if (!isVercel) {
