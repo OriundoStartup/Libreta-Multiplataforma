@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
+val isVercel = System.getenv("VERCEL") == "1"
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    if (System.getenv("VERCEL") == null) {
-        alias(libs.plugins.androidLibrary)
-    }
+    alias(libs.plugins.androidLibrary) apply !isVercel
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sqldelight)
@@ -14,17 +14,18 @@ plugins {
 }
 
 kotlin {
-    if (System.getenv("VERCEL") == null) {
+    if (!isVercel) {
         androidTarget {
             compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
         }
-    }
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
+        listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "Shared"
+                isStatic = true
+            }
         }
     }
+
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
         browser()
@@ -54,18 +55,28 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
         }
-        androidMain.dependencies {
-            implementation(libs.sqldelight.android)
-            implementation(libs.androidx.core.ktx)
-            implementation(libs.androidx.browser)
+
+        if (!isVercel) {
+            val androidMain by getting {
+                dependencies {
+                    implementation(libs.sqldelight.android)
+                    implementation(libs.androidx.core.ktx)
+                    implementation(libs.androidx.browser)
+                }
+            }
+            val iosMain by getting {
+                dependencies {
+                    implementation(libs.sqldelight.native)
+                }
+            }
         }
-        iosMain.dependencies {
-            implementation(libs.sqldelight.native)
-        }
-        wasmJsMain.dependencies {
-            implementation(libs.ktor.client.js)
-            implementation(libs.sqldriver.web)
-            implementation(libs.kotlinx.datetime)
+
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+                implementation(libs.sqldriver.web)
+                implementation(libs.kotlinx.datetime)
+            }
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -82,7 +93,7 @@ sqldelight {
     }
 }
 
-if (System.getenv("VERCEL") == null) {
+if (!isVercel) {
     extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
         namespace = "com.tuapp.libreta.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()

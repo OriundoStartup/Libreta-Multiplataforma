@@ -1,30 +1,28 @@
+val isVercel = System.getenv("VERCEL") == "1"
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    // Solo aplicar Android si no estamos en Vercel o si el SDK está presente
-    if (System.getenv("VERCEL") == null) {
-        alias(libs.plugins.androidApplication)
-    }
+    alias(libs.plugins.androidApplication) apply !isVercel
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
-    // Solo configurar target de Android si no estamos en Vercel
-    if (System.getenv("VERCEL") == null) {
+    if (!isVercel) {
         androidTarget {
             compilerOptions {
                 jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
             }
         }
-    }
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "ComposeApp"
+                isStatic = true
+            }
         }
     }
 
@@ -55,14 +53,20 @@ kotlin {
                 implementation(compose.runtime)
             }
         }
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.koin.android)
-            implementation(libs.supabase.auth)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.androidx.browser)
+
+        if (!isVercel) {
+            val androidMain by getting {
+                dependencies {
+                    implementation(libs.compose.uiToolingPreview)
+                    implementation(libs.androidx.activity.compose)
+                    implementation(libs.koin.android)
+                    implementation(libs.supabase.auth)
+                    implementation(libs.ktor.client.cio)
+                    implementation(libs.androidx.browser)
+                }
+            }
         }
+
         commonMain.dependencies {
             implementation(project(":shared"))
             implementation(libs.supabase.auth)
@@ -84,15 +88,7 @@ kotlin {
     }
 }
 
-// Solo configurar el bloque 'android' si no estamos en Vercel
-if (System.getenv("VERCEL") == null) {
-    configure<com.android.build.api.variant.ApplicationAndroidComponentsExtension> {
-        // Configuraciones adicionales si fueran necesarias
-    }
-}
-
-// Usamos un bloque dinámico para evitar errores de compilación del script si el plugin no está
-if (System.getenv("VERCEL") == null) {
+if (!isVercel) {
     extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension>("android") {
         namespace = "org.oriundo"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
