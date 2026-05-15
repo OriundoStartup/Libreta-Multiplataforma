@@ -1,11 +1,11 @@
+val isVercel = System.getenv("VERCEL") != null
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication) apply (System.getenv("VERCEL") == null)
+    alias(libs.plugins.androidApplication) apply !isVercel
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
-
-val isVercel = System.getenv("VERCEL") != null
 
 kotlin {
     if (!isVercel) {
@@ -86,8 +86,9 @@ kotlin {
     }
 }
 
+// Configuración segura de Android
 if (!isVercel) {
-    extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension>("android") {
+    configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
         namespace = "org.oriundo"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
 
