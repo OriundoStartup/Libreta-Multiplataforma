@@ -39,7 +39,7 @@ import org.koin.compose.koinInject
 @Composable
 fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
     val authService: SupabaseAuthService = koinInject()
-    val sessionStatus by authService.sessionStatusFlow.collectAsState(initial = SessionStatus.Loading)
+    val sessionStatus by authService.sessionStatusFlow.collectAsState(initial = SessionStatus.NotAuthenticated)
 
     val startScreen = remember { initialScreen ?: WebPathMapper.fromPath(getInitialPath()) }
 

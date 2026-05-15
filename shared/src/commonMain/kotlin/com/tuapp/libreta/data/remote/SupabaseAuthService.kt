@@ -54,7 +54,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         kotlinx.coroutines.flow.flow {
             when (status) {
                 is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> emit(SessionStatus.NotAuthenticated)
-                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.Loading)
+                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.NotAuthenticated) // CAMBIO: No emitir Loading al inicio para no bloquear UI
                 is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
                     val user = status.session.user
                     if (user != null) {
