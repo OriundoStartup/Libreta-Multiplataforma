@@ -79,11 +79,11 @@ kotlin {
 }
 
 android {
-    namespace = "org.orinundo"
+    namespace = "org.oriundo"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.orinundo"
+        applicationId = "org.oriundo"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

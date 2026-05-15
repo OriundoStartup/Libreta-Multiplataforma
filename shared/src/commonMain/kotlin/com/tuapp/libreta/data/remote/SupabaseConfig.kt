@@ -8,4 +8,6 @@ object SupabaseConfig {
     val URL          get() = BuildKonfig.SUPABASE_URL
     val ANON_KEY     get() = BuildKonfig.SUPABASE_KEY
     val REDIRECT_URL get() = BuildKonfig.SUPABASE_REDIRECT_URL
+    
+    const val ANDROID_REDIRECT_URL = "org.oriundo://login-callback"
 }

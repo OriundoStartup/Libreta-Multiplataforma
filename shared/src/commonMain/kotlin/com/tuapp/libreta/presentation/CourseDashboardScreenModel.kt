@@ -5,9 +5,9 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.repository.ClassRoomRepository
-import com.tuapp.libreta.domain.repository.JustificationRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
 import com.tuapp.libreta.domain.usecase.GetCourseAnalyticsUseCase
+import com.tuapp.libreta.domain.usecase.GetGlobalStatsUseCase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,9 +29,10 @@ sealed interface CourseDashboardUiState {
 
 class CourseDashboardScreenModel(
     private val classRoomRepo: ClassRoomRepository,
+    private val coursesRepo: com.tuapp.libreta.data.remote.CoursesRepository,
     private val studentRepo: StudentRepository,
     private val analyticsUseCase: GetCourseAnalyticsUseCase,
-    private val justificationRepo: JustificationRepository
+    private val globalStatsUseCase: GetGlobalStatsUseCase
 ) : ScreenModel {
 
     private val _state = MutableStateFlow<CourseDashboardUiState>(CourseDashboardUiState.Loading)
@@ -48,53 +49,53 @@ class CourseDashboardScreenModel(
         currentLoadingId = courseId
         
         screenModelScope.launch {
-            println("DEBUG Dashboard: Iniciando carga PARALELA para $courseId")
+            println("DEBUG Dashboard: Iniciando carga para $courseId")
             _state.value = CourseDashboardUiState.Loading
             
             try {
                 val classUuid = UuidString(courseId)
                 
-                // Lanzar todas las peticiones en paralelo
-                val courseJob = async { 
-                    withTimeoutOrNull(1500L) {
-                        classRoomRepo.getAll().firstOrNull()?.find { it.id == courseId }
-                    }
+                // 1. Obtener Metadatos del Curso (Preferir local, fallback a remoto)
+                val course = withTimeoutOrNull(3000L) {
+                    classRoomRepo.getAll().firstOrNull()?.find { it.id == courseId }
+                } ?: withTimeoutOrNull(5000L) {
+                    coursesRepo.getTeacherCourses().getOrNull()?.find { it.id == courseId }
                 }
-                
+
+                // 2. Cargar el resto en paralelo
                 val analyticsJob = async { 
-                    withTimeoutOrNull(4000L) { 
+                    withTimeoutOrNull(6000L) { 
                         analyticsUseCase(classUuid).firstOrNull() 
                     } 
                 }
                 
                 val studentsJob = async { 
-                    withTimeoutOrNull(2000L) { 
+                    withTimeoutOrNull(5000L) { 
                         studentRepo.getStudentsByClass(classUuid).firstOrNull() 
                     } 
                 }
 
-                // Esperar resultados
-                val course = courseJob.await()
                 val analytics = analyticsJob.await()
                 val students = studentsJob.await()
                 
-                // Solo cargar justificaciones si tenemos el profesor
-                val pendingJusts = if (course != null) {
-                    withTimeoutOrNull(2000L) {
-                        justificationRepo.getPendingByTeacher(UuidString(course.teacherId)).firstOrNull()
+                // 3. Justificaciones (usar ID del profesor del curso o el actual)
+                val teacherId = course?.teacherId ?: ""
+                val stats = if (teacherId.isNotEmpty()) {
+                    withTimeoutOrNull(4000L) {
+                        globalStatsUseCase(UuidString(teacherId)).firstOrNull()
                     }
                 } else null
 
-                println("DEBUG Dashboard: Carga terminada. Curso encontrado: ${course != null}")
+                println("DEBUG Dashboard: Carga completada. Alumnos: ${students?.size ?: 0}")
                 _state.value = CourseDashboardUiState.Success(
                     course = course,
                     studentCount = students?.size ?: 0,
                     attendanceRate = analytics?.overallAttendancePercent ?: 0f,
-                    pendingJustificationsCount = pendingJusts?.size ?: 0
+                    pendingJustificationsCount = stats?.pendingJustificationsCount ?: 0
                 )
             } catch (e: Exception) {
-                println("DEBUG Dashboard: ERROR - ${e.message}")
-                _state.value = CourseDashboardUiState.Error("Error: ${e.message}")
+                println("DEBUG Dashboard: ERROR CRÍTICO - ${e.message}")
+                _state.value = CourseDashboardUiState.Error("No se pudo cargar la información: ${e.message}")
             } finally {
                 currentLoadingId = null
             }

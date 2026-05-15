@@ -1,4 +1,4 @@
-package org.orinundo
+package org.oriundo
 
 class Greeting {
     private val platform = getPlatform()

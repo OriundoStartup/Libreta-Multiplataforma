@@ -8,7 +8,7 @@ import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.domain.repository.CourseAssignmentRepository
 import com.tuapp.libreta.data.util.UuidString
-import com.tuapp.libreta.domain.repository.JustificationRepository
+import com.tuapp.libreta.domain.usecase.GetGlobalStatsUseCase
 import com.tuapp.libreta.domain.usecase.GetInboxUseCase
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.user.UserInfo
@@ -35,7 +35,7 @@ class TeacherDashboardScreenModel(
     private val authService: SupabaseAuthService,
     private val coursesRepo: CoursesRepository,
     private val assignmentRepo: CourseAssignmentRepository,
-    private val justificationRepo: JustificationRepository,
+    private val globalStatsUseCase: GetGlobalStatsUseCase,
     private val getInbox: GetInboxUseCase,
     private val dataSeeder: DataSeeder,
     private val supabase: SupabaseClient
@@ -77,14 +77,14 @@ class TeacherDashboardScreenModel(
                 pendingJustificationsCount = 0
             )
 
-            // 3. Cargar conteo de justificaciones de forma asíncrona
+            // 3. Cargar estadísticas globales (Justificaciones)
             launch {
                 try {
-                    justificationRepo.getPendingByTeacher(UuidString(user.id))
-                        .collect { pendingJusts ->
+                    globalStatsUseCase(UuidString(user.id))
+                        .collect { stats ->
                             val current = _state.value
                             if (current is TeacherDashboardUiState.Success) {
-                                _state.value = current.copy(pendingJustificationsCount = pendingJusts.size)
+                                _state.value = current.copy(pendingJustificationsCount = stats.pendingJustificationsCount)
                             }
                         }
                 } catch (e: Exception) { /* Fallo silencioso */ }

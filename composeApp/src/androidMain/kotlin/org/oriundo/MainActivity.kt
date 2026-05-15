@@ -1,4 +1,4 @@
-package org.orinundo
+package org.oriundo
 
 import android.content.Intent
 import android.os.Bundle

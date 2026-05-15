@@ -44,10 +44,17 @@ class RoleSelectionScreenModel(
             val user = authService.currentUser() ?: return@launch
             val uid = UuidString(user.id)
             val role = authService.getUserRole(user.id)
+            
+            if (role != null) {
+                // Si ya tiene un rol, saltamos directamente al dashboard correspondiente
+                _state.value = RoleSelectionUiState.Success(role, uid)
+                return@launch
+            }
+
             val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
             
             _state.value = RoleSelectionUiState.ProfileStatus(
-                hasParentRole = role == UserRole.PARENT,
+                hasParentRole = false, // Sabemos que es null por el check de arriba
                 hasStudents = students.isNotEmpty(),
                 userEmail = user.email ?: ""
             )
@@ -67,12 +74,7 @@ class RoleSelectionScreenModel(
                 withTimeout(10_000) {
                     when (role) {
                         UserRole.TEACHER -> {
-                            // VALIDACIÓN: ¿Tiene cursos creados?
-                            val teacherCourses = coursesRepository.getTeacherCourses().getOrNull() ?: emptyList()
-                            if (teacherCourses.isEmpty()) {
-                                // Si no tiene cursos, no lo dejamos entrar como profesor por error
-                                throw Exception("No tienes un perfil de profesor configurado. Por favor, entra como Apoderado o contacta a soporte.")
-                            }
+                            // Eliminamos el bloqueo: un profesor nuevo debe poder entrar para crear su primer curso.
                             authService.updateRole(role)
                         }
                         UserRole.PARENT -> {

@@ -25,7 +25,7 @@ actual val platformModule = module {
             install(Postgrest)
             install(Auth) {
                 flowType                  = FlowType.PKCE
-                scheme                    = "org.orinundo"
+                scheme                    = "org.oriundo"
                 host                      = "login-callback"
                 defaultExternalAuthAction = ExternalAuthAction.ExternalBrowser
             }

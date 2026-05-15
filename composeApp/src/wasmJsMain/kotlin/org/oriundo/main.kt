@@ -1,4 +1,4 @@
-package org.orinundo
+package org.oriundo
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport

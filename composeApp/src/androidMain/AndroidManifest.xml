@@ -24,12 +24,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- OAuth deep link: org.orinundo://login-callback -->
+            <!-- OAuth deep link: org.oriundo://login-callback -->
             <intent-filter android:label="filter_login_supabase">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="org.orinundo" android:host="login-callback" />
+                <data android:scheme="org.oriundo" android:host="login-callback" />
             </intent-filter>
 
         </activity>

@@ -1,4 +1,4 @@
-package org.orinundo
+package org.oriundo
 
 class WasmPlatform: Platform {
     override val name: String = "Web with Kotlin/Wasm"

@@ -1,4 +1,4 @@
-package org.orinundo
+package org.oriundo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -95,7 +95,13 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                                 return@LaunchedEffect
                                             }
 
-                                            // CASO 2: Usuario ya tiene rol y está intentando entrar a una zona prohibida
+                                            // CASO 2: Usuario ya tiene rol y está en RoleSelectionScreen (Auto-redirect)
+                                            if (role != null && currentScreen is RoleSelectionScreen) {
+                                                navigator.replaceAll(AppNavigation.initialScreen(role, userId))
+                                                return@LaunchedEffect
+                                            }
+
+                                            // CASO 3: Usuario ya tiene rol y está intentando entrar a una zona prohibida
                                             if (role != null) {
                                                 val isForbidden = when(role) {
                                                     com.tuapp.libreta.domain.model.UserRole.TEACHER -> currentScreen is ParentDashboardScreen

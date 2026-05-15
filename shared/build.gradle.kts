@@ -86,6 +86,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    lint {
+        disable += "FrequentlyChangingValue"
+    }
 }
 
 // ── BuildKonfig — lee de variables de entorno (CI) o local.properties (Local) ─

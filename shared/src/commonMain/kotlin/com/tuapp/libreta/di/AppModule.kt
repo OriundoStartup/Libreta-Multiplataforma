@@ -71,6 +71,7 @@ val appModule = module {
     factory { ClaimInvitationCodeUseCase(get()) }
     factory { GetTeacherInvitationsUseCase(get()) }
     factory { GetConsolidatedReportUseCase(get(), get()) }
+    factory { GetGlobalStatsUseCase(get()) }
     factory { GetStudentGradesUseCase(get()) }
     factory { SaveGradeUseCase(get()) }
     factory { DeleteGradeUseCase(get()) }
@@ -98,7 +99,7 @@ val appModule = module {
         StudentDetailScreenModel(get(), get(), get(), get(), get(), params.get(), params.get(), params.get(), params.get()) 
     }
     factory { EnrollmentScreenModel(get()) }
-    factory { CourseDashboardScreenModel(get(), get(), get(), get()) }
+    factory { CourseDashboardScreenModel(get(), get(), get(), get(), get()) }
     factory { CourseEditScreenModel(get()) }
     factory { ReportScreenModel(get()) }
 }

@@ -13,7 +13,7 @@
 
 # Paquetes propios de la app
 -keep class com.tuapp.libreta.** { *; }
--keep class org.orinundo.** { *; }
+-keep class org.oriundo.** { *; }
 
 # SQLDelight — generadores de queries
 -keep class app.cash.sqldelight.** { *; }

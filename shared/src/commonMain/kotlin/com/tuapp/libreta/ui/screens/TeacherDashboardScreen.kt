@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,20 +13,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -79,11 +76,14 @@ import com.tuapp.libreta.domain.model.Course
 import com.tuapp.libreta.navigation.AppNavigation
 import com.tuapp.libreta.presentation.TeacherDashboardScreenModel
 import com.tuapp.libreta.presentation.TeacherDashboardUiState
+import com.tuapp.libreta.ui.components.AdaptiveGrid
 import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.ui.components.AppEntityHeader
 import com.tuapp.libreta.ui.components.EmptyStateView
 import com.tuapp.libreta.ui.components.FullScreenError
 import com.tuapp.libreta.ui.components.FullScreenLoading
 import com.tuapp.libreta.ui.components.StatusCard
+import com.tuapp.libreta.ui.theme.StatusTheme
 import com.tuapp.libreta.ui.util.LocalWindowSize
 import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
@@ -102,7 +102,7 @@ object TeacherDashboardScreen : Screen {
         val scope = rememberCoroutineScope()
         var showCreateDialog by remember { mutableStateOf(false) }
         var showJoinDialog by remember { mutableStateOf(false) }
-        
+
         // REFRESCAR AL VOLVER A LA PANTALLA
         LaunchedEffect(Unit) { model.load() }
 
@@ -134,438 +134,445 @@ object TeacherDashboardScreen : Screen {
                         )
                     )
                 },
-            floatingActionButton = {
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ExtendedFloatingActionButton(
-                        onClick = { navigator.push(AppNavigation.messages()) },
-                        icon    = { Icon(Icons.Default.Email, null) },
-                        text    = { Text("Ver Mensajes") },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    ExtendedFloatingActionButton(
-                        onClick = { showJoinDialog = true },
-                        icon    = { Icon(Icons.Default.Person, null) },
-                        text    = { Text("Colaborar en Curso") },
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    ExtendedFloatingActionButton(
-                        onClick = { showCreateDialog = true },
-                        icon    = { Icon(Icons.Default.Add, null) },
-                        text    = { Text("Nuevo Curso") }
-                    )
-                }
-            }
-        ) { padding ->
-            when (val s = state) {
-                is TeacherDashboardUiState.Loading -> FullScreenLoading(padding)
-                is TeacherDashboardUiState.Error -> FullScreenError(s.message, padding) { model.load() }
-
-                is TeacherDashboardUiState.Success -> {
-                    val windowSize = LocalWindowSize.current
-                    val columns = when (windowSize.widthSizeClass) {
-                        WindowSizeClass.COMPACT -> 1
-                        WindowSizeClass.MEDIUM -> 2
-                        WindowSizeClass.EXPANDED -> 2 // O incluso 3 si el max-width lo permite
-                    }
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        modifier       = Modifier.fillMaxSize().padding(padding),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                floatingActionButton = {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        item(span = { GridItemSpan(columns) }) { ProfileHeader(name = s.profile.name) }
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navigator.push(AppNavigation.messages())
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Email, null) },
+                            text = { Text("Ver Mensajes") },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = { showJoinDialog = true },
+                            icon = { Icon(Icons.Default.Person, null) },
+                            text = { Text("Colaborar en Curso") },
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = { showCreateDialog = true },
+                            icon = { Icon(Icons.Default.Add, null) },
+                            text = { Text("Nuevo Curso") }
+                        )
+                    }
+                }
+            ) { padding ->
+                when (val s = state) {
+                    is TeacherDashboardUiState.Loading -> FullScreenLoading(padding)
+                    is TeacherDashboardUiState.Error -> FullScreenError(
+                        s.message,
+                        padding
+                    ) { model.load() }
 
-                        item(span = { GridItemSpan(columns) }) {
+                    is TeacherDashboardUiState.Success -> {
+                        val windowSize = LocalWindowSize.current
+                        val columns = when (windowSize.widthSizeClass) {
+                            WindowSizeClass.COMPACT -> 1
+                            else -> 2
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            AppEntityHeader(
+                                title = s.profile.name,
+                                subtitle = "Profesor",
+                                initial = s.profile.name.firstOrNull() ?: 'P'
+                            )
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // TARJETA DE TRÁMITES (ESTILO APODERADO - AMARILLO)
                                 StatusCard(
                                     icon = Icons.Default.Done,
                                     value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
                                     label = "Trámites",
                                     containerColor = if (s.pendingJustificationsCount > 0)
-                                        androidx.compose.ui.graphics.Color(0xFFFFF8E1) // Amarillo suave (Parent)
-                                        else androidx.compose.ui.graphics.Color(0xFFFFF8E1).copy(alpha = 0.5f),
-                                    contentColor = androidx.compose.ui.graphics.Color(0xFFF57F17), // Naranja oscuro (Parent)
+                                        StatusTheme.warningBackground
+                                    else StatusTheme.warningBackground.copy(alpha = 0.5f),
+                                    contentColor = StatusTheme.warningContent,
                                     modifier = Modifier.weight(1f).clickable {
-                                        navigator.push(AppNavigation.globalJustificationReview())
+                                        scope.launch {
+                                            drawerState.close()
+                                            navigator.push(AppNavigation.globalJustificationReview())
+                                        }
                                     }
                                 )
 
-                                // TARJETA DE MENSAJES (ESTILO APODERADO - AZUL)
                                 StatusCard(
                                     icon = Icons.Default.Email,
                                     value = if (s.unreadMessagesCount > 0) "${s.unreadMessagesCount}" else "Al día",
                                     label = if (s.unreadMessagesCount > 0) "Mensajes Nuevos" else "Mensajes",
                                     containerColor = if (s.unreadMessagesCount > 0)
-                                        androidx.compose.ui.graphics.Color(0xFFE3F2FD) // Azul suave (Parent)
-                                        else androidx.compose.ui.graphics.Color(0xFFE3F2FD).copy(alpha = 0.5f),
-                                    contentColor = androidx.compose.ui.graphics.Color(0xFF1565C0), // Azul oscuro (Parent)
+                                        StatusTheme.infoBackground
+                                    else StatusTheme.infoBackground.copy(alpha = 0.5f),
+                                    contentColor = StatusTheme.infoContent,
                                     modifier = Modifier.weight(1f).clickable {
-                                        navigator.push(AppNavigation.messages())
+                                        scope.launch {
+                                            drawerState.close()
+                                            navigator.push(AppNavigation.messages())
+                                        }
                                     }
                                 )
 
-                                // TARJETA DE CURSOS (ESTILO APODERADO - PÚRPURA)
                                 if (columns > 1) {
                                     StatusCard(
                                         icon = Icons.Default.Person,
                                         value = "${s.courses.size}",
                                         label = "Mis Cursos",
-                                        containerColor = androidx.compose.ui.graphics.Color(0xFFF3E5F5), // Púrpura suave (Parent)
-                                        contentColor = androidx.compose.ui.graphics.Color(0xFF7B1FA2), // Púrpura oscuro (Parent)
+                                        containerColor = StatusTheme.purpleBackground,
+                                        contentColor = StatusTheme.purpleContent,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
                             }
-                        }
 
-                        item(span = { GridItemSpan(columns) }) {
                             Text(
-                                text  = "Mis Cursos (${s.courses.size})",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                text = "Mis Cursos (${s.courses.size})",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 modifier = Modifier.padding(top = 8.dp)
                             )
-                        }
 
-                        if (s.courses.isEmpty()) {
-                            item(span = { GridItemSpan(columns) }) {
+                            if (s.courses.isEmpty()) {
                                 EmptyStateView(
                                     icon = Icons.Default.Person,
                                     title = "Aún no tienes cursos",
                                     description = "Toca + para crear tu primer curso"
                                 )
-                            }
-                        } else {
-                            val grouped = s.courses.groupBy { it.schoolName ?: "Institución General" }
-                            grouped.forEach { (school, courses) ->
-                                item(span = { GridItemSpan(columns) }) {
+                            } else {
+                                val grouped =
+                                    s.courses.groupBy { it.schoolName ?: "Institución General" }
+                                grouped.forEach { (school, schoolCourses) ->
                                     Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(
+                                            alpha = 0.5f
+                                        ),
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.padding(top = 8.dp)
                                     ) {
                                         Text(
                                             text = school.uppercase(),
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 4.dp
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold
+                                            ),
                                             color = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
                                     }
-                                }
 
-                                items(courses, key = { it.id }) { course ->
-                                    CourseCard(
-                                        course         = course,
-                                        onClick        = {
-                                            navigator.push(
-                                                AppNavigation.courseDashboard(courseId = course.id, courseName = course.name)
-                                            )
-                                        },
-                                        onGenerateCode = { model.generateInviteCodeForCourse(course) },
-                                        onTakeAttendance = {
-                                            navigator.push(
-                                                AppNavigation.attendance(courseId = course.id, courseName = course.name)
-                                            )
-                                        },
-                                        onEdit = {
-                                            navigator.push(
-                                                AppNavigation.courseEdit(courseId = course.id, courseName = course.name, course = course)
-                                            )
-                                        },
-                                        onSendMessage = {
-                                            navigator.push(
-                                                AppNavigation.composeNotice(classId = course.id, className = course.name)
-                                            )
-                                        },
-                                        onInviteColleague = { model.generateColleagueInvite(course) },
-                                        onShowReport = {
-                                            navigator.push(
-                                                AppNavigation.attendanceReport(courseId = course.id, courseName = course.name)
-                                            )
-                                        },
-                                        onShowStats = {
-                                            navigator.push(
-                                                AppNavigation.courseStats(classId = course.id, className = course.name)
-                                            )
-                                        }
-                                    )
+                                    AdaptiveGrid(
+                                        items = schoolCourses,
+                                        columns = columns
+                                    ) { course ->
+                                        CourseCard(
+                                            course = course,
+                                            onClick = {
+                                                navigator.push(
+                                                    AppNavigation.courseDashboard(
+                                                        courseId = course.id,
+                                                        courseName = course.name
+                                                    )
+                                                )
+                                            },
+                                            onGenerateCode = {
+                                                model.generateInviteCodeForCourse(
+                                                    course
+                                                )
+                                            },
+                                            onTakeAttendance = {
+                                                navigator.push(
+                                                    AppNavigation.attendance(
+                                                        courseId = course.id,
+                                                        courseName = course.name
+                                                    )
+                                                )
+                                            },
+                                            onEdit = {
+                                                navigator.push(
+                                                    AppNavigation.courseEdit(
+                                                        courseId = course.id,
+                                                        courseName = course.name,
+                                                        course = course
+                                                    )
+                                                )
+                                            },
+                                            onSendMessage = {
+                                                navigator.push(
+                                                    AppNavigation.composeNotice(
+                                                        classId = course.id,
+                                                        className = course.name
+                                                    )
+                                                )
+                                            },
+                                            onInviteColleague = {
+                                                model.generateColleagueInvite(
+                                                    course
+                                                )
+                                            },
+                                            onShowReport = {
+                                                navigator.push(
+                                                    AppNavigation.attendanceReport(
+                                                        courseId = course.id,
+                                                        courseName = course.name
+                                                    )
+                                                )
+                                            },
+                                            onShowStats = {
+                                                navigator.push(
+                                                    AppNavigation.courseStats(
+                                                        classId = course.id,
+                                                        className = course.name
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                             }
+                            Spacer(Modifier.height(80.dp))
                         }
-                        item(span = { GridItemSpan(columns) }) { Spacer(Modifier.height(80.dp)) }
                     }
                 }
             }
+
+            if (showCreateDialog) {
+                CreateCourseDialog(
+                    onDismiss = { showCreateDialog = false },
+                    onCreate = { name, grade, school ->
+                        model.createCourse(name, grade, school)
+                        showCreateDialog = false
+                    }
+                )
+            }
+
+            if (showJoinDialog) {
+                JoinCourseDialog(
+                    onDismiss = { showJoinDialog = false },
+                    onJoin = { code ->
+                        model.joinCourse(code)
+                        showJoinDialog = false
+                    }
+                )
+            }
+
+            generatedCode?.let { code ->
+                InviteCodeDialog(
+                    title = "Código para Apoderados",
+                    code = code,
+                    onDismiss = { model.clearGeneratedCode() }
+                )
+            }
+
+            colleagueCode?.let { code ->
+                InviteCodeDialog(
+                    title = "Código para Colega",
+                    description = "Comparte este código con otro profesor para que pueda gestionar este curso contigo:",
+                    code = code,
+                    onDismiss = { model.clearGeneratedCode() }
+                )
             }
         }
-
-        if (showCreateDialog) {
-            CreateCourseDialog(
-                onDismiss = { },
-                onCreate  = { name, grade, school ->
-                    model.createCourse(name, grade, school)
-                }
-            )
-        }
-
-        if (showJoinDialog) {
-            JoinCourseDialog(
-                onDismiss = { },
-                onJoin = { code ->
-                    model.joinCourse(code)
-                }
-            )
-        }
-
-        generatedCode?.let { code ->
-            InviteCodeDialog(
-                title = "Código para Apoderados",
-                code = code, 
-                onDismiss = { model.clearGeneratedCode() }
-            )
-        }
-
-        colleagueCode?.let { code ->
-            InviteCodeDialog(
-                title = "Código para Colega",
-                description = "Comparte este código con otro profesor para que pueda gestionar este curso contigo:",
-                code = code, 
-                onDismiss = { model.clearGeneratedCode() }
-            )
-        }
     }
-}
 
-@Composable
-private fun ProfileHeader(name: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    @Composable
+    private fun CourseCard(
+        course: Course,
+        onClick: () -> Unit,
+        onGenerateCode: () -> Unit,
+        onTakeAttendance: () -> Unit,
+        onEdit: () -> Unit,
+        onSendMessage: () -> Unit,
+        onInviteColleague: () -> Unit,
+        onShowReport: () -> Unit,
+        onShowStats: () -> Unit
     ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Card(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text  = name.firstOrNull()?.uppercaseChar()?.toString() ?: "P",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    shape  = RoundedCornerShape(8.dp),
-                    color  = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            Column(Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text("Profesor",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold)
+                    Box(
+                        modifier = Modifier.size(56.dp).clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = course.name.firstOrNull()?.uppercaseChar()?.toString() ?: "C",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            course.name,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+
+                        LinearProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp).height(6.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+
+                        Text(
+                            text = "${course.grade ?: "Nivel N/A"} • ${course.schoolName ?: "Institución"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onTakeAttendance,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.HowToReg, contentDescription = "Pasar Asistencia")
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = onSendMessage) {
+                            Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onShowReport) {
+                            Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onShowStats) {
+                            Icon(Icons.Default.Done, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onInviteColleague) {
+                            Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onGenerateCode) {
+                            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
+                    }
+
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
     }
-}
 
-@Composable
-private fun CourseCard(
-    course: Course,
-    onClick: () -> Unit,
-    onGenerateCode: () -> Unit,
-    onTakeAttendance: () -> Unit,
-    onEdit: () -> Unit,
-    onSendMessage: () -> Unit,
-    onInviteColleague: () -> Unit,
-    onShowReport: () -> Unit,
-    onShowStats: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Avatar circular (Igual al de apoderado)
-                Box(
-                    modifier         = Modifier.size(56.dp).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text  = course.name.firstOrNull()?.uppercaseChar()?.toString() ?: "C",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+    @Composable
+    private fun JoinCourseDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
+        var code by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Colaborar en Curso", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Ingresa el código compartido por tu colega para colaborar gestionando su curso.", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it.uppercase() },
+                        label = { Text("Código de Colaboración") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                 }
-
-                // Info del Curso
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(course.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    
-                    // Barra de progreso estética (Igual al de apoderado)
-                    LinearProgressIndicator(
-                        progress       = { 1f }, // Representa curso activo
-                        modifier       = Modifier.fillMaxWidth().padding(top = 6.dp).height(6.dp).clip(RoundedCornerShape(4.dp)),
-                        color          = MaterialTheme.colorScheme.primary,
-                        trackColor     = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                    
-                    Text(
-                        text = "${course.grade ?: "Nivel N/A"} • ${course.schoolName ?: "Institución"}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-
-                // Acción rápida de Asistencia (Botón destacado)
-                IconButton(
-                    onClick = onTakeAttendance,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.HowToReg, contentDescription = "Pasar Asistencia")
-                }
+            },
+            confirmButton = {
+                Button(onClick = { if (code.isNotBlank()) onJoin(code) }, enabled = code.isNotBlank()) { Text("Unirse") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
             }
-
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            
-            // Fila de acciones secundarias
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onSendMessage) {
-                        Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onShowReport) {
-                        Icon(Icons.Default.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onShowStats) {
-                        Icon(Icons.Default.Done, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onInviteColleague) {
-                        Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onGenerateCode) {
-                        Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                }
-
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
-                }
-            }
-        }
+        )
     }
-}
 
-@Composable
-private fun JoinCourseDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
-    var code by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Colaborar en Curso", fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                Text("Ingresa el código compartido por tu colega para colaborar gestionando su curso.", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it.uppercase() },
-                    label = { Text("Código de Colaboración") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { if (code.isNotBlank()) onJoin(code) }, enabled = code.isNotBlank()) { Text("Unirse") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        }
-    )
-}
-
-@Composable
-private fun InviteCodeDialog(title: String = "Código", description: String? = null, code: String, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
-        text  = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text(description ?: "Comparte este código con los apoderados:", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(20.dp))
-                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Text(text = code, style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
-                }
-                Spacer(Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { com.tuapp.libreta.data.util.ClipboardHelper.copyToClipboard(code) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
-                        Icon(Icons.Default.Create, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Copiar")
+    @Composable
+    private fun InviteCodeDialog(title: String = "Código", description: String? = null, code: String, onDismiss: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(title, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text(description ?: "Comparte este código con los apoderados:", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(20.dp))
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Text(text = code, style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
                     }
-                    Button(onClick = { com.tuapp.libreta.data.util.ShareHelper.shareText("¡Hola! Únete a mi curso en LibretApp usando el código: $code") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
-                        Icon(Icons.Default.Share, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Compartir")
+                    Spacer(Modifier.height(24.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { com.tuapp.libreta.data.util.ClipboardHelper.copyToClipboard(code) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
+                            Icon(Icons.Default.Create, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Copiar")
+                        }
+                        Button(onClick = { com.tuapp.libreta.data.util.ShareHelper.shareText("¡Hola! Únete a mi curso en LibretApp usando el código: $code") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
+                            Icon(Icons.Default.Share, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Compartir")
+                        }
                     }
                 }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Entendido") } }
-    )
-}
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Entendido") } }
+        )
+    }
 
-@Composable
-private fun CreateCourseDialog(onDismiss: () -> Unit, onCreate: (name: String, grade: String, school: String) -> Unit) {
-    var schoolName by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var grade by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Nuevo Curso", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = schoolName, onValueChange = { schoolName = it }, label = { Text("Nombre del Colegio") }, placeholder = { Text("Ej: Colegio San Patricio") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = grade, onValueChange = { grade = it }, label = { Text("Nivel (ej: 4° Básico)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Letra / Nombre (ej: A)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            }
-        },
-        confirmButton = {
-            Button(onClick = { if (schoolName.isNotBlank() && grade.isNotBlank()) onCreate(name, grade, schoolName) }, enabled = schoolName.isNotBlank() && grade.isNotBlank()) { Text("Crear") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
-    )
+    @Composable
+    private fun CreateCourseDialog(onDismiss: () -> Unit, onCreate: (name: String, grade: String, school: String) -> Unit) {
+        var schoolName by remember { mutableStateOf("") }
+        var name by remember { mutableStateOf("") }
+        var grade by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Nuevo Curso", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = schoolName, onValueChange = { schoolName = it }, label = { Text("Nombre del Colegio") }, placeholder = { Text("Ej: Colegio San Patricio") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = grade, onValueChange = { grade = it }, label = { Text("Nivel (ej: 4° Básico)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Letra / Nombre (ej: A)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                Button(onClick = { if (schoolName.isNotBlank() && grade.isNotBlank()) onCreate(name, grade, schoolName) }, enabled = schoolName.isNotBlank() && grade.isNotBlank()) { Text("Crear") }
+            },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        )
+    }
 }

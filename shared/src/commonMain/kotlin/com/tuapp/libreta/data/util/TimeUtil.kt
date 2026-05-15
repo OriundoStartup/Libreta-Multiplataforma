@@ -1,13 +1,16 @@
 package com.tuapp.libreta.data.util
 
-import kotlinx.datetime.Instant
-
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlin.time.TimeSource
 
-expect fun currentEpochMs(): Long
-expect fun monotonicTimeMs(): Long
+private val startMark = TimeSource.Monotonic.markNow()
+
+fun currentEpochMs(): Long = Clock.System.now().toEpochMilliseconds()
+fun monotonicTimeMs(): Long = startMark.elapsedNow().inWholeMilliseconds
 
 /** Converts epoch milliseconds to an ISO-8601 string that Supabase TIMESTAMPTZ accepts. */
 fun epochMsToIso(ms: Long): String = Instant.fromEpochMilliseconds(ms).toString()
@@ -21,7 +24,7 @@ fun formatIsoToTime(iso: String?): String {
         val instant = Instant.parse(normalized)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
         "${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}"
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         ""
     }
 }
@@ -30,8 +33,8 @@ fun formatEpochToDate(ms: Long): String {
     return try {
         val instant = Instant.fromEpochMilliseconds(ms)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-        "${localDateTime.dayOfMonth.toString().padStart(2, '0')}/${localDateTime.monthNumber.toString().padStart(2, '0')}/${localDateTime.year}"
-    } catch (e: Exception) {
+        "${localDateTime.day.toString().padStart(2, '0')}/${localDateTime.month.number.toString().padStart(2, '0')}/${localDateTime.year}"
+    } catch (_: Exception) {
         "Fecha inválida"
     }
 }
