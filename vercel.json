@@ -1,6 +1,8 @@
 {
-  "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon --no-configuration-cache --stacktrace",
-  "outputDirectory": "composeApp/build/distributions",
+  "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon --no-configuration-cache --warning-mode none",
+  "outputDirectory": "composeApp/build/dist/wasmJs/productionExecutable",
+  "installCommand": "node --version && java -version",
+  "framework": null,
   "headers": [
     {
       "source": "/(.*)",
@@ -45,6 +47,10 @@
     {
       "source": "/auth/callback",
       "destination": "/auth-callback.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

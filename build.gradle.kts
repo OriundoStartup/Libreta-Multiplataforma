@@ -10,6 +10,11 @@ plugins {
 }
 
 allprojects {
+    plugins.withType<org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper> {
+        extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension> {
+            jvmToolchain(17)
+        }
+    }
     configurations.all {
         resolutionStrategy {
             force("androidx.browser:browser:1.8.0")
