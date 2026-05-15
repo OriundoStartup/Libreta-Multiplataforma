@@ -56,28 +56,29 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
 
-        if (!isVercel) {
-            val androidMain by getting {
-                dependencies {
-                    implementation(libs.sqldelight.android)
-                    implementation(libs.androidx.core.ktx)
-                    implementation(libs.androidx.browser)
-                }
-            }
-            val iosMain by getting {
-                dependencies {
-                    implementation(libs.sqldelight.native)
-                }
+        // Configuración segura de sourceSets de plataforma
+        findByName("androidMain")?.apply {
+            dependencies {
+                implementation(libs.sqldelight.android)
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.androidx.browser)
             }
         }
 
-        val wasmJsMain by getting {
+        findByName("iosMain")?.apply {
+            dependencies {
+                implementation(libs.sqldelight.native)
+            }
+        }
+
+        findByName("wasmJsMain")?.apply {
             dependencies {
                 implementation(libs.ktor.client.js)
                 implementation(libs.sqldriver.web)
                 implementation(libs.kotlinx.datetime)
             }
         }
+
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)

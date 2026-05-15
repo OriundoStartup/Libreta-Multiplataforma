@@ -42,7 +42,7 @@ kotlin {
     }
 
     sourceSets {
-        val wasmJsMain by getting {
+        findByName("wasmJsMain")?.apply {
             dependencies {
                 implementation(libs.ktor.client.js)
                 implementation(libs.supabase.auth)
@@ -54,16 +54,14 @@ kotlin {
             }
         }
 
-        if (!isVercel) {
-            val androidMain by getting {
-                dependencies {
-                    implementation(libs.compose.uiToolingPreview)
-                    implementation(libs.androidx.activity.compose)
-                    implementation(libs.koin.android)
-                    implementation(libs.supabase.auth)
-                    implementation(libs.ktor.client.cio)
-                    implementation(libs.androidx.browser)
-                }
+        findByName("androidMain")?.apply {
+            dependencies {
+                implementation(libs.compose.uiToolingPreview)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.koin.android)
+                implementation(libs.supabase.auth)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.androidx.browser)
             }
         }
 
