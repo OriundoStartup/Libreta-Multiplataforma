@@ -1,14 +1,20 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
+    // Solo aplicar Android si no estamos en Vercel o si el SDK está presente
+    if (System.getenv("VERCEL") == null) {
+        alias(libs.plugins.androidApplication)
+    }
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    // Solo configurar target de Android si no estamos en Vercel
+    if (System.getenv("VERCEL") == null) {
+        androidTarget {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            }
         }
     }
 
@@ -78,35 +84,45 @@ kotlin {
     }
 }
 
-android {
-    namespace = "org.oriundo"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+// Solo configurar el bloque 'android' si no estamos en Vercel
+if (System.getenv("VERCEL") == null) {
+    configure<com.android.build.api.variant.ApplicationAndroidComponentsExtension> {
+        // Configuraciones adicionales si fueran necesarias
+    }
+}
 
-    defaultConfig {
-        applicationId = "org.oriundo"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+// Usamos un bloque dinámico para evitar errores de compilación del script si el plugin no está
+if (System.getenv("VERCEL") == null) {
+    extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension>("android") {
+        namespace = "org.oriundo"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+        defaultConfig {
+            applicationId = "org.oriundo"
+            minSdk = libs.versions.android.minSdk.get().toInt()
+            targetSdk = libs.versions.android.targetSdk.get().toInt()
+            versionCode = 1
+            versionName = "1.0"
         }
-    }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+        packaging {
+            resources {
+                excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            }
         }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        buildTypes {
+            getByName("release") {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            }
+        }
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+        }
     }
 }
 

@@ -3,7 +3,9 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    if (System.getenv("VERCEL") == null) {
+        alias(libs.plugins.androidLibrary)
+    }
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sqldelight)
@@ -12,8 +14,10 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
+    if (System.getenv("VERCEL") == null) {
+        androidTarget {
+            compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
+        }
     }
     listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
@@ -78,16 +82,18 @@ sqldelight {
     }
 }
 
-android {
-    namespace = "com.tuapp.libreta.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    defaultConfig { minSdk = libs.versions.android.minSdk.get().toInt() }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    lint {
-        disable += "FrequentlyChangingValue"
+if (System.getenv("VERCEL") == null) {
+    extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+        namespace = "com.tuapp.libreta.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        defaultConfig { minSdk = libs.versions.android.minSdk.get().toInt() }
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+        }
+        lint {
+            disable += "FrequentlyChangingValue"
+        }
     }
 }
 
