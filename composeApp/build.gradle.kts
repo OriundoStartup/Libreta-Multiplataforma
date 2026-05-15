@@ -122,8 +122,10 @@ if (!isVercel) {
     }
 }
 
-dependencies {
-    debugImplementation(libs.compose.uiTooling)
+plugins.withId("com.android.application") {
+    dependencies {
+        add("debugImplementation", libs.compose.uiTooling)
+    }
 }
 
 val wasmJsCopyWorker = tasks.register<Copy>("wasmJsCopyWorker") {
