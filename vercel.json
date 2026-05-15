@@ -1,7 +1,7 @@
 {
-  "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon --no-configuration-cache --warning-mode none",
+  "buildCommand": "chmod +x gradlew && ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon --no-configuration-cache --warning-mode none --info",
   "outputDirectory": "composeApp/build/dist/wasmJs/productionExecutable",
-  "installCommand": "node --version && java -version",
+  "installCommand": "java -version && echo 'Java OK'",
   "framework": null,
   "headers": [
     {

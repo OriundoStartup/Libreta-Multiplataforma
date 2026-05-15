@@ -14,7 +14,7 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(11)
     if (!isVercel) {
         androidTarget {
             compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
