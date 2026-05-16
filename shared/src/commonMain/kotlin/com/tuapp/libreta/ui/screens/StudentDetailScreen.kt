@@ -185,9 +185,9 @@ data class StudentDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 QuickActionCard(
-                                    icon = Icons.Default.Edit,
-                                    label = "Justificación",
-                                    onClick = { navigator.push(AppNavigation.justificationForm(parentId = s.parentId, studentId = s.studentId)) },
+                                    icon = Icons.Default.Refresh,
+                                    label = "Ver Trámites",
+                                    onClick = { navigator.push(AppNavigation.justificationList(s.studentId)) },
                                     modifier = Modifier.weight(1f)
                                 )
                                 QuickActionCard(

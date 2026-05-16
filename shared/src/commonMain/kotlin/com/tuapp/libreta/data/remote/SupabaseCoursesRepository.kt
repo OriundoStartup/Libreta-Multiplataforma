@@ -138,7 +138,7 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
     }
 
     private fun CourseDto.toDomain() = Course(
-        id = id ?: "",
+        id = id ?: "demo-course-${name.lowercase().replace(" ", "-")}",
         teacherId = teacherId ?: "",
         name = name,
         description = description,

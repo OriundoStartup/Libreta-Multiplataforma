@@ -62,6 +62,9 @@ import com.tuapp.libreta.ui.components.AppDrawer
 import com.tuapp.libreta.ui.components.AppEntityHeader
 import com.tuapp.libreta.ui.theme.StatusTheme
 import com.tuapp.libreta.data.util.RutUtils
+import com.tuapp.libreta.ui.components.AdaptiveGrid
+import com.tuapp.libreta.ui.util.LocalWindowSize
+import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
 
 data class ParentDashboardScreen(val parentId: String) : Screen {
@@ -101,7 +104,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                     onNavigateToCompose = { /* Consistent UI */ },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) }
                 )
             }
         ) {
@@ -170,6 +173,11 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                     is ParentDashboardUiState.Error   -> FullScreenError(uiState.message, padding) { model.load() }
                     is ParentDashboardUiState.Success -> {
                         val student = uiState.students[uiState.selectedIndex]
+                        val windowSize = LocalWindowSize.current
+                        val columns = when (windowSize.widthSizeClass) {
+                            WindowSizeClass.COMPACT -> 2
+                            else -> 4
+                        }
 
                         LazyColumn(
                             state               = listState,
@@ -181,7 +189,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                             ),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // ── Header del Apoderado (Alineado con Profesor) ──
+                            // 1. Header del Apoderado
                             item {
                                 AppEntityHeader(
                                     title = uiState.profile.name,
@@ -190,7 +198,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 )
                             }
 
-                            // ── Selector de pupilo (tabs) ─────────────────────
+                            // 2. Selector de pupilo (si hay más de uno)
                             if (uiState.students.size > 1) {
                                 item {
                                     ScrollableTabRow(
@@ -215,92 +223,52 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 }
                             }
 
-                            // ── Info del Estudiante Seleccionado ──────────────
-                            item {
-                                StudentSelectionHeader(
-                                    student = student,
-                                    onEdit = {
-                                        navigator.push(AppNavigation.parentStudentDetail(student.id.value, student.name, student.rut))
-                                    }
-                                )
-                            }
-
-                            // ── Status cards ──────────────────────────────────
+                            // 3. Status Cards (Resumen del Alumno) - AHORA ARRIBA
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     StatusCard(
-                                        icon           = Icons.Default.CheckCircle,
-                                        value          = "${student.attendancePercent}%",
-                                        label          = "Asistencia",
+                                        icon = Icons.Default.CheckCircle,
+                                        value = "${student.attendancePercent}%",
+                                        label = "Asistencia",
                                         containerColor = StatusTheme.successBackground,
-                                        contentColor   = StatusTheme.successContent,
-                                        modifier       = Modifier.weight(1f).clickable {
-                                            navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
-                                        }
+                                        contentColor = StatusTheme.successContent,
+                                        modifier = Modifier.weight(1f)
                                     )
                                     StatusCard(
-                                        icon           = Icons.Default.Email,
-                                        value          = "${student.pendingMessages}",
-                                        label          = "Mensajes",
-                                        containerColor = StatusTheme.infoBackground,
-                                        contentColor   = StatusTheme.infoContent,
-                                        modifier       = Modifier.weight(1f).clickable {
-                                            navigator.push(AppNavigation.messages())
-                                        }
+                                        icon = Icons.Default.Email,
+                                        value = if (student.pendingMessages > 0) "${student.pendingMessages}" else "Al día",
+                                        label = "Mensajes",
+                                        containerColor = if (student.pendingMessages > 0) StatusTheme.infoBackground else StatusTheme.infoBackground.copy(alpha = 0.5f),
+                                        contentColor = StatusTheme.infoContent,
+                                        modifier = Modifier.weight(1f)
                                     )
-                                    StatusCard(
-                                        icon           = Icons.Default.Grade,
-                                        value          = "Notas",
-                                        label          = "Libreta",
-                                        containerColor = StatusTheme.purpleBackground,
-                                        contentColor   = StatusTheme.purpleContent,
-                                        modifier       = Modifier.weight(1f).clickable { 
-                                            navigator.push(AppNavigation.studentGrades(student.id.value, student.name, "", isTeacher = false)) 
-                                        }
-                                    )
-                                    StatusCard(
-                                        icon           = Icons.Default.Edit,
-                                        value          = "Trámites",
-                                        label          = "Justificaciones",
-                                        containerColor = StatusTheme.warningBackground,
-                                        contentColor   = StatusTheme.warningContent,
-                                        modifier       = Modifier.weight(1f).clickable { 
-                                            navigator.push(AppNavigation.justificationList(student.id.value)) 
-                                        }
-                                    )
-                                }
-                            }
-
-                            // ── Última anotación ──────────────────────────────
-                            item {
-                                Card(
-                                    shape  = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-                                ) {
-                                    Row(
-                                        Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Info, contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary)
-                                        Column {
-                                            Text("Última anotación",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Text(student.lastNote,
-                                                style = MaterialTheme.typography.bodyMedium)
-                                        }
+                                    if (columns > 2) {
+                                        StatusCard(
+                                            icon = Icons.Default.Grade,
+                                            value = "Notas",
+                                            label = "Libreta",
+                                            containerColor = StatusTheme.purpleBackground,
+                                            contentColor = StatusTheme.purpleContent,
+                                            modifier = Modifier.weight(1f)
+                                        )
                                     }
                                 }
                             }
 
-                            // ── Timeline ──────────────────────────────────────
+                            // 4. Tarjeta Principal del Estudiante (Estilo Profesor)
+                            item {
+                                StudentMainCard(
+                                    student = student,
+                                    onNavigate = { nav -> navigator.push(nav) }
+                                )
+                            }
+
+                            // 5. Timeline de Actividad Reciente
                             item {
                                 Text(
                                     "Actividad Reciente",
                                     style    = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    modifier = Modifier.padding(start = 4.dp)
+                                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
                                 )
                             }
 
@@ -397,52 +365,119 @@ fun AddStudentDialog(
 }
 
 @Composable
-private fun StudentSelectionHeader(
+private fun StudentMainCard(
     student: com.tuapp.libreta.presentation.StudentSummary,
-    onEdit: () -> Unit
+    onNavigate: (cafe.adriel.voyager.core.screen.Screen) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+        Column(Modifier.padding(16.dp)) {
+            // Parte Superior: Avatar e Información básica
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = student.name.firstOrNull()?.uppercaseChar()?.toString() ?: "E",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = student.name,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                )
+                Box(
+                    modifier = Modifier.size(56.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = student.name.firstOrNull()?.uppercaseChar()?.toString() ?: "E",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
                 
-                LinearProgressIndicator(
-                    progress = { student.attendancePercent / 100f },
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
-                    color = when {
-                        student.attendancePercent >= 85 -> Color(0xFF2E7D32)
-                        student.attendancePercent >= 70 -> Color(0xFFF57F17)
-                        else -> Color(0xFFC62828)
-                    },
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = student.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    
+                    Spacer(Modifier.height(4.dp))
+                    
+                    LinearProgressIndicator(
+                        progress = { student.attendancePercent / 100f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)),
+                        color = when {
+                            student.attendancePercent >= 85 -> Color(0xFF2E7D32)
+                            student.attendancePercent >= 70 -> Color(0xFFF57F17)
+                            else -> Color(0xFFC62828)
+                        },
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                    
+                    Text(
+                        text = "Alumno Regular • ${student.attendancePercent}% Asistencia",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = { onNavigate(AppNavigation.parentStudentDetail(student.id.value, student.name, student.rut)) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar", modifier = Modifier.size(20.dp))
+                }
             }
-            
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary)
+
+            // Sección de Observación (Integrada)
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = student.lastNote.ifBlank { "Sin observaciones recientes" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Botones de Acción (Estilo Profesor)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = { onNavigate(AppNavigation.studentGrades(student.id.value, student.name, "", isTeacher = false)) }) {
+                        Icon(Icons.Default.Grade, null, tint = StatusTheme.purpleContent, modifier = Modifier.size(20.dp))
+                    }
+                    // Botón para ENVIAR justificación
+                    IconButton(onClick = { onNavigate(AppNavigation.justificationForm(studentId = student.id.value)) }) {
+                        Icon(Icons.Default.Edit, null, tint = StatusTheme.warningContent, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = { onNavigate(AppNavigation.messages()) }) {
+                        Icon(Icons.Default.Email, null, tint = StatusTheme.infoContent, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = { onNavigate(AppNavigation.attendanceHistory(student.id.value, student.name)) }) {
+                        Icon(Icons.Default.CheckCircle, null, tint = StatusTheme.successContent, modifier = Modifier.size(20.dp))
+                    }
+                }
+
+                TextButton(onClick = { onNavigate(AppNavigation.justificationList(student.id.value)) }) {
+                    Text("Ver Mis Trámites", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }

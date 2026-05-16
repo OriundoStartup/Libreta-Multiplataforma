@@ -146,7 +146,7 @@ object MessageListScreen : Screen {
                             }
                         }
 
-                        items(filteredThreads, key = { it.contactId }) { thread ->
+                        items(filteredThreads, key = { it.contactId.value }) { thread ->
                             ThreadRow(thread = thread, onClick = {
                                 navigator.push(AppNavigation.messageDetail(
                                     contactId = thread.contactId,

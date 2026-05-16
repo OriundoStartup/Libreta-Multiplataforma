@@ -28,6 +28,7 @@ import com.tuapp.libreta.ui.screens.AttendanceReportScreen
 import com.tuapp.libreta.ui.screens.CourseDashboardScreen
 import com.tuapp.libreta.ui.screens.GlobalJustificationReviewScreen
 import com.tuapp.libreta.ui.screens.GradeScreen
+import com.tuapp.libreta.ui.screens.MassiveGradeScreen
 import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen as ParentStudentDetailScreenUI
 import com.tuapp.libreta.ui.screens.NoticeListScreen as NoticeListScreenUI
 
@@ -112,6 +113,9 @@ object AppNavigation {
 
     fun studentGrades(studentId: String, studentName: String, courseId: String, isTeacher: Boolean = false): Screen =
         GradeScreen(studentId, studentName, courseId, isTeacher)
+
+    fun massiveGrades(courseId: String, courseName: String): Screen =
+        MassiveGradeScreen(courseId, courseName)
 
     fun courseEdit(courseId: String, courseName: String, course: Course): Screen =
         CourseEditScreen(courseId = courseId, courseName = courseName, course = course)

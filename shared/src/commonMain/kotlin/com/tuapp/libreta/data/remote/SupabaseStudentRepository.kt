@@ -22,8 +22,12 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
                 .select { filter { eq("course_id", classId.value) } }
                 .decodeList<EnrollmentSupabaseDto>()
             emit(result.map { enrollment ->
+                // Generar un ID lo más único posible para evitar crashes en LazyColumn de Android
+                val safeId = enrollment.id 
+                    ?: "${enrollment.courseId}-${enrollment.parentId}-${enrollment.studentName.replace(" ", "")}"
+                
                 Student(
-                    id = UuidString(enrollment.id ?: "${enrollment.courseId}-${enrollment.parentId}"),
+                    id = UuidString(safeId),
                     fullName = enrollment.studentName,
                     courseId = classId,
                     parentId = UuidString(enrollment.parentId)
@@ -69,12 +73,15 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
         }
     }
 
-    private fun EnrollmentSupabaseDto.toStudentDomain() = Student(
-        id = UuidString(id ?: parentId),
-        fullName = studentName,
-        courseId = UuidString(courseId),
-        parentId = UuidString(parentId)
-    )
+    private fun EnrollmentSupabaseDto.toStudentDomain(): Student {
+        val safeId = id ?: "$courseId-$parentId-${studentName.replace(" ", "")}"
+        return Student(
+            id = UuidString(safeId),
+            fullName = studentName,
+            courseId = UuidString(courseId),
+            parentId = UuidString(parentId)
+        )
+    }
 
     override suspend fun saveStudent(student: Student) {
         supabase.from("students").upsert(

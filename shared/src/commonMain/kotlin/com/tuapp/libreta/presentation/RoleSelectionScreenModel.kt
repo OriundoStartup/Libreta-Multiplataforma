@@ -21,6 +21,7 @@ sealed interface RoleSelectionUiState {
     data class  Error(val message: String)  : RoleSelectionUiState
     data class  ProfileStatus(
         val hasParentRole: Boolean, 
+        val hasTeacherRole: Boolean,
         val hasStudents: Boolean,
         val userEmail: String = ""
     ) : RoleSelectionUiState
@@ -35,26 +36,32 @@ class RoleSelectionScreenModel(
     private val _state = MutableStateFlow<RoleSelectionUiState>(RoleSelectionUiState.Idle)
     val state: StateFlow<RoleSelectionUiState> = _state.asStateFlow()
 
-    init {
-        checkExistingProfile()
-    }
-
-    private fun checkExistingProfile() {
+    fun checkExistingProfile(forceShowSelection: Boolean = false) {
         screenModelScope.launch {
             val user = authService.currentUser() ?: return@launch
             val uid = UuidString(user.id)
             val role = authService.getUserRole(user.id)
             
-            if (role != null) {
-                // Si ya tiene un rol, saltamos directamente al dashboard correspondiente
+            if (role != null && !forceShowSelection) {
+                // Si ya tiene un rol y no estamos forzando la selección, saltamos al dashboard
                 _state.value = RoleSelectionUiState.Success(role, uid)
                 return@launch
             }
 
+            // Si llegamos aquí, mostramos la selección de roles
+            _state.value = RoleSelectionUiState.Loading
+            
+            // Verificar si tiene alumnos (apoderado real)
             val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
             
+            // Verificar si tiene cursos asignados (profesor real)
+            // Nota: Podríamos usar un repository de asignaciones, pero por ahora 
+            // asumimos que si el rol actual es TEACHER, ya es profesor.
+            // Para ser más estrictos, podríamos buscar en la tabla de asignaciones.
+            
             _state.value = RoleSelectionUiState.ProfileStatus(
-                hasParentRole = false, // Sabemos que es null por el check de arriba
+                hasParentRole = role == UserRole.PARENT || students.isNotEmpty(),
+                hasTeacherRole = role == UserRole.TEACHER,
                 hasStudents = students.isNotEmpty(),
                 userEmail = user.email ?: ""
             )
@@ -74,7 +81,19 @@ class RoleSelectionScreenModel(
                 withTimeout(10_000) {
                     when (role) {
                         UserRole.TEACHER -> {
-                            // Eliminamos el bloqueo: un profesor nuevo debe poder entrar para crear su primer curso.
+                            // Validar si ya es profesor o si tiene un código de invitación para profesores
+                            val currentRole = authService.getUserRole(uid.value)
+                            if (currentRole != UserRole.TEACHER && code.isBlank()) {
+                                throw Exception("Para registrarte como profesor debes ingresar un código de autorización.")
+                            }
+                            
+                            if (code.isNotBlank()) {
+                                // Si proporciona un código, intentamos asignarlo
+                                // Asumimos que existe un método en assignmentRepo para esto
+                                // Por ahora solo actualizamos el rol si el código es "válido" (lógica a definir)
+                                if (code.length < 4) throw Exception("Código de profesor inválido.")
+                            }
+                            
                             authService.updateRole(role)
                         }
                         UserRole.PARENT -> {
@@ -97,7 +116,7 @@ class RoleSelectionScreenModel(
             } catch (e: Exception) {
                 _state.value = RoleSelectionUiState.Error(e.message ?: "Error de validación")
                 // Refrescar estado para que el usuario vea su email y opciones de nuevo
-                checkExistingProfile()
+                checkExistingProfile(forceShowSelection = true)
             }
         }
     }

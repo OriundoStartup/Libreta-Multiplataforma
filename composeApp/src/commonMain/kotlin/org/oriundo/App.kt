@@ -91,12 +91,13 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                             
                                             // CASO 1: Usuario recién logueado o sin rol
                                             if (currentScreen is LoginScreen || (role == null && currentScreen !is RoleSelectionScreen)) {
-                                                navigator.replaceAll(RoleSelectionScreen)
+                                                navigator.replaceAll(RoleSelectionScreen())
                                                 return@LaunchedEffect
                                             }
 
                                             // CASO 2: Usuario ya tiene rol y está en RoleSelectionScreen (Auto-redirect)
-                                            if (role != null && currentScreen is RoleSelectionScreen) {
+                                            // Solo auto-redigimos si NO estamos forzando el cambio de rol
+                                            if (role != null && currentScreen is RoleSelectionScreen && !currentScreen.isSwitchingRole) {
                                                 navigator.replaceAll(AppNavigation.initialScreen(role, userId))
                                                 return@LaunchedEffect
                                             }

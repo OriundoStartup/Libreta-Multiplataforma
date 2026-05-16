@@ -115,7 +115,7 @@ data class StudentListScreen(
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice(classId = classId, className = className)) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) }
                 )
             }
         ) {

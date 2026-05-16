@@ -55,7 +55,7 @@ import org.jetbrains.compose.resources.painterResource
 private val ChileBlue = Color(0xFF0039A6)
 private val ChileRed  = Color(0xFFD52B1E)
 
-object RoleSelectionScreen : Screen {
+data class RoleSelectionScreen(val isSwitchingRole: Boolean = false) : Screen {
 
     @Composable
     override fun Content() {
@@ -66,13 +66,20 @@ object RoleSelectionScreen : Screen {
         var selectedRole by remember { mutableStateOf<UserRole?>(null) }
         var invitationCode by remember { mutableStateOf("") }
         var isExistingParent by remember { mutableStateOf(false) }
+        var isExistingTeacher by remember { mutableStateOf(false) }
         var userEmail by remember { mutableStateOf("") }
+
+        // CARGA INICIAL: Solo auto-redigir si NO estamos cambiando de rol manualmente
+        LaunchedEffect(Unit) {
+            model.checkExistingProfile(forceShowSelection = isSwitchingRole)
+        }
 
         // DETECTAR ESTADO DEL PERFIL
         LaunchedEffect(state) {
             when (val s = state) {
                 is RoleSelectionUiState.ProfileStatus -> {
                     isExistingParent = s.hasStudents
+                    isExistingTeacher = s.hasTeacherRole
                     userEmail = s.userEmail
                 }
                 is RoleSelectionUiState.Success -> {
@@ -130,7 +137,7 @@ object RoleSelectionScreen : Screen {
                     onClick = { selectedRole = UserRole.PARENT }
                 )
 
-                // Invitation code field — only for PARENT without students
+                // Campos de validación según el rol seleccionado
                 if (selectedRole == UserRole.PARENT && !isExistingParent) {
                     Spacer(Modifier.height(24.dp))
                     OutlinedTextField(
@@ -147,10 +154,31 @@ object RoleSelectionScreen : Screen {
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
-                } else if (selectedRole == UserRole.PARENT && isExistingParent) {
+                } else if (selectedRole == UserRole.TEACHER && !isExistingTeacher) {
+                    Spacer(Modifier.height(24.dp))
+                    OutlinedTextField(
+                        value = invitationCode,
+                        onValueChange = { invitationCode = it.uppercase() },
+                        label = { Text("Código de autorización docente", color = Color.White.copy(alpha = 0.75f)) },
+                        placeholder = { Text("Requerido para nuevos profesores", color = Color.White.copy(alpha = 0.4f)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = ChileBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (selectedRole != null) {
+                    val message = if (selectedRole == UserRole.PARENT) 
+                        "Ya tienes alumnos vinculados a esta cuenta ($userEmail)."
+                    else 
+                        "Ya estás registrado como profesor con esta cuenta ($userEmail)."
+                    
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Ya tienes alumnos vinculados a esta cuenta ($userEmail). Puedes entrar directamente.",
+                        "$message Puedes entrar directamente.",
                         color = Color.White.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
@@ -162,18 +190,25 @@ object RoleSelectionScreen : Screen {
                 when (state) {
                     is RoleSelectionUiState.Loading -> CircularProgressIndicator(color = Color.White)
                     else -> {
+                        val isButtonEnabled = selectedRole != null && when (selectedRole) {
+                            UserRole.PARENT -> isExistingParent || invitationCode.length == 6
+                            UserRole.TEACHER -> isExistingTeacher || invitationCode.isNotBlank()
+                            else -> false
+                        }
+
                         Button(
                             onClick = { selectedRole?.let { model.confirmRole(it, invitationCode) } },
-                            enabled = selectedRole != null &&
-                                    (selectedRole != UserRole.PARENT || isExistingParent || invitationCode.length == 6),
+                            enabled = isButtonEnabled,
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = ChileBlue,
-                                contentColor = Color.White // Mejora de legibilidad: Texto siempre blanco
+                                contentColor = Color.White
                             )
                         ) {
-                            val buttonText = if (selectedRole == UserRole.PARENT && isExistingParent) "Entrar a mi Cuenta" else "Continuar"
+                            val buttonText = if ((selectedRole == UserRole.PARENT && isExistingParent) || 
+                                               (selectedRole == UserRole.TEACHER && isExistingTeacher)) 
+                                               "Entrar a mi Cuenta" else "Continuar"
                             Text(
                                 text = buttonText, 
                                 fontWeight = FontWeight.Bold, 

@@ -93,13 +93,14 @@ val appModule = module {
     factory { NoticeListScreenModel(get()) }
     factory { StatsScreenModel(get()) }
     factory { GradeScreenModel(get(), get(), get()) }
-    factory { (params: org.koin.core.parameter.ParametersHolder) -> AttendanceScreenModel(get(), get(), params.get(), params.get()) }
-    factory { (params: org.koin.core.parameter.ParametersHolder) -> AttendanceHistoryScreenModel(get(), params.get<String>(), params.get<String>()) }
-    factory { (params: org.koin.core.parameter.ParametersHolder) -> 
+    factory { params -> AttendanceScreenModel(get(), get(), params.get(), params.get()) }
+    factory { params -> AttendanceHistoryScreenModel(get(), params.get<String>(), params.get<String>()) }
+    factory { params ->
         StudentDetailScreenModel(get(), get(), get(), get(), get(), params.get(), params.get(), params.get(), params.get()) 
     }
     factory { EnrollmentScreenModel(get()) }
     factory { CourseDashboardScreenModel(get(), get(), get(), get(), get()) }
+    factory { params -> MassiveGradeScreenModel(get(), get(), get(), params.get()) }
     factory { CourseEditScreenModel(get()) }
     factory { ReportScreenModel(get()) }
 }

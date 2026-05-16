@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -116,7 +117,7 @@ object TeacherDashboardScreen : Screen {
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice()) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen) }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) }
                 )
             }
         ) {
@@ -342,6 +343,21 @@ object TeacherDashboardScreen : Screen {
                                                         className = course.name
                                                     )
                                                 )
+                                            },
+                                            onReviewJustifications = {
+                                                navigator.push(
+                                                    AppNavigation.justificationReview(
+                                                        classId = course.id
+                                                    )
+                                                )
+                                            },
+                                            onMassiveGrades = {
+                                                navigator.push(
+                                                    AppNavigation.massiveGrades(
+                                                        courseId = course.id,
+                                                        courseName = course.name
+                                                    )
+                                                )
                                             }
                                         )
                                     }
@@ -402,7 +418,9 @@ object TeacherDashboardScreen : Screen {
         onSendMessage: () -> Unit,
         onInviteColleague: () -> Unit,
         onShowReport: () -> Unit,
-        onShowStats: () -> Unit
+        onShowStats: () -> Unit,
+        onReviewJustifications: () -> Unit,
+        onMassiveGrades: () -> Unit
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
@@ -475,8 +493,14 @@ object TeacherDashboardScreen : Screen {
                         IconButton(onClick = onShowReport) {
                             Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = onShowStats) {
+                        IconButton(onClick = onReviewJustifications) {
                             Icon(Icons.Default.Done, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onMassiveGrades) {
+                            Icon(Icons.Default.Grade, null, tint = StatusTheme.purpleContent, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onShowStats) {
+                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
                         IconButton(onClick = onInviteColleague) {
                             Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
