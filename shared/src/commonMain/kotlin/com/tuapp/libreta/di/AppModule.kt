@@ -99,7 +99,7 @@ val appModule = module {
     }
     factory { EnrollmentScreenModel(get()) }
     factory { CourseDashboardScreenModel(get(), get(), get(), get(), get()) }
-    factory { params -> MassiveGradeScreenModel(get(), get(), get(), params.get()) }
+    factory { params -> MassiveGradeScreenModel(get(), get(), params.get()) }
     factory { CourseEditScreenModel(get()) }
     factory { ReportScreenModel(get()) }
 }
