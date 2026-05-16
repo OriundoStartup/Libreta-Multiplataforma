@@ -4,7 +4,6 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Grade
-import com.tuapp.libreta.domain.repository.GradeRepository
 import com.tuapp.libreta.domain.usecase.GetStudentsByClassUseCase
 import com.tuapp.libreta.domain.usecase.SaveGradeUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +33,6 @@ data class StudentGradeEntry(
 class MassiveGradeScreenModel(
     private val getStudentsByClass: GetStudentsByClassUseCase,
     private val saveGradeUseCase: SaveGradeUseCase,
-    private val gradeRepo: GradeRepository,
     private val courseId: UuidString
 ) : ScreenModel {
 

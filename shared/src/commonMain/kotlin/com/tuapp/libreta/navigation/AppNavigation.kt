@@ -29,8 +29,6 @@ import com.tuapp.libreta.ui.screens.CourseDashboardScreen
 import com.tuapp.libreta.ui.screens.GlobalJustificationReviewScreen
 import com.tuapp.libreta.ui.screens.GradeScreen
 import com.tuapp.libreta.ui.screens.MassiveGradeScreen
-import com.tuapp.libreta.ui.screens.ParentStudentDetailScreen as ParentStudentDetailScreenUI
-import com.tuapp.libreta.ui.screens.NoticeListScreen as NoticeListScreenUI
 
 object AppConfig {
     const val CURRENT_USER_ID = "user-current"

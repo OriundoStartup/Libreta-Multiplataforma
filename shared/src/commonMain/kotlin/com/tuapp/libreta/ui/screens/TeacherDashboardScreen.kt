@@ -117,7 +117,9 @@ object TeacherDashboardScreen : Screen {
                     onNavigateToCompose = { navigator.push(AppNavigation.composeNotice()) },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) }
+                    onSwitchAccount = { 
+                        navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) 
+                    },
                 )
             }
         ) {
@@ -201,7 +203,7 @@ object TeacherDashboardScreen : Screen {
                             ) {
                                 StatusCard(
                                     icon = Icons.Default.Done,
-                                    value = if (s.pendingJustificationsCount > 0) "${s.pendingJustificationsCount}" else "Al día",
+                                    value = if (s.pendingJustificationsCount > 0) s.pendingJustificationsCount.toString() else "Al día",
                                     label = "Trámites",
                                     containerColor = if (s.pendingJustificationsCount > 0)
                                         StatusTheme.warningBackground

@@ -8,7 +8,6 @@ import com.tuapp.libreta.data.remote.SupabaseCoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseInvitationRepository
 import com.tuapp.libreta.data.remote.SupabaseMessageRepository
 import com.tuapp.libreta.data.remote.SupabaseSchoolRepository
-import com.tuapp.libreta.data.repository.AttendanceRepositoryImpl
 import com.tuapp.libreta.data.repository.ClassRoomRepositoryImpl
 import com.tuapp.libreta.data.repository.GradeRepositoryImpl
 import com.tuapp.libreta.data.repository.JustificationRepositoryImpl
