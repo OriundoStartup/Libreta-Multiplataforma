@@ -32,6 +32,8 @@ data class StudentSummary(
     val pendingMessages: Int
 )
 
+data class ParentProfile(val name: String)
+
 data class TimelineEvent(
     val id: String,
     val type: TimelineEventType,
@@ -54,6 +56,7 @@ sealed interface ParentDashboardUiState {
     data object Loading : ParentDashboardUiState
     data object NoStudents : ParentDashboardUiState
     data class Success(
+        val profile: ParentProfile,
         val students: List<StudentSummary>,
         val selectedIndex: Int,
         val timeline: List<TimelineEvent>
@@ -95,6 +98,13 @@ class ParentDashboardScreenModel(
                 }
 
                 try {
+                    val user = authService.currentUser()
+                    val parentName = user?.userMetadata?.get("full_name")
+                        ?.let { runCatching { (it as kotlinx.serialization.json.JsonPrimitive).content }.getOrNull() }
+                        ?: user?.email ?: "Apoderado"
+                    
+                    val parentProfile = ParentProfile(parentName)
+
                     // 1. Mostrar estado inicial de ÉXITO con datos básicos
                     val initialSummaries = students.map { student ->
                         StudentSummary(
@@ -110,6 +120,7 @@ class ParentDashboardScreenModel(
 
                     _state.update { it.copy(
                         uiState = ParentDashboardUiState.Success(
+                            profile = parentProfile,
                             students = initialSummaries,
                             selectedIndex = 0,
                             timeline = emptyList()
@@ -117,7 +128,7 @@ class ParentDashboardScreenModel(
                     )}
 
                     // 2. Cargar detalles (asistencia, inbox) en segundo plano
-                    enrichStudentData(students, userId)
+                    enrichStudentData(students, userId, parentProfile)
 
                 } catch (e: Exception) {
                     _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error al procesar datos")) }
@@ -131,7 +142,7 @@ class ParentDashboardScreenModel(
             .launchIn(screenModelScope)
     }
 
-    private fun enrichStudentData(students: List<Student>, userId: UuidString) {
+    private fun enrichStudentData(students: List<Student>, userId: UuidString, parentProfile: ParentProfile) {
         screenModelScope.launch {
             try {
                 val summaries = students.map { student ->
@@ -167,6 +178,7 @@ class ParentDashboardScreenModel(
 
                 _state.update { it.copy(
                     uiState = ParentDashboardUiState.Success(
+                        profile = parentProfile,
                         students = summaries,
                         selectedIndex = 0,
                         timeline = timeline

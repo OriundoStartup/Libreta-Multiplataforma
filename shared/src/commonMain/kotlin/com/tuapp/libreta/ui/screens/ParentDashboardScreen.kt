@@ -59,6 +59,8 @@ import com.tuapp.libreta.ui.components.ShimmerCard
 import com.tuapp.libreta.ui.components.StatusCard
 import com.tuapp.libreta.ui.components.TimelineItem
 import com.tuapp.libreta.ui.components.AppDrawer
+import com.tuapp.libreta.ui.components.AppEntityHeader
+import com.tuapp.libreta.ui.theme.StatusTheme
 import com.tuapp.libreta.data.util.RutUtils
 import kotlinx.coroutines.launch
 
@@ -111,7 +113,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 Icon(Icons.Default.Menu, contentDescription = "Menú")
                             }
                         },
-                        title = { Text("Panel Apoderado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                        title = { Text("Mi Dashboard", fontWeight = FontWeight.Bold) },
                         actions = {
                             IconButton(onClick = { 
                                 if (uiState is ParentDashboardUiState.Success) {
@@ -121,21 +123,20 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                             }) {
                                 Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
                             }
-                            IconButton(onClick = { navigator.push(AppNavigation.profile()) }) {
-                                Icon(Icons.Default.AccountCircle, contentDescription = "Perfil", modifier = Modifier.size(28.dp))
-                            }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 floatingActionButton = {
                     if (uiState is ParentDashboardUiState.Success || uiState is ParentDashboardUiState.NoStudents) {
-                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             ExtendedFloatingActionButton(
                                 onClick        = { navigator.push(AppNavigation.enrollment()) },
                                 expanded       = fabExpanded,
-                                icon           = { Icon(Icons.Default.School, contentDescription = null) },
+                                icon           = { Icon(Icons.Default.School, null) },
                                 text           = { Text("Inscribir Curso") },
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -144,15 +145,16 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                 ExtendedFloatingActionButton(
                                     onClick        = { navigator.push(AppNavigation.messages()) },
                                     expanded       = fabExpanded,
-                                    icon           = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
-                                    text           = { Text("Enviar Comunicación") },
-                                    containerColor = MaterialTheme.colorScheme.primary
+                                    icon           = { Icon(Icons.Default.Email, null) },
+                                    text           = { Text("Ver Mensajes") },
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
                     }
                 },
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                containerColor = MaterialTheme.colorScheme.surface
             ) { padding ->
                 when (uiState) {
                     ParentDashboardUiState.Loading    -> ParentShimmer(padding)
@@ -171,6 +173,7 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
 
                         LazyColumn(
                             state               = listState,
+                            modifier            = Modifier.fillMaxSize(),
                             contentPadding      = PaddingValues(
                                 start  = 16.dp, end = 16.dp,
                                 top    = padding.calculateTopPadding() + 8.dp,
@@ -178,6 +181,15 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                             ),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            // ── Header del Apoderado (Alineado con Profesor) ──
+                            item {
+                                AppEntityHeader(
+                                    title = uiState.profile.name,
+                                    subtitle = "Apoderado",
+                                    initial = uiState.profile.name.firstOrNull() ?: 'A'
+                                )
+                            }
+
                             // ── Selector de pupilo (tabs) ─────────────────────
                             if (uiState.students.size > 1) {
                                 item {
@@ -191,23 +203,24 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                             Tab(
                                                 selected = index == uiState.selectedIndex,
                                                 onClick  = { model.selectStudent(index) },
-                                                text     = { Text(pupil.name.split(" ")[0]) }
+                                                text     = { 
+                                                    Text(
+                                                        text = pupil.name.split(" ")[0],
+                                                        fontWeight = if (index == uiState.selectedIndex) FontWeight.Bold else FontWeight.Normal
+                                                    ) 
+                                                }
                                             )
                                         }
                                     }
                                 }
                             }
 
-                            // ── Header del estudiante ─────────────────────────
+                            // ── Info del Estudiante Seleccionado ──────────────
                             item {
-                                StudentHeader(
-                                    name = student.name,
-                                    percent = student.attendancePercent,
-                                    studentId = student.id.value,
-                                    studentRut = student.rut,
-                                    navigator = navigator,
-                                    onViewHistory = {
-                                        navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
+                                StudentSelectionHeader(
+                                    student = student,
+                                    onEdit = {
+                                        navigator.push(AppNavigation.parentStudentDetail(student.id.value, student.name, student.rut))
                                     }
                                 )
                             }
@@ -219,24 +232,28 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         icon           = Icons.Default.CheckCircle,
                                         value          = "${student.attendancePercent}%",
                                         label          = "Asistencia",
-                                        containerColor = Color(0xFFE8F5E9),
-                                        contentColor   = Color(0xFF2E7D32),
-                                        modifier       = Modifier.weight(1f)
+                                        containerColor = StatusTheme.successBackground,
+                                        contentColor   = StatusTheme.successContent,
+                                        modifier       = Modifier.weight(1f).clickable {
+                                            navigator.push(AppNavigation.attendanceHistory(student.id.value, student.name))
+                                        }
                                     )
                                     StatusCard(
                                         icon           = Icons.Default.Email,
                                         value          = "${student.pendingMessages}",
                                         label          = "Mensajes",
-                                        containerColor = Color(0xFFE3F2FD),
-                                        contentColor   = Color(0xFF1565C0),
-                                        modifier       = Modifier.weight(1f)
+                                        containerColor = StatusTheme.infoBackground,
+                                        contentColor   = StatusTheme.infoContent,
+                                        modifier       = Modifier.weight(1f).clickable {
+                                            navigator.push(AppNavigation.messages())
+                                        }
                                     )
                                     StatusCard(
                                         icon           = Icons.Default.Grade,
                                         value          = "Notas",
                                         label          = "Libreta",
-                                        containerColor = Color(0xFFF3E5F5),
-                                        contentColor   = Color(0xFF7B1FA2),
+                                        containerColor = StatusTheme.purpleBackground,
+                                        contentColor   = StatusTheme.purpleContent,
                                         modifier       = Modifier.weight(1f).clickable { 
                                             navigator.push(AppNavigation.studentGrades(student.id.value, student.name, "", isTeacher = false)) 
                                         }
@@ -245,8 +262,8 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                                         icon           = Icons.Default.Edit,
                                         value          = "Trámites",
                                         label          = "Justificaciones",
-                                        containerColor = Color(0xFFFFF8E1),
-                                        contentColor   = Color(0xFFF57F17),
+                                        containerColor = StatusTheme.warningBackground,
+                                        contentColor   = StatusTheme.warningContent,
                                         modifier       = Modifier.weight(1f).clickable { 
                                             navigator.push(AppNavigation.justificationList(student.id.value)) 
                                         }
@@ -379,64 +396,54 @@ fun AddStudentDialog(
     )
 }
 
-// ── Student header ────────────────────────────────────────────────────────────
-
 @Composable
-private fun StudentHeader(
-    name: String, 
-    percent: Int, 
-    studentId: String, 
-    studentRut: String?,
-    navigator: cafe.adriel.voyager.navigator.Navigator,
-    onViewHistory: () -> Unit
+private fun StudentSelectionHeader(
+    student: com.tuapp.libreta.presentation.StudentSummary,
+    onEdit: () -> Unit
 ) {
-    Row(
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
-        Box(
-            modifier         = Modifier.size(56.dp).clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text  = name[0].uppercaseChar().toString(),
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-            LinearProgressIndicator(
-                progress       = { percent / 100f },
-                modifier       = Modifier.fillMaxWidth().padding(top = 6.dp).height(6.dp).clip(RoundedCornerShape(4.dp)),
-                color          = when {
-                    percent >= 85 -> Color(0xFF2E7D32)
-                    percent >= 70 -> Color(0xFFF57F17)
-                    else          -> Color(0xFFC62828)
-                },
-                trackColor     = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-            Text("$percent% de asistencia",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp))
-        }
-        IconButton(onClick = {
-            navigator.push(AppNavigation.parentStudentDetail(studentId, name, studentRut))
-        }) {
-            Icon(
-                Icons.Default.Edit,
-                contentDescription = "Gestionar alumno",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = onViewHistory) {
-            Icon(
-                Icons.Default.Refresh,
-                contentDescription = "Ver historial",
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Box(
+                modifier = Modifier.size(48.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = student.name.firstOrNull()?.uppercaseChar()?.toString() ?: "E",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = student.name,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+                
+                LinearProgressIndicator(
+                    progress = { student.attendancePercent / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    color = when {
+                        student.attendancePercent >= 85 -> Color(0xFF2E7D32)
+                        student.attendancePercent >= 70 -> Color(0xFFF57F17)
+                        else -> Color(0xFFC62828)
+                    },
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            }
+            
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
