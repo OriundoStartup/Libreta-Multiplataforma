@@ -128,30 +128,8 @@ plugins.withId("com.android.application") {
     }
 }
 
-val wasmJsCopyWorker = tasks.register<Copy>("wasmJsCopyWorker") {
-    val workerFiles = configurations.getByName("wasmJsRuntimeClasspath")
-        .filter { it.name.contains("sqldelight-web-worker-driver") || it.name.contains("web-worker-driver") }
-        .map { zipTree(it) }
-
-    from(workerFiles) {
-        include("**/sqldelight-worker.js")
-        eachFile { path = name }
-    }
-    // Copiar a ambos destinos para asegurar compatibilidad con Run y Distribution
-    into(layout.buildDirectory.dir("distributions/composeApp"))
-    into(layout.buildDirectory.dir("processedResources/wasmJs/main"))
-}
-
-tasks.named("wasmJsProcessResources").configure {
-    dependsOn(wasmJsCopyWorker)
-}
-
-tasks.named("wasmJsBrowserDistribution").configure {
-    dependsOn(wasmJsCopyWorker)
-}
-
-tasks.named("wasmJsBrowserDevelopmentExecutableDistribution").configure {
-    dependsOn(wasmJsCopyWorker)
-}
+// El worker SQLDelight se distribuye como un asset estático en
+// composeApp/src/wasmJsMain/resources/sqldelight-worker.js — no se extrae del klib
+// porque web-worker-driver 2.x no incluye un worker por defecto.
 
 

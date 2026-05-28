@@ -4,7 +4,7 @@
   "installCommand": "echo 'JDK handled by build-vercel.sh'",
   "framework": null,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
