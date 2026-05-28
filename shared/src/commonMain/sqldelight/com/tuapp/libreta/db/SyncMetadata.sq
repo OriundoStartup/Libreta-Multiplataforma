@@ -1,0 +1,42 @@
+-- FASE 3 — Tabla de metadatos de sync local.
+-- Permite PULL incremental almacenando el último timestamp por tabla.
+--
+-- TODO[FASE-3]:
+--   - Agregar este archivo al sourceSet de SQLDelight (no requiere cambios
+--     en build.gradle.kts si el plugin descubre .sq automáticamente bajo
+--     `commonMain/sqldelight/`).
+--   - Considerar añadir `last_push_at` separado de `last_pull_at` para casos
+--     de offline prolongado.
+--
+-- Cambios complementarios necesarios en LibretaApp.sq:
+--   ALTER TABLE AttendanceEntity ADD COLUMN server_version INTEGER NOT NULL DEFAULT 0;
+--   ALTER TABLE AttendanceEntity ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;
+--   ALTER TABLE AttendanceEntity ADD COLUMN last_known_server_version INTEGER NOT NULL DEFAULT 0;
+--   (repetir para Student, Justification, Grade, Profile, Course, Message, Communication)
+--
+-- Nota: SQLDelight no soporta ALTER en migración inicial; usar Migrations API:
+--   sqldelight {
+--       databases { create("LibretaAppDatabase") { ... schemaOutputDirectory = ... } }
+--   }
+-- y crear shared/src/commonMain/sqldelight/migrations/1.sqm con los ALTER.
+
+CREATE TABLE SyncMetadata (
+    table_name   TEXT    NOT NULL PRIMARY KEY,
+    last_pull_at INTEGER NOT NULL DEFAULT 0,
+    last_push_at INTEGER NOT NULL DEFAULT 0,
+    last_error   TEXT
+);
+
+getLastPullAt:
+SELECT last_pull_at FROM SyncMetadata WHERE table_name = ?;
+
+setLastPullAt:
+INSERT OR REPLACE INTO SyncMetadata (table_name, last_pull_at, last_push_at)
+VALUES (?, ?, COALESCE((SELECT last_push_at FROM SyncMetadata WHERE table_name = ?), 0));
+
+setLastPushAt:
+INSERT OR REPLACE INTO SyncMetadata (table_name, last_pull_at, last_push_at)
+VALUES (?, COALESCE((SELECT last_pull_at FROM SyncMetadata WHERE table_name = ?), 0), ?);
+
+recordSyncError:
+UPDATE SyncMetadata SET last_error = ? WHERE table_name = ?;

@@ -3,7 +3,6 @@ package com.tuapp.libreta.ui.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.tuapp.libreta.data.remote.SupabaseAuthService
-import com.tuapp.libreta.data.remote.SupabaseConfig
 import kotlinx.browser.window
 import org.koin.compose.koinInject
 
@@ -16,10 +15,12 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
     return remember(authService) {
         suspend {
             try {
-                // USAR LA URL DE CONFIGURACIÓN QUE COINCIDE CON EL DASHBOARD
-                val redirectUrl = SupabaseConfig.REDIRECT_URL
+                // DETECCIÓN DINÁMICA: Usamos el origen actual del navegador (ej: https://tudominio.vercel.app)
+                // Esto evita que en producción intente redirigir a 'localhost'.
+                val currentOrigin = window.location.origin
+                val redirectUrl = "$currentOrigin/auth-callback.html"
 
-                println("Wasm Launcher: Redirecting to $redirectUrl")
+                println("Wasm Launcher: Redirecting back to $redirectUrl")
 
                 val url = authService.getGoogleOAuthUrl(
                     redirectTo = redirectUrl,

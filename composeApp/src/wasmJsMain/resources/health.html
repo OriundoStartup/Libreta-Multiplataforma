@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>LibretApp · Health</title>
+    <meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+<pre id="health">loading…</pre>
+<script>
+    // TODO[FASE-0]: reemplazar por valores reales inyectados en build time
+    //   - version: leer de package.json o tag git via build-vercel.sh (echo "...")
+    //   - commit:  $VERCEL_GIT_COMMIT_SHA en build
+    //   - builtAt: $(date -u +%FT%TZ)
+    //   - supabaseUrl: SUPABASE_URL (solo host, sin key)
+    const health = {
+        status: "ok",
+        app: "LibretApp",
+        version: "__VERSION__",
+        commit: "__COMMIT__",
+        builtAt: "__BUILT_AT__",
+        supabaseHost: "__SUPABASE_HOST__",
+        platform: "wasmJs"
+    };
+    document.getElementById("health").textContent = JSON.stringify(health, null, 2);
+</script>
+</body>
+</html>
