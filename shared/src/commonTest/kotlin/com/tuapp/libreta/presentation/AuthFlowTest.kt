@@ -1,9 +1,6 @@
 package com.tuapp.libreta.presentation
 
-import kotlin.test.Test
 import kotlin.test.Ignore
-
-package com.tuapp.libreta.presentation
 
 import com.tuapp.libreta.data.remote.SessionStatus
 import com.tuapp.libreta.domain.model.UserRole
@@ -24,8 +21,8 @@ class AuthFlowTest {
             email = "test@example.com",
             createdAt = Instant.DISTANT_PAST,
             updatedAt = Instant.DISTANT_PAST,
-            appMetadata = emptyMap(),
-            userMetadata = emptyMap(),
+            appMetadata = null,
+            userMetadata = null,
             identities = emptyList()
         )
         return SessionStatus.Authenticated(fakeUser, role)

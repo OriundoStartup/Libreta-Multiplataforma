@@ -53,6 +53,7 @@ class NotificationScreenModelTest {
         override fun getPendingByTeacher(tid: UuidString) = flowOf(emptyList<com.tuapp.libreta.domain.model.Justification>())
         override suspend fun save(j: com.tuapp.libreta.domain.model.Justification) {}
         override suspend fun saveWithAttachment(j: com.tuapp.libreta.domain.model.Justification, f: ByteArray?, n: String?) = Result.success(Unit)
+        override suspend fun getAttachmentUrl(path: String): String = ""
         override suspend fun delete(id: UuidString) {}
     }
 

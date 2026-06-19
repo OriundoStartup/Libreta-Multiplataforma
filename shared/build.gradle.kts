@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.compose.materialIconsExtended)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            implementation(libs.sqldelight.async.extensions)
             implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
@@ -63,6 +64,7 @@ kotlin {
                 implementation(libs.sqldelight.android)
                 implementation(libs.androidx.core.ktx)
                 implementation(libs.androidx.browser)
+                implementation(libs.androidx.activity.compose)
             }
         }
 
@@ -91,6 +93,9 @@ sqldelight {
     databases {
         create("LibretaAppDatabase") {
             packageName.set("com.tuapp.libreta.db")
+            // Genera API suspend: el web-worker-driver es asíncrono. Los drivers nativos
+            // (Android/iOS) son síncronos y await() retorna de inmediato, así que siguen funcionando.
+            generateAsync.set(true)
         }
     }
 }

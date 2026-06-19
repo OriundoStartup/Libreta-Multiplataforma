@@ -1,5 +1,6 @@
 package com.tuapp.libreta.data.repository
 
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.mapper.toDomain
@@ -57,7 +58,7 @@ class StudentRepositoryImpl(
 
     override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = withContext(getIoDispatcher()) {
         runCatching {
-            val current = queries.getStudentById(id.value).executeAsOneOrNull()
+            val current = queries.getStudentById(id.value).awaitAsOneOrNull()
             if (current != null) {
                 queries.insertOrReplaceStudent(
                     id = id.value,

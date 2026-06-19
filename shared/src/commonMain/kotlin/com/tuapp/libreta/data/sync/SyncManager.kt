@@ -1,5 +1,6 @@
 package com.tuapp.libreta.data.sync
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
 import com.tuapp.libreta.db.LibretaAppQueries
@@ -37,7 +38,7 @@ class SyncManager(
     }
 
     private suspend fun syncAttendance() {
-        val pending = queries.getUnsyncedAttendanceEntities().executeAsList()
+        val pending = queries.getUnsyncedAttendanceEntities().awaitAsList()
         if (pending.isEmpty()) return
 
         pending.forEach { entity ->
@@ -69,7 +70,7 @@ class SyncManager(
     }
 
     private suspend fun syncStudents() {
-        val pending = queries.getUnsyncedStudentEntities().executeAsList()
+        val pending = queries.getUnsyncedStudentEntities().awaitAsList()
         if (pending.isEmpty()) return
 
         pending.forEach { entity ->
@@ -104,7 +105,7 @@ class SyncManager(
     }
 
     private suspend fun syncProfiles() {
-        val pending = queries.getUnsyncedProfileEntities().executeAsList()
+        val pending = queries.getUnsyncedProfileEntities().awaitAsList()
         if (pending.isEmpty()) return
 
         pending.forEach { entity ->
@@ -135,7 +136,7 @@ class SyncManager(
     }
 
     private suspend fun syncGrades() {
-        val pending = queries.getUnsyncedGradeEntities().executeAsList()
+        val pending = queries.getUnsyncedGradeEntities().awaitAsList()
         if (pending.isEmpty()) return
 
         pending.forEach { entity ->

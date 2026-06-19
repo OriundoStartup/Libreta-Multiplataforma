@@ -28,7 +28,11 @@ import com.tuapp.libreta.domain.model.UserRole
 
 fun now(): Long = currentEpochMs()
 
-fun ProfileEntity.toDomain() = Profile(UuidString(id), UserRole.valueOf(role), full_name)
+fun ProfileEntity.toDomain() = Profile(
+    UuidString(id),
+    runCatching { UserRole.valueOf(role) }.getOrElse { UserRole.TEACHER },
+    full_name
+)
 
 fun CourseEntity.toDomain() = Course(
     id = id,

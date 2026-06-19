@@ -1,6 +1,7 @@
 package com.tuapp.libreta.di
 
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.db.synchronous
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.tuapp.libreta.data.remote.SupabaseConfig
 import com.tuapp.libreta.data.util.DataSeeder
@@ -15,7 +16,7 @@ import org.koin.dsl.module
 
 actual val platformModule = module {
     single<SqlDriver> {
-        AndroidSqliteDriver(LibretaAppDatabase.Schema, get(), "libreta_v2.db")
+        AndroidSqliteDriver(LibretaAppDatabase.Schema.synchronous(), get(), "libreta_v2.db")
     }
     single {
         createSupabaseClient(

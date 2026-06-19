@@ -23,9 +23,6 @@ value class UuidString(val value: String) {
     }
 
     override fun toString(): String = value
-    fun toUuidOrNull(): UuidString {
-        TODO("Provide the return value")
-    }
 
     companion object
 }

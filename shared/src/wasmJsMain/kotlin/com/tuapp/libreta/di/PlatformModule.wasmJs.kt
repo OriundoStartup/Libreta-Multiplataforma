@@ -3,31 +3,36 @@ package com.tuapp.libreta.di
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
 import com.tuapp.libreta.data.remote.SupabaseConfig
-import com.tuapp.libreta.data.repository.ClassRoomRepositoryImpl
-import com.tuapp.libreta.data.repository.ProfileRepositoryImpl
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
-import com.tuapp.libreta.domain.repository.ClassRoomRepository
-import com.tuapp.libreta.domain.repository.ProfileRepository
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.dsl.module
 import org.w3c.dom.Worker
 
 actual val platformModule = module {
     single<SqlDriver> {
-        try {
-            // Intentar usar Worker para persistencia real
+        val driver = try {
             WebWorkerDriver(Worker("sqldelight-worker.js"))
         } catch (e: Throwable) {
-            println("Wasm DB: Worker failed to start, falling back to dummy/error. ${e.message}")
+            println("Wasm DB: Worker failed to start. ${e.message}")
             // Si el worker falla en local, lanzamos el error para verlo en el HTML que configuramos
             throw RuntimeException("Fallo al cargar la base de datos (Worker no encontrado). Revisa si sqldelight-worker.js existe.")
         }
+        // A diferencia de los drivers nativos, el WebWorkerDriver NO crea el esquema
+        // automáticamente. Hay que crearlo (operación asíncrona del driver web).
+        CoroutineScope(Dispatchers.Default).launch {
+            runCatching { LibretaAppDatabase.Schema.create(driver).await() }
+                .onFailure { println("Wasm DB: error creando esquema: ${it.message}") }
+        }
+        driver
     }
 
     single { LibretaAppDatabase(get()) }

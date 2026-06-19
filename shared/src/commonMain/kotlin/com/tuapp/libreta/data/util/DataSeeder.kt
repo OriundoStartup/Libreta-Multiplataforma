@@ -1,5 +1,6 @@
 package com.tuapp.libreta.data.util
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import com.tuapp.libreta.data.util.DataSeeder.Companion.REMOTE_SEEDING_ENABLED
 import com.tuapp.libreta.db.LibretaAppQueries
 import com.tuapp.libreta.domain.model.AttendanceStatus
@@ -31,9 +32,9 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         private const val REMOTE_SEEDING_ENABLED = false
     }
 
-    fun seedIfEmpty() {
+    suspend fun seedIfEmpty() {
         queries.transaction {
-            val count = queries.getStudentsByCourse(DEMO_COURSE_ID).executeAsList().size
+            val count = queries.getStudentsByCourse(DEMO_COURSE_ID).awaitAsList().size
             if (count > 0) return@transaction
             
             seedLocalProfiles()
@@ -88,14 +89,14 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         if (attendance.isNotEmpty()) supabase.from("attendance").insert(attendance)
     }
 
-    private fun seedLocalProfiles() {
+    private suspend fun seedLocalProfiles() {
         queries.insertOrReplaceProfile(DEMO_TEACHER_ID, "TEACHER", "Carlos Fuentes (Demo)",
             SyncStatus.SYNCED.name, now, now)
         queries.insertOrReplaceProfile(DEMO_PARENT_ID, "PARENT", "Ana Martínez (Demo)",
             SyncStatus.SYNCED.name, now, now)
     }
 
-    private fun seedLocalCourse() =
+    private suspend fun seedLocalCourse() =
         queries.insertOrReplaceCourse(DEMO_COURSE_ID, "4° Básico A (Demo)", null, null, null, null,
             DEMO_TEACHER_ID, null, null, 1, SyncStatus.SYNCED.name, now, now)
 
@@ -112,7 +113,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         "de10de10-0000-0000-0000-000000000110" to "Diego Vargas"
     )
 
-    private fun seedLocalStudents() {
+    private suspend fun seedLocalStudents() {
         studentData.forEach { (id, name) ->
             queries.insertOrReplaceStudent(id, name, null, DEMO_COURSE_ID, DEMO_PARENT_ID,
                 SyncStatus.SYNCED.name, now, now)
@@ -132,7 +133,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         "de10de10-0000-0000-0000-000000000110" to listOf(true,true,false,false,true)
     )
 
-    private fun seedLocalAttendance() {
+    private suspend fun seedLocalAttendance() {
         val dayMs = 86_400_000L
         studentData.forEach { (studentId, _) ->
             (pattern[studentId] ?: List(5) { true }).forEachIndexed { i, present ->
