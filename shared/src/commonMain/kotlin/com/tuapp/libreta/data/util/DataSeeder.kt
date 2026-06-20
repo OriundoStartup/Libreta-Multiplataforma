@@ -90,15 +90,46 @@ class DataSeeder(private val queries: LibretaAppQueries) {
     }
 
     private suspend fun seedLocalProfiles() {
-        queries.insertOrReplaceProfile(DEMO_TEACHER_ID, "TEACHER", "Carlos Fuentes (Demo)",
-            SyncStatus.SYNCED.name, now, now)
-        queries.insertOrReplaceProfile(DEMO_PARENT_ID, "PARENT", "Ana Martínez (Demo)",
-            SyncStatus.SYNCED.name, now, now)
+        queries.insertOrReplaceProfile(
+            id = DEMO_TEACHER_ID,
+            full_name = "Carlos Fuentes (Demo)",
+            role = "TEACHER",
+            server_version = 1,
+            is_deleted = 0,
+            sync_status = SyncStatus.SYNCED.name,
+            created_at = now,
+            updated_at = now
+        )
+        queries.insertOrReplaceProfile(
+            id = DEMO_PARENT_ID,
+            full_name = "Ana Martínez (Demo)",
+            role = "PARENT",
+            server_version = 1,
+            is_deleted = 0,
+            sync_status = SyncStatus.SYNCED.name,
+            created_at = now,
+            updated_at = now
+        )
     }
 
     private suspend fun seedLocalCourse() =
-        queries.insertOrReplaceCourse(DEMO_COURSE_ID, "4° Básico A (Demo)", null, null, null, null,
-            DEMO_TEACHER_ID, null, null, 1, SyncStatus.SYNCED.name, now, now)
+        queries.insertOrReplaceCourse(
+            id = DEMO_COURSE_ID,
+            name = "4° Básico A (Demo)",
+            description = null,
+            subject = null,
+            grade = null,
+            section = null,
+            teacher_id = DEMO_TEACHER_ID,
+            school_id = null,
+            invite_code = null,
+            is_active = 1,
+            server_version = 1,
+            is_deleted = 0,
+            sync_status = SyncStatus.SYNCED.name,
+            created_at = now,
+            updated_at = now
+        )
 
     private val studentData = listOf(
         "de10de10-0000-0000-0000-000000000101" to "Sofía Martínez",
@@ -115,8 +146,18 @@ class DataSeeder(private val queries: LibretaAppQueries) {
 
     private suspend fun seedLocalStudents() {
         studentData.forEach { (id, name) ->
-            queries.insertOrReplaceStudent(id, name, null, DEMO_COURSE_ID, DEMO_PARENT_ID,
-                SyncStatus.SYNCED.name, now, now)
+            queries.insertOrReplaceStudent(
+                id = id,
+                full_name = name,
+                student_rut = null,
+                course_id = DEMO_COURSE_ID,
+                parent_id = DEMO_PARENT_ID,
+                server_version = 1,
+                is_deleted = 0,
+                sync_status = SyncStatus.SYNCED.name,
+                created_at = now,
+                updated_at = now
+            )
         }
     }
 
@@ -139,9 +180,17 @@ class DataSeeder(private val queries: LibretaAppQueries) {
             (pattern[studentId] ?: List(5) { true }).forEachIndexed { i, present ->
                 val dateStr = epochMsToIso(now - (4 - i) * dayMs).take(10)
                 val attendanceId = studentId.substring(0, 31) + "a" + i + studentId.takeLast(3)
-                queries.insertOrReplaceAttendance(attendanceId, studentId, dateStr,
-                    if (present) AttendanceStatus.PRESENT.name else AttendanceStatus.ABSENT.name,
-                    SyncStatus.SYNCED.name, now, now)
+                queries.insertOrReplaceAttendance(
+                    id = attendanceId,
+                    student_id = studentId,
+                    date = dateStr,
+                    status = if (present) AttendanceStatus.PRESENT.name else AttendanceStatus.ABSENT.name,
+                    server_version = 1,
+                    is_deleted = 0,
+                    sync_status = SyncStatus.SYNCED.name,
+                    created_at = now,
+                    updated_at = now
+                )
             }
         }
     }
