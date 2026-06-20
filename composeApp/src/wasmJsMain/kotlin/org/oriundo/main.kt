@@ -83,7 +83,21 @@ fun main() {
  * un refresh no reintente canjear un code ya consumido (los codes son de un solo uso).
  */
 private fun handleWebOAuthCallback() {
-    val authCode = extractQueryParam("code") ?: return
+    // Diagnóstico: deja ver en consola con qué URL exacta volvemos de Google.
+    println("Web App: URL de arranque -> ${window.location.href}")
+
+    // Si Supabase/Google rechazó el redirect, vuelve con ?error=...&error_description=...
+    val error = extractQueryParam("error")
+    if (error != null) {
+        val desc = extractQueryParam("error_description")
+        println("Web App: OAuth devolvió un error -> $error ($desc)")
+        return
+    }
+
+    val authCode = extractQueryParam("code") ?: run {
+        println("Web App: sin ?code= en la URL (carga normal, no es un callback OAuth)")
+        return
+    }
     println("Web App: OAuth code detectado, canjeando por sesión...")
 
     val supabase = GlobalContext.get().get<SupabaseClient>()
