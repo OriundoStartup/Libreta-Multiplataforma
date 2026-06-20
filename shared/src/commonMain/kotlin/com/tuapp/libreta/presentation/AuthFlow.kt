@@ -44,7 +44,8 @@ sealed interface AuthFlow {
             return when (status) {
                 is SessionStatus.Loading -> Loading
                 is SessionStatus.NotAuthenticated -> {
-                    if (currentScreenKind != ScreenKind.LOGIN) LoginRequired else Stay
+                    // Si estamos cargando o en una transición, no forzamos login de inmediato
+                    if (currentScreenKind == ScreenKind.LOGIN) Stay else LoginRequired
                 }
                 is SessionStatus.Authenticated -> {
                     val role = status.role

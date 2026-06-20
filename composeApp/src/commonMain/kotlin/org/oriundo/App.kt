@@ -26,6 +26,8 @@ import com.tuapp.libreta.navigation.AppNavigation
 import com.tuapp.libreta.navigation.WebPathMapper
 import com.tuapp.libreta.navigation.getInitialPath
 import com.tuapp.libreta.navigation.updateBrowserHistory
+import com.tuapp.libreta.presentation.AuthFlow
+import com.tuapp.libreta.presentation.ScreenKind
 import com.tuapp.libreta.ui.screens.LoginScreen
 import com.tuapp.libreta.ui.screens.ParentDashboardScreen
 import com.tuapp.libreta.ui.screens.RoleSelectionScreen
@@ -39,7 +41,7 @@ import org.koin.compose.koinInject
 @Composable
 fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
     val authService: SupabaseAuthService = koinInject()
-    val sessionStatus by authService.sessionStatusFlow.collectAsState(initial = SessionStatus.NotAuthenticated)
+    val sessionStatus by authService.sessionStatusFlow.collectAsState(initial = SessionStatus.Loading)
 
     val startScreen = remember { initialScreen ?: WebPathMapper.fromPath(getInitialPath()) }
 
@@ -60,11 +62,10 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.TopCenter
                     ) {
-                        // Ajuste dinámico del ancho máximo según el dispositivo
                         val contentMaxWidth = when (windowSize.widthSizeClass) {
                             WindowSizeClass.COMPACT -> Dp.Unspecified
                             WindowSizeClass.MEDIUM -> 720.dp
-                            WindowSizeClass.EXPANDED -> 1024.dp // Un poco más ancho en Desktop para dashboards
+                            WindowSizeClass.EXPANDED -> 1024.dp
                         }
 
                         Box(
@@ -82,47 +83,52 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     updateBrowserHistory(WebPathMapper.toPath(navigator.lastItem))
                                 }
 
-                                LaunchedEffect(sessionStatus) {
+                                LaunchedEffect(sessionStatus, navigator.lastItem) {
                                     val currentScreen = navigator.lastItem
-                                    when (val status = sessionStatus) {
-                                        is SessionStatus.Authenticated -> {
-                                            val role = status.role
-                                            val userId = status.user.id
-                                            
-                                            // CASO 1: Usuario recién logueado o sin rol
-                                            if (currentScreen is LoginScreen || (role == null && currentScreen !is RoleSelectionScreen)) {
-                                                navigator.replaceAll(RoleSelectionScreen())
-                                                return@LaunchedEffect
-                                            }
+                                    val kind = when (currentScreen) {
+                                        is LoginScreen -> ScreenKind.LOGIN
+                                        is RoleSelectionScreen -> ScreenKind.ROLE_SELECTION
+                                        is TeacherDashboardScreen -> ScreenKind.TEACHER_HOME
+                                        is ParentDashboardScreen -> ScreenKind.PARENT_HOME
+                                        else -> ScreenKind.OTHER
+                                    }
+                                    
+                                    val isSwitching = (currentScreen as? RoleSelectionScreen)?.isSwitchingRole ?: false
+                                    
+                                    val flow = AuthFlow.from(sessionStatus, kind, isSwitching)
+                                    
+                                    // DEBUG LOG
+                                    println("AuthFlow [Web]: Status=$sessionStatus | Screen=$kind | Flow=$flow")
 
-                                            // CASO 2: Usuario ya tiene rol y está en RoleSelectionScreen (Auto-redirect)
-                                            // Solo auto-redigimos si NO estamos forzando el cambio de rol
-                                            if (role != null && currentScreen is RoleSelectionScreen && !currentScreen.isSwitchingRole) {
-                                                navigator.replaceAll(AppNavigation.initialScreen(role, userId))
-                                                return@LaunchedEffect
-                                            }
-
-                                            // CASO 3: Usuario ya tiene rol y está intentando entrar a una zona prohibida
-                                            if (role != null) {
-                                                val isForbidden = when(role) {
-                                                    com.tuapp.libreta.domain.model.UserRole.TEACHER -> currentScreen is ParentDashboardScreen
-                                                    com.tuapp.libreta.domain.model.UserRole.PARENT -> currentScreen is TeacherDashboardScreen
-                                                }
-                                                
-                                                // Si está en una pantalla prohibida para su rol actual, lo sacamos.
-                                                // Pero NO lo sacamos de RoleSelectionScreen automáticamente, 
-                                                // dejamos que la pantalla maneje la lógica de "Continuar".
-                                                if (isForbidden) {
-                                                    navigator.replaceAll(AppNavigation.initialScreen(role, userId))
-                                                }
-                                            }
-                                        }
-                                        is SessionStatus.NotAuthenticated -> {
+                                    when (flow) {
+                                        AuthFlow.LoginRequired -> {
                                             if (currentScreen !is LoginScreen) {
+                                                println("AuthFlow: Redirecting to Login")
                                                 navigator.replaceAll(LoginScreen)
                                             }
                                         }
-                                        else -> {}
+                                        is AuthFlow.NeedsRole -> {
+                                            if (currentScreen !is RoleSelectionScreen) {
+                                                println("AuthFlow: Redirecting to RoleSelection")
+                                                navigator.replaceAll(RoleSelectionScreen())
+                                            }
+                                        }
+                                        is AuthFlow.Ready -> {
+                                            val target = AppNavigation.initialScreen(flow.role, flow.userId)
+                                            if (currentScreen != target) {
+                                                println("AuthFlow: Redirecting to Dashboard (${flow.role})")
+                                                navigator.replaceAll(target)
+                                            }
+                                        }
+                                        is AuthFlow.Forbidden -> {
+                                            val target = AppNavigation.initialScreen(flow.role, flow.userId)
+                                            if (currentScreen != target) {
+                                                println("AuthFlow: Access Forbidden. Redirecting to Home.")
+                                                navigator.replaceAll(target)
+                                            }
+                                        }
+                                        AuthFlow.Loading -> { /* Handled by global overlay */ }
+                                        AuthFlow.Stay -> { /* Already there */ }
                                     }
                                 }
                                 SlideTransition(navigator)
@@ -133,7 +139,7 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .background(Color.Black.copy(alpha = 0.3f))
-                                            .clickable(enabled = false) {}, // Bloquear clics
+                                            .clickable(enabled = false) {},
                                         contentAlignment = Alignment.Center
                                     ) {
                                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)

@@ -54,12 +54,17 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         kotlinx.coroutines.flow.flow {
             when (status) {
                 is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> emit(SessionStatus.NotAuthenticated)
-                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.NotAuthenticated) // CAMBIO: No emitir Loading al inicio para no bloquear UI
+                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.Loading)
                 is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
                     val user = status.session.user
                     if (user != null) {
-                        emit(SessionStatus.Loading) // Mostrar loading mientras buscamos el rol
-                        val role = getUserRole(user.id)
+                        emit(SessionStatus.Loading)
+                        val role = try {
+                            kotlinx.coroutines.withTimeout(5000) { getUserRole(user.id) }
+                        } catch (e: Exception) {
+                            AppLogger.e("AuthService", "Timeout fetching role for ${user.id}")
+                            null
+                        }
                         emit(SessionStatus.Authenticated(user, role))
                     } else {
                         emit(SessionStatus.NotAuthenticated)
