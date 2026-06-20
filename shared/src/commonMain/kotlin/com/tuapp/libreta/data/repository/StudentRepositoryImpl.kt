@@ -48,6 +48,8 @@ class StudentRepositoryImpl(
                 student_rut = null,
                 course_id = student.courseId.value,
                 parent_id = student.parentId.value,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = currentEpochMs(),
                 updated_at = currentEpochMs()
@@ -66,6 +68,8 @@ class StudentRepositoryImpl(
                     student_rut = rut,
                     course_id = current.course_id,
                     parent_id = current.parent_id,
+                    server_version = current.server_version,
+                    is_deleted = current.is_deleted,
                     sync_status = SyncStatus.PENDING_UPDATE.name,
                     created_at = current.created_at,
                     updated_at = currentEpochMs()

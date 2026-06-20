@@ -35,8 +35,10 @@ class ProfileRepositoryImpl(
             val now = currentEpochMs()
             queries.insertOrReplaceProfile(
                 id = profile.id.value,
-                role = profile.role.name,
                 full_name = profile.fullName,
+                role = profile.role.name,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = now,
                 updated_at = now

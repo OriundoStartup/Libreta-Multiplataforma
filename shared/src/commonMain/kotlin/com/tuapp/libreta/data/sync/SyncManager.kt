@@ -55,6 +55,7 @@ class SyncManager(
                         supabase.from("attendance").upsert(dto)
                         queries.insertOrReplaceAttendance(
                             entity.id, entity.student_id, entity.date, entity.status,
+                            entity.server_version, entity.is_deleted,
                             SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
                         )
                     }
@@ -90,6 +91,7 @@ class SyncManager(
                         queries.insertOrReplaceStudent(
                             entity.id, entity.full_name, entity.student_rut, 
                             entity.course_id, entity.parent_id,
+                            entity.server_version, entity.is_deleted,
                             SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
                         )
                     }
@@ -121,6 +123,7 @@ class SyncManager(
                         supabase.from("profiles").upsert(dto)
                         queries.insertOrReplaceProfile(
                             entity.id, entity.full_name, entity.role,
+                            entity.server_version, entity.is_deleted,
                             SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
                         )
                     }
@@ -158,7 +161,9 @@ class SyncManager(
                         queries.insertOrReplaceGrade(
                             entity.id, entity.student_id, entity.course_id,
                             entity.title, entity.score, entity.weight,
-                            entity.term, entity.subject, SyncStatus.SYNCED.name,
+                            entity.term, entity.subject, 
+                            entity.server_version, entity.is_deleted,
+                            SyncStatus.SYNCED.name,
                             entity.created_at, entity.updated_at
                         )
                     }

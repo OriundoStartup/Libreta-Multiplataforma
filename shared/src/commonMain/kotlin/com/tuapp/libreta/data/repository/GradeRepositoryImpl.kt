@@ -56,6 +56,8 @@ class GradeRepositoryImpl(
                 weight = grade.weight,
                 term = grade.term,
                 subject = grade.subject,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = now,
                 updated_at = now

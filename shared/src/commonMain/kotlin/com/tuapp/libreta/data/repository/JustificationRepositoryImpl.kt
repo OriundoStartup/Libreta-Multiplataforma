@@ -47,6 +47,8 @@ class JustificationRepositoryImpl(
                 date = justification.date.toString(),
                 reason = justification.reason,
                 status = justification.status.name,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = now,
                 updated_at = now

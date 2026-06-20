@@ -40,6 +40,8 @@ class AttendanceRepositoryImpl(private val queries: LibretaAppQueries) : Attenda
                 student_id = attendance.studentId.value,
                 date = attendance.date,
                 status = attendance.status.name,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = "PENDING_INSERT",
                 created_at = now,
                 updated_at = now

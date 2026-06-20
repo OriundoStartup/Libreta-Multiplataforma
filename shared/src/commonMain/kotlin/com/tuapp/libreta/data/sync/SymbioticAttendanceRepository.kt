@@ -51,6 +51,8 @@ class SymbioticAttendanceRepository(
                 student_id = attendance.studentId.value,
                 date = attendance.date,
                 status = attendance.status.name,
+                server_version = 1, // Valor inicial para nuevos registros locales
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = now,
                 updated_at = now

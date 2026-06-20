@@ -48,6 +48,8 @@ class ClassRoomRepositoryImpl(
                 school_id = classRoom.schoolName,
                 invite_code = classRoom.inviteCode,
                 is_active = if (classRoom.isActive) 1 else 0,
+                server_version = 1,
+                is_deleted = 0,
                 sync_status = SyncStatus.PENDING_INSERT.name,
                 created_at = now,
                 updated_at = now
