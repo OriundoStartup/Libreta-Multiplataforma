@@ -6,6 +6,12 @@ import kotlinx.browser.document
 import kotlinx.browser.window
 import com.tuapp.libreta.initKoin
 import com.tuapp.libreta.data.remote.SupabaseConfig
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.koin.core.context.GlobalContext
 import org.w3c.dom.HTMLElement
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -23,7 +29,14 @@ fun main() {
         // 2. Inicialización de Koin
         println("Web App: Initializing Koin...")
         initKoin()
-        
+
+        // 2.5. Procesar callback OAuth (PKCE).
+        // Tras el login con Google, auth-callback.html redirige a /?code=xxx.
+        // En wasmJs la SDK NO intercambia ese code automáticamente (a diferencia de
+        // Android/iOS que usan handleDeeplinks), así que lo hacemos manualmente aquí.
+        // Sin esto, la sesión nunca se crea y la app rebota de vuelta al login.
+        handleWebOAuthCallback()
+
         // 3. Montar App en el DOM
         val root = document.getElementById("app-root") as? HTMLElement
         if (root != null) {
@@ -62,4 +75,37 @@ fun main() {
             """.trimIndent()
         }
     }
+}
+
+/**
+ * Detecta el parámetro `?code=` que Supabase deja en la URL tras el login OAuth
+ * (flujo PKCE) y lo canjea por una sesión. Al tener éxito, limpia la URL para que
+ * un refresh no reintente canjear un code ya consumido (los codes son de un solo uso).
+ */
+private fun handleWebOAuthCallback() {
+    val authCode = extractQueryParam("code") ?: return
+    println("Web App: OAuth code detectado, canjeando por sesión...")
+
+    val supabase = GlobalContext.get().get<SupabaseClient>()
+    CoroutineScope(Dispatchers.Default).launch {
+        runCatching { supabase.auth.exchangeCodeForSession(authCode) }
+            .onSuccess {
+                println("Web App: Sesión establecida desde el code OAuth")
+                // Quita ?code=... de la barra de direcciones sin recargar.
+                window.history.replaceState(null, "LibretApp", window.location.pathname)
+            }
+            .onFailure { println("Web App: fallo al canjear el code OAuth: ${it.message}") }
+    }
+}
+
+/** Extrae un parámetro del query string (?a=1&b=2) sin depender de URLSearchParams. */
+private fun extractQueryParam(name: String): String? {
+    val search = window.location.search
+    if (search.isBlank()) return null
+    return search.removePrefix("?")
+        .split("&")
+        .firstNotNullOfOrNull { part ->
+            val idx = part.indexOf('=')
+            if (idx > 0 && part.substring(0, idx) == name) part.substring(idx + 1) else null
+        }
 }
