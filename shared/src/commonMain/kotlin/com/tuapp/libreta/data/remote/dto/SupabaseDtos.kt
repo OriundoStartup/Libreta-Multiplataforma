@@ -29,9 +29,11 @@ data class ClassRoomSupabaseDto(
 data class StudentSupabaseDto(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val id: String? = null,
-    @SerialName("first_name") val firstName: String,
-    @SerialName("last_name") val lastName: String,
-    @SerialName("class_id") val classId: String?,
+    // Schema real (002_normalize_3nf): la tabla students usa full_name + course_id.
+    // No existen first_name/last_name/class_id — escribirlos provoca 400 PGRST204.
+    @SerialName("full_name") val fullName: String,
+    @SerialName("student_rut") @EncodeDefault(EncodeDefault.Mode.NEVER) val studentRut: String? = null,
+    @SerialName("course_id") val courseId: String? = null,
     @SerialName("parent_id") val parentId: String? = null
 )
 
@@ -118,7 +120,7 @@ data class CommunicationSupabaseDto(
     val id: String? = null,
     @SerialName("sender_id") val senderId: String,
     @SerialName("course_id") val courseId: String,
-    @SerialName("content") val messageText: String, // Cambiado de message_text a content
+    @SerialName("message_text") val messageText: String, // schema real usa message_text
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -137,7 +139,7 @@ data class MessageSupabaseDto(
     @SerialName("student_id") val studentId: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("course_id") val courseId: String? = null,
-    @SerialName("content") val messageText: String? = null, // Cambiado de message_text a content
+    @SerialName("message_text") val messageText: String? = null, // schema real usa message_text
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)

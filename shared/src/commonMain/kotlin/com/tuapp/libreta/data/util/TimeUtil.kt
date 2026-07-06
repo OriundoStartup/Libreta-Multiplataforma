@@ -15,6 +15,33 @@ fun monotonicTimeMs(): Long = startMark.elapsedNow().inWholeMilliseconds
 /** Converts epoch milliseconds to an ISO-8601 string that Supabase TIMESTAMPTZ accepts. */
 fun epochMsToIso(ms: Long): String = Instant.fromEpochMilliseconds(ms).toString()
 
+/**
+ * Converts epoch milliseconds to a `YYYY-MM-DD` string for Postgres `DATE` columns
+ * (attendance.date, justifications.date). Inserting epoch-ms strings into a DATE
+ * column fails with a 400, so all writes to those columns must go through here.
+ */
+fun epochMsToSqlDate(ms: Long): String {
+    val dt = Instant.fromEpochMilliseconds(ms).toLocalDateTime(TimeZone.UTC)
+    val mm = dt.month.number.toString().padStart(2, '0')
+    val dd = dt.day.toString().padStart(2, '0')
+    return "${dt.year}-$mm-$dd"
+}
+
+/**
+ * Parses a Postgres `DATE`/`TIMESTAMPTZ` string (e.g. "2026-06-20") back to epoch ms.
+ * Tolerates legacy rows that stored epoch-ms as a string, and full ISO timestamps.
+ */
+fun sqlDateToEpochMs(value: String?): Long {
+    if (value.isNullOrBlank()) return 0L
+    value.toLongOrNull()?.let { return it } // legacy: epoch-ms persisted as string
+    return try {
+        val normalized = if (value.contains("T")) value.replace(" ", "T") else "${value}T00:00:00Z"
+        Instant.parse(normalized).toEpochMilliseconds()
+    } catch (_: Exception) {
+        0L
+    }
+}
+
 fun formatIsoToTime(iso: String?): String {
     if (iso.isNullOrBlank()) return ""
     return try {

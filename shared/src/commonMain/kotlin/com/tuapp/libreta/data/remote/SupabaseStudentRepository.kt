@@ -87,9 +87,9 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
         supabase.from("students").upsert(
             StudentSupabaseDto(
                 id = student.id.value,
-                firstName = student.fullName.split(" ").firstOrNull() ?: "",
-                lastName = student.fullName.substringAfter(" ").takeIf { it.isNotBlank() } ?: "",
-                classId = student.courseId.value,
+                fullName = student.fullName,
+                studentRut = student.studentRut,
+                courseId = student.courseId.value,
                 parentId = student.parentId.value
             )
         )

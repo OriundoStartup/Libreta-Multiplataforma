@@ -1,7 +1,7 @@
 package com.tuapp.libreta.data.remote
 
-import com.tuapp.libreta.data.remote.dto.EnrollmentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.JustificationSupabaseDto
+import com.tuapp.libreta.data.remote.dto.StudentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Justification
@@ -9,7 +9,9 @@ import com.tuapp.libreta.domain.repository.JustificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.currentEpochMs
+import com.tuapp.libreta.data.util.epochMsToSqlDate
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.storage.storage
 
@@ -21,10 +23,15 @@ import kotlin.time.Duration.Companion.hours
 class SupabaseJustificationRepository(private val supabase: SupabaseClient) : JustificationRepository {
 
     override fun getByStudent(studentId: UuidString): Flow<List<Justification>> = flow {
-        val response = supabase.from("justifications")
-            .select { filter { eq("student_id", studentId.value) } }
-            .decodeList<JustificationSupabaseDto>()
-        emit(response.map { it.toDomain() })
+        try {
+            val response = supabase.from("justifications")
+                .select { filter { eq("student_id", studentId.value) } }
+                .decodeList<JustificationSupabaseDto>()
+            emit(response.map { it.toDomain() })
+        } catch (e: Exception) {
+            AppLogger.e("JustificationRepository", "Error cargando justificaciones: ${e.message}")
+            emit(emptyList())
+        }
     }
 
     override fun getPendingByTeacher(teacherId: UuidString): Flow<List<Justification>> = flow {
@@ -35,47 +42,47 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
                 .decodeList<com.tuapp.libreta.data.remote.dtos.CourseDto>()
             
             val courseNameMap = coursesRaw.associate { (it.id ?: "") to it.name }
-            val courseIds = coursesRaw.map { it.id ?: "" }
+            val courseIds = coursesRaw.mapNotNull { it.id }
 
             if (courseIds.isEmpty()) {
                 emit(emptyList())
                 return@flow
             }
 
-            // 2. Obtener IDs de alumnos (enrollments) de esos cursos
-            val enrollments = supabase.from("enrollments")
-                .select { 
-                    filter { 
-                        isIn("course_id", courseIds) 
-                    } 
+            // 2. Obtener los alumnos REALES de esos cursos desde la tabla students.
+            //    justifications.student_id referencia students.id (NO enrollments.id),
+            //    por eso aquí se consulta students y no enrollments.
+            val students = supabase.from("students")
+                .select {
+                    filter {
+                        isIn("course_id", courseIds)
+                    }
                 }
-                .decodeList<EnrollmentSupabaseDto>()
-            
-            if (enrollments.isEmpty()) {
+                .decodeList<StudentSupabaseDto>()
+
+            if (students.isEmpty()) {
                 emit(emptyList())
                 return@flow
             }
 
-            val enrollmentMap = enrollments.associateBy { it.id ?: "" }
+            val studentMap = students.associateBy { it.id ?: "" }
+            val studentIds = students.mapNotNull { it.id }
 
             // 3. Obtener justificaciones pendientes de esos alumnos
-            val studentIds = enrollments.map { it.id ?: "" }
             val justifications = supabase.from("justifications")
-                .select { 
-                    filter { 
+                .select {
+                    filter {
                         isIn("student_id", studentIds)
                         eq("status", "PENDING")
-                    } 
+                    }
                 }
                 .decodeList<JustificationSupabaseDto>()
-            
-            emit(justifications.map { 
-                val enrollment = enrollmentMap[it.studentId]
-                val studentName = enrollment?.studentName
-                val courseName = courseNameMap[enrollment?.courseId ?: ""]
+
+            emit(justifications.map {
+                val student = studentMap[it.studentId]
                 it.toDomain().copy(
-                    studentName = studentName,
-                    courseName = courseName
+                    studentName = student?.fullName,
+                    courseName  = courseNameMap[student?.courseId ?: ""]
                 )
             })
         } catch (_: Exception) {
@@ -88,7 +95,7 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
             JustificationSupabaseDto(
                 id        = justification.id?.value,
                 studentId = justification.studentId.value,
-                date      = justification.date.toString(),
+                date      = epochMsToSqlDate(justification.date),
                 reason    = justification.reason,
                 status    = justification.status.name
             )
@@ -114,7 +121,7 @@ class SupabaseJustificationRepository(private val supabase: SupabaseClient) : Ju
         supabase.from("justifications").insert(
             JustificationSupabaseDto(
                 studentId   = justification.studentId.value,
-                date        = justification.date.toString(),
+                date        = epochMsToSqlDate(justification.date),
                 reason      = justification.reason,
                 status      = justification.status.name,
                 documentUrl = documentPath // Guardamos el PATH en la columna document_url

@@ -104,11 +104,16 @@ private fun handleWebOAuthCallback() {
     CoroutineScope(Dispatchers.Default).launch {
         runCatching { supabase.auth.exchangeCodeForSession(authCode) }
             .onSuccess {
-                println("Web App: Sesión establecida desde el code OAuth")
-                // Quita ?code=... de la barra de direcciones sin recargar.
+                println("Web App: Sesión establecida correctamente.")
+                // Limpiar URL
                 window.history.replaceState(null, "LibretApp", window.location.pathname)
             }
-            .onFailure { println("Web App: fallo al canjear el code OAuth: ${it.message}") }
+            .onFailure {
+                println("Web App: ERROR CRÍTICO al canjear code: ${it.message}")
+                it.printStackTrace()
+                // También limpiamos la URL en caso de fallo para evitar loops de recarga
+                window.history.replaceState(null, "LibretApp", window.location.pathname)
+            }
     }
 }
 

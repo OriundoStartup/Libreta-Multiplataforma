@@ -44,6 +44,8 @@ class RoleSelectionScreenModel(
             
             if (role != null && !forceShowSelection) {
                 // Si ya tiene un rol y no estamos forzando la selección, saltamos al dashboard
+                // Pero primero nos aseguramos de que el flujo global se entere
+                authService.refreshProfile()
                 _state.value = RoleSelectionUiState.Success(role, uid)
                 return@launch
             }
@@ -111,6 +113,7 @@ class RoleSelectionScreenModel(
                             }
                         }
                     }
+                    authService.refreshProfile()
                     _state.value = RoleSelectionUiState.Success(role, uid)
                 }
             } catch (e: Exception) {

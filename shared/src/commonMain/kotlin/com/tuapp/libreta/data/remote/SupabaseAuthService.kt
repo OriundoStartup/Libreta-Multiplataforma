@@ -46,34 +46,42 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     private val _profileRefreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+    fun refreshProfile() {
+        _profileRefreshTrigger.value += 1
+    }
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val sessionStatusFlow: Flow<SessionStatus> = kotlinx.coroutines.flow.combine(
         supabase.auth.sessionStatus,
         _profileRefreshTrigger
-    ) { status, _ -> status }.flatMapLatest { status ->
-        kotlinx.coroutines.flow.flow {
-            when (status) {
-                is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> emit(SessionStatus.NotAuthenticated)
-                is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.Loading)
-                is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
-                    val user = status.session.user
-                    if (user != null) {
-                        emit(SessionStatus.Loading)
-                        val role = try {
-                            kotlinx.coroutines.withTimeout(5000) { getUserRole(user.id) }
-                        } catch (e: Exception) {
-                            AppLogger.e("AuthService", "Timeout fetching role for ${user.id}")
-                            null
+    ) { status, trigger -> status to trigger }
+        .flatMapLatest { (status, _) ->
+            kotlinx.coroutines.flow.flow {
+                when (status) {
+                    is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> emit(SessionStatus.NotAuthenticated)
+                    is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> emit(SessionStatus.Loading)
+                    is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
+                        val user = status.session.user
+                        if (user != null) {
+                            // Solo emitimos Loading si no sabemos el rol aún o es una actualización forzada
+                            emit(SessionStatus.Loading)
+                            
+                            val role = try {
+                                // Aumentamos el timeout a 10s para conexiones lentas/incógnito
+                                kotlinx.coroutines.withTimeout(10000) { getUserRole(user.id) }
+                            } catch (e: Exception) {
+                                AppLogger.e("AuthService", "Error/Timeout al obtener rol para ${user.id}: ${e.message}")
+                                null
+                            }
+                            emit(SessionStatus.Authenticated(user, role))
+                        } else {
+                            emit(SessionStatus.NotAuthenticated)
                         }
-                        emit(SessionStatus.Authenticated(user, role))
-                    } else {
-                        emit(SessionStatus.NotAuthenticated)
                     }
+                    else -> emit(SessionStatus.NotAuthenticated)
                 }
-                else -> emit(SessionStatus.NotAuthenticated)
             }
-        }
-    }.distinctUntilChanged()
+        }.distinctUntilChanged()
 
     fun getGoogleOAuthUrl(redirectTo: String? = null, prompt: String? = null): String {
         val url = supabase.auth.getOAuthUrl(
@@ -111,8 +119,13 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
      */
     suspend fun getUserRole(userId: String): UserRole? {
         val profile = getProfile(userId)
-        return profile?.role?.let { roleStr ->
-            runCatching { UserRole.valueOf(roleStr) }.getOrNull()
+        val roleStr = profile?.role ?: return null
+        
+        return try {
+            UserRole.valueOf(roleStr.uppercase().trim())
+        } catch (e: Exception) {
+            AppLogger.e("AuthService", "Rol inválido en BD: '$roleStr' para usuario $userId")
+            null
         }
     }
 
@@ -130,12 +143,11 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         AppLogger.d("updateRole", "Iniciando UPDATE para UID: $uid con Rol: ${role.name}")
         
         runCatching {
-            val updateData = mutableMapOf<String, String?>(
+            // profiles.course_id fue eliminado en 002_normalize_3nf — solo se actualiza el rol.
+            // El curso del apoderado se modela vía enrollments; el del docente vía courses.teacher_id.
+            val updateData = mapOf<String, String?>(
                 "role" to role.name
             )
-            if (courseId != null) {
-                updateData["course_id"] = courseId
-            }
 
             supabase.postgrest["profiles"].update(updateData) {
                 filter { eq("id", uid) }

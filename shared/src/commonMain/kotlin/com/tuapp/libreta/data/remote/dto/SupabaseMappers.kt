@@ -3,6 +3,7 @@ package com.tuapp.libreta.data.remote.dto
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.AuditOrigin
 import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.data.util.sqlDateToEpochMs
 import com.tuapp.libreta.data.util.toUuidOrNull
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
@@ -31,8 +32,8 @@ fun AttendanceSupabaseDto.toDomain() = Attendance(
 
 fun StudentSupabaseDto.toDomain() = Student(
     id                   = UuidString(id ?: ""),
-    fullName             = "$firstName $lastName",
-    courseId             = UuidString(classId ?: ""),
+    fullName             = fullName,
+    courseId             = UuidString(courseId ?: ""),
     parentId             = UuidString(parentId ?: ""),
     attendancePercentage = 0.0
 )
@@ -50,7 +51,7 @@ fun CourseAssignmentSupabaseDto.toDomain() = CourseAssignment(
 fun JustificationSupabaseDto.toDomain() = Justification(
     id          = id.toUuidOrNull(),
     studentId   = UuidString(studentId),
-    date        = date.toLongOrNull() ?: 0L,
+    date        = sqlDateToEpochMs(date),
     reason      = reason,
     status      = runCatching { JustificationStatus.valueOf(status.uppercase()) }.getOrElse { JustificationStatus.PENDING },
     documentUrl = documentUrl
@@ -83,8 +84,8 @@ fun Attendance.toSupabaseDto() = AttendanceSupabaseDto(
 
 fun Student.toSupabaseDto() = StudentSupabaseDto(
     id                   = id.value,
-    firstName            = fullName.split(" ").firstOrNull() ?: "",
-    lastName             = fullName.split(" ").drop(1).joinToString(" "),
-    classId              = courseId.value,
+    fullName             = fullName,
+    studentRut           = studentRut,
+    courseId             = courseId.value,
     parentId             = parentId.value
 )
