@@ -47,12 +47,13 @@ actual val platformModule = module {
             install(Postgrest)
             install(Auth) {
                 flowType = FlowType.PKCE
-                // En Wasm/JS, el SessionManager se instala solo y usa LocalStorage por defecto
-                // pero nos aseguramos de que el esquema de redirección sea el de producción
-                val redirectUrl = SupabaseConfig.REDIRECT_URL
-                if (redirectUrl.startsWith("http")) {
-                   // Supabase kt lo parsea automáticamente si le pasas la URL base
-                }
+                // IMPORTANTE: En Web/Wasm, la SDK maneja la persistencia en LocalStorage.
+                // Si el modo incógnito bloquea LocalStorage, la sesión no persistirá tras refrescar.
+                // Sin embargo, el login inicial debería funcionar si el intercambio de code tiene éxito.
+                
+                // Aseguramos que la URL de redirección base sea la correcta de producción si está definida
+                host = SupabaseConfig.REDIRECT_URL.removePrefix("https://").removePrefix("http://").split("/").firstOrNull()
+                scheme = if (SupabaseConfig.REDIRECT_URL.startsWith("https")) "https" else "http"
             }
             install(Realtime)
             install(Storage)

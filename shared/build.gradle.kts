@@ -56,6 +56,8 @@ kotlin {
             implementation(libs.supabase.storage)
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.no.arg)
         }
 
         // Configuración segura de sourceSets de plataforma
@@ -65,6 +67,7 @@ kotlin {
                 implementation(libs.androidx.core.ktx)
                 implementation(libs.androidx.browser)
                 implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.security.crypto)
             }
         }
 

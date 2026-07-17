@@ -78,50 +78,65 @@ fun main() {
 }
 
 /**
- * Detecta el parámetro `?code=` que Supabase deja en la URL tras el login OAuth
- * (flujo PKCE) y lo canjea por una sesión. Al tener éxito, limpia la URL para que
- * un refresh no reintente canjear un code ya consumido (los codes son de un solo uso).
+ * Detecta el parámetro `?code=` o `#code=` que Supabase deja en la URL tras el login OAuth
+ * (flujo PKCE) y lo canjea por una sesión.
  */
 private fun handleWebOAuthCallback() {
-    // Diagnóstico: deja ver en consola con qué URL exacta volvemos de Google.
-    println("Web App: URL de arranque -> ${window.location.href}")
+    val fullUrl = window.location.href
+    println("Web App: Boot URL -> $fullUrl")
 
-    // Si Supabase/Google rechazó el redirect, vuelve con ?error=...&error_description=...
-    val error = extractQueryParam("error")
-    if (error != null) {
-        val desc = extractQueryParam("error_description")
-        println("Web App: OAuth devolvió un error -> $error ($desc)")
+    // Supabase puede devolver el código en el query (?) o en el fragmento (#) dependiendo de la config.
+    val authCode = extractQueryParam("code") ?: extractHashParam("code")
+    
+    if (authCode == null) {
+        val error = extractQueryParam("error") ?: extractHashParam("error")
+        if (error != null) {
+            val desc = extractQueryParam("error_description") ?: extractHashParam("error_description")
+            println("Web App: OAuth Error Detected -> $error: $desc")
+        } else {
+            println("Web App: No auth code found in URL. Standard boot.")
+        }
         return
     }
 
-    val authCode = extractQueryParam("code") ?: run {
-        println("Web App: sin ?code= en la URL (carga normal, no es un callback OAuth)")
-        return
-    }
-    println("Web App: OAuth code detectado, canjeando por sesión...")
+    println("Web App: OAuth Code Found! Exchanging for session... (Code: ${authCode.take(5)}...)")
 
     val supabase = GlobalContext.get().get<SupabaseClient>()
     CoroutineScope(Dispatchers.Default).launch {
-        runCatching { supabase.auth.exchangeCodeForSession(authCode) }
-            .onSuccess {
-                println("Web App: Sesión establecida correctamente.")
-                // Limpiar URL
-                window.history.replaceState(null, "LibretApp", window.location.pathname)
-            }
-            .onFailure {
-                println("Web App: ERROR CRÍTICO al canjear code: ${it.message}")
-                it.printStackTrace()
-                // También limpiamos la URL en caso de fallo para evitar loops de recarga
-                window.history.replaceState(null, "LibretApp", window.location.pathname)
-            }
+        try {
+            // El canje de código es crítico. Si falla aquí, la app no se loguea.
+            supabase.auth.exchangeCodeForSession(authCode)
+            println("Web App: Session established SUCCESSFULLY.")
+            
+            // Limpiar URL para evitar re-canje (el code es de un solo uso)
+            window.history.replaceState(null, "LibretApp", window.location.pathname)
+        } catch (e: Exception) {
+            println("Web App: FATAL ERROR during code exchange: ${e.message}")
+            e.printStackTrace()
+            // Si falla el canje, limpiamos de todos modos para permitir reintento manual
+            window.history.replaceState(null, "LibretApp", window.location.pathname)
+        }
     }
 }
 
-/** Extrae un parámetro del query string (?a=1&b=2) sin depender de URLSearchParams. */
+/** Extrae un parámetro del query string (?a=1&b=2) */
 private fun extractQueryParam(name: String): String? {
     val search = window.location.search
     if (search.isBlank()) return null
     return search.removePrefix("?")
+        .split("&")
+        .firstNotNullOfOrNull { part ->
+            val idx = part.indexOf('=')
+            if (idx > 0 && part.substring(0, idx) == name) part.substring(idx + 1) else null
+        }
+}
+
+/** Extrae un parámetro del fragmento (#a=1&b=2) - Útil si se usa Implicit Flow o Hash Routing */
+private fun extractHashParam(name: String): String? {
+    val hash = window.location.hash
+    if (hash.isBlank()) return null
+    return hash.removePrefix("#")
+        .removePrefix("/") // Por si es #/code=...
         .split("&")
         .firstNotNullOfOrNull { part ->
             val idx = part.indexOf('=')

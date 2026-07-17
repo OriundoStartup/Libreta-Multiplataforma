@@ -3,12 +3,15 @@ package com.tuapp.libreta.di
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.synchronous
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
+import com.russhwolf.settings.KeychainSettings
+import com.russhwolf.settings.Settings
 import com.tuapp.libreta.data.remote.SupabaseConfig
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.ExternalAuthAction
 import io.github.jan.supabase.auth.FlowType
+import io.github.jan.supabase.auth.SettingsSessionStore
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
@@ -18,6 +21,11 @@ actual val platformModule = module {
     single<SqlDriver> {
         NativeSqliteDriver(LibretaAppDatabase.Schema.synchronous(), "libreta.db")
     }
+
+    single<Settings> {
+        KeychainSettings("org.oriundo.libreta")
+    }
+
     single {
         createSupabaseClient(
             supabaseUrl = SupabaseConfig.URL,
@@ -31,6 +39,7 @@ actual val platformModule = module {
                 scheme = "org.oriundo"
                 host = "login-callback"
                 defaultExternalAuthAction = ExternalAuthAction.ExternalBrowser
+                sessionStore = SettingsSessionStore(get())
             }
             install(Realtime)
         }

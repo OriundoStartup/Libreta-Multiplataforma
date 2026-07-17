@@ -1,9 +1,7 @@
 package com.tuapp.libreta.data.repository
 
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.mapper.toDomain
+import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.currentEpochMs
@@ -15,8 +13,6 @@ import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,17 +24,10 @@ class StudentRepositoryImpl(
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
 
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> =
-        queries.getStudentsByCourse(classId.value).asFlow().mapToList(getIoDispatcher())
-            .map { list -> list.map { it.toDomain() } }
-            .catch { 
-                println("ERROR SQLDelight getStudentsByClass: ${it.message}")
-                emit(emptyList()) 
-            }
+        queries.getStudentsByCourse(classId.value).toDomainList { it.toDomain() }
 
     override fun getStudentsByParent(parentId: UuidString): Flow<List<Student>> =
-        queries.getStudentsByParent(parentId.value).asFlow().mapToList(getIoDispatcher())
-            .map { list -> list.map { it.toDomain() } }
-            .catch { emit(emptyList()) }
+        queries.getStudentsByParent(parentId.value).toDomainList { it.toDomain() }
 
     override suspend fun saveStudent(student: Student) {
         withContext(getIoDispatcher()) {

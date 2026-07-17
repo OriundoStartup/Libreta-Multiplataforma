@@ -1,8 +1,7 @@
 package com.tuapp.libreta.data.repository
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.mapper.toDomain
+import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.db.GradeEntity
 import com.tuapp.libreta.data.sync.SyncManager
 import com.tuapp.libreta.data.util.UuidString
@@ -16,8 +15,6 @@ import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -29,18 +26,10 @@ class GradeRepositoryImpl(
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
 
     override fun getByStudent(studentId: UuidString): Flow<List<Grade>> =
-        queries.getGradesByStudent(studentId.value)
-            .asFlow()
-            .mapToList(getIoDispatcher())
-            .map { list: List<GradeEntity> -> list.map { it.toDomain() } }
-            .catch { emit(emptyList()) }
+        queries.getGradesByStudent(studentId.value).toDomainList { it.toDomain() }
 
     override fun getByCourse(courseId: UuidString): Flow<List<Grade>> =
-        queries.getGradesByCourse(courseId.value)
-            .asFlow()
-            .mapToList(getIoDispatcher())
-            .map { list: List<GradeEntity> -> list.map { it.toDomain() } }
-            .catch { emit(emptyList()) }
+        queries.getGradesByCourse(courseId.value).toDomainList { it.toDomain() }
 
     override suspend fun save(grade: Grade) {
         withContext(getIoDispatcher()) {
