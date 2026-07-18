@@ -1,8 +1,7 @@
 package com.tuapp.libreta.data.repository
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.mapper.toDomain
+import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.random
@@ -15,8 +14,6 @@ import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,12 +25,10 @@ class JustificationRepositoryImpl(
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
 
     override fun getByStudent(studentId: UuidString): Flow<List<Justification>> =
-        queries.getJustificationsByStudent(studentId.value).asFlow().mapToList(getIoDispatcher())
-            .map { list -> list.map { it.toDomain() } }.catch { emit(emptyList()) }
+        queries.getJustificationsByStudent(studentId.value).toDomainList { it.toDomain() }
 
     override fun getPendingByTeacher(teacherId: UuidString): Flow<List<Justification>> =
-        queries.getPendingJustificationsByTeacher(teacherId.value).asFlow().mapToList(getIoDispatcher())
-            .map { list -> list.map { it.toDomain() } }.catch { emit(emptyList()) }
+        queries.getPendingJustificationsByTeacher(teacherId.value).toDomainList { it.toDomain() }
 
     override suspend fun save(justification: Justification) {
         withContext(getIoDispatcher()) {
@@ -79,7 +74,6 @@ class JustificationRepositoryImpl(
     }
 
     override suspend fun getAttachmentUrl(path: String): String {
-        // En local solo retornamos el path por ahora
         return path
     }
 }

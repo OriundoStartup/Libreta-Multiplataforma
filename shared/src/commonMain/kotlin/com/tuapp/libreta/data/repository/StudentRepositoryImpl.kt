@@ -79,11 +79,3 @@ class StudentRepositoryImpl(
         }
     }
 }
-
-    override suspend fun deleteStudent(id: UuidString) {
-        withContext(getIoDispatcher()) {
-            queries.markStudentAsPendingDelete(updated_at = currentEpochMs(), id = id.value)
-            scope.launch { syncManager.syncAll() }
-        }
-    }
-}
