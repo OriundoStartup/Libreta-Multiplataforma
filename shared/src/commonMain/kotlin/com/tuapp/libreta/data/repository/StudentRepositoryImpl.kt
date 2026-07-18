@@ -1,6 +1,7 @@
 package com.tuapp.libreta.data.repository
 
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.tuapp.libreta.data.mapper.toDomain
 import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
@@ -15,6 +16,7 @@ import com.tuapp.libreta.util.getIoDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,7 +53,12 @@ class StudentRepositoryImpl(
 
     override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = withContext(getIoDispatcher()) {
         runCatching {
-            val current: StudentEntity? = queries.getStudentById(id.value).awaitAsOneOrNull()
+            // Usamos Flow + first() en lugar de extensiones asíncronas para máxima compatibilidad Wasm
+            val current: StudentEntity? = queries.getStudentById(id.value)
+                .asFlow()
+                .mapToOneOrNull(getIoDispatcher())
+                .first()
+
             if (current != null) {
                 queries.insertOrReplaceStudent(
                     id = id.value,

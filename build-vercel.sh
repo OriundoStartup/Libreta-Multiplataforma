@@ -10,8 +10,8 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
   exit 1
 fi
 
-# Aumentamos la memoria de Node.js a 4GB para el empaquetado final.
-export NODE_OPTIONS="--max-old-space-size=4096"
+# Memoria controlada para Node.js
+export NODE_OPTIONS="--max-old-space-size=3072"
 
 # --- 2. CONFIGURACIÓN DE JAVA ---
 echo "--- [SRE] Instalando Amazon Corretto 17 ---"
@@ -26,17 +26,17 @@ echo "Java version:"
 java -version
 
 # --- 3. CONSTRUCCIÓN ---
-echo "--- [SRE] Iniciando Compilación Gradle (Maximum Resources) ---"
+echo "--- [SRE] Iniciando Compilación Gradle (v2.4 Stable) ---"
 chmod +x gradlew
 
-# Ejecutamos con 4GB de Heap.
-# Se utiliza el recolector G1 para manejar eficientemente los picos de memoria de Wasm/Compose.
+# Ejecutamos con 3GB de Heap para no asfixiar el contenedor.
+# Se desactiva la cache de configuración para mayor limpieza en CI.
 ./gradlew :composeApp:wasmJsBrowserDistribution \
   --no-daemon \
   --stacktrace \
   --max-workers=1 \
   --no-configuration-cache \
-  -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC" \
+  -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" \
   -Dfile.encoding=UTF-8
 
 echo "--- [SRE] Despliegue completado exitosamente ---"
