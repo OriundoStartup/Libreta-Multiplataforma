@@ -1,5 +1,6 @@
 package com.tuapp.libreta.data.repository
 
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.tuapp.libreta.data.mapper.toDomain
 import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
@@ -39,7 +40,7 @@ class StudentRepositoryImpl(
                 parent_id = student.parentId.value,
                 server_version = 1,
                 is_deleted = 0,
-                sync_status = SyncStatus.PENDING_INSERT.name,
+                sync_status = SyncStatus.SYNCED.name,
                 created_at = currentEpochMs(),
                 updated_at = currentEpochMs()
             )
@@ -70,6 +71,14 @@ class StudentRepositoryImpl(
             }
         }
     }
+
+    override suspend fun deleteStudent(id: UuidString) {
+        withContext(getIoDispatcher()) {
+            queries.markStudentAsPendingDelete(updated_at = currentEpochMs(), id = id.value)
+            scope.launch { syncManager.syncAll() }
+        }
+    }
+}
 
     override suspend fun deleteStudent(id: UuidString) {
         withContext(getIoDispatcher()) {
