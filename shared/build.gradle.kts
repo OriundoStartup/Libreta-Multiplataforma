@@ -82,6 +82,7 @@ kotlin {
                 implementation(libs.ktor.client.js)
                 implementation(libs.sqldriver.web)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.browser)
             }
         }
 
