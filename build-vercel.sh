@@ -29,14 +29,15 @@ java -version
 echo "--- [SRE] Iniciando Compilación Gradle (v2.4 Stable) ---"
 chmod +x gradlew
 
-# Ejecutamos con 3GB de Heap para no asfixiar el contenedor.
+# Ejecutamos con límites estrictos para no asfixiar el contenedor de 8GB.
 # Se desactiva la cache de configuración para mayor limpieza en CI.
 ./gradlew :composeApp:wasmJsBrowserDistribution \
   --no-daemon \
   --stacktrace \
   --max-workers=1 \
   --no-configuration-cache \
-  -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" \
+  -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" \
+  -Dkotlin.daemon.jvm.options="-Xmx1536m" \
   -Dfile.encoding=UTF-8
 
 echo "--- [SRE] Despliegue completado exitosamente ---"
