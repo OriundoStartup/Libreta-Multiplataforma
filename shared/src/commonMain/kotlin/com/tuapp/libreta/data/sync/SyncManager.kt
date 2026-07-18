@@ -3,7 +3,11 @@ package com.tuapp.libreta.data.sync
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
+import com.tuapp.libreta.db.AttendanceEntity
+import com.tuapp.libreta.db.GradeEntity
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.db.ProfileEntity
+import com.tuapp.libreta.db.StudentEntity
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.util.getIoDispatcher
 import io.github.jan.supabase.SupabaseClient
@@ -91,9 +95,6 @@ class SyncManager(
 
         pending.forEach { entity ->
             try {
-                // Usamos reflexión simple o asunciones sobre el esquema común (id, sync_status)
-                // Para evitar complejidad excesiva con reflexión en KMP, usamos un helper por entidad
-                // pero centralizamos el flujo try-catch y la lógica de estado.
                 processEntitySync(tableName, entity, mapToDto)
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Failed to sync $tableName: ${e.message}")
@@ -106,13 +107,9 @@ class SyncManager(
         entity: T,
         mapToDto: (T) -> Map<String, Any?>
     ) {
-        // Obtenemos campos comunes vía reflexión manual o casteos seguros si fuera posible.
-        // Dado que SQLDelight genera clases distintas, la forma más limpia y segura en KMP 
-        // sin depender de librerías de reflexión pesadas es pasar la lógica de persistencia.
-        
         when (tableName) {
             "attendance" -> {
-                val e = entity as com.tuapp.libreta.db.AttendanceEntity
+                val e = entity as AttendanceEntity
                 handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
                     queries.insertOrReplaceAttendance(
                         e.id, e.student_id, e.date, e.status, e.server_version, 
@@ -121,7 +118,7 @@ class SyncManager(
                 }
             }
             "students" -> {
-                val e = entity as com.tuapp.libreta.db.StudentEntity
+                val e = entity as StudentEntity
                 handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
                     queries.insertOrReplaceStudent(
                         e.id, e.full_name, e.student_rut, e.course_id, e.parent_id,
@@ -130,7 +127,7 @@ class SyncManager(
                 }
             }
             "profiles" -> {
-                val e = entity as com.tuapp.libreta.db.ProfileEntity
+                val e = entity as ProfileEntity
                 handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
                     queries.insertOrReplaceProfile(
                         e.id, e.full_name, e.role, e.server_version, e.is_deleted,
@@ -139,7 +136,7 @@ class SyncManager(
                 }
             }
             "grades" -> {
-                val e = entity as com.tuapp.libreta.db.GradeEntity
+                val e = entity as GradeEntity
                 handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
                     queries.insertOrReplaceGrade(
                         e.id, e.student_id, e.course_id, e.title, e.score, e.weight,
