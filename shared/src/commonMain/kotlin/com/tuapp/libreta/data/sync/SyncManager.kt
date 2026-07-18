@@ -4,11 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
-import com.tuapp.libreta.db.AttendanceEntity
-import com.tuapp.libreta.db.GradeEntity
 import com.tuapp.libreta.db.LibretaAppQueries
-import com.tuapp.libreta.db.ProfileEntity
-import com.tuapp.libreta.db.StudentEntity
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.util.getIoDispatcher
 import io.github.jan.supabase.SupabaseClient
@@ -18,6 +14,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
+/**
+ * SyncManager - Versión Robusta para Wasm.
+ * Se eliminan los genéricos complejos para evitar fallos de enlazado en el compilador IR.
+ */
 class SyncManager(
     private val queries: LibretaAppQueries,
     private val supabase: SupabaseClient
@@ -31,19 +31,60 @@ class SyncManager(
         AppLogger.d("SyncManager", "Starting full synchronization...")
 
         try {
-            syncEntity("attendance", { queries.getUnsyncedAttendanceEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
-                mapOf(
+            syncAttendance()
+            syncStudents()
+            syncProfiles()
+            syncGrades()
+            AppLogger.d("SyncManager", "Synchronization completed successfully.")
+        } catch (e: Exception) {
+            AppLogger.e("SyncManager", "Sync failed: ${e.message}")
+        } finally {
+            _isSyncing.value = false
+        }
+    }
+
+    private suspend fun syncAttendance() {
+        val pending = queries.getUnsyncedAttendanceEntities().asFlow().mapToList(getIoDispatcher()).first()
+        if (pending.isEmpty()) return
+
+        pending.forEach { entity ->
+            try {
+                val dto = mapOf(
                     "id" to entity.id,
                     "student_id" to entity.student_id,
                     "date" to entity.date,
                     "status" to entity.status,
                     "updated_at" to epochMsToIso(entity.updated_at)
                 )
+                
+                when (entity.sync_status) {
+                    SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
+                        supabase.from("attendance").upsert(dto)
+                        queries.insertOrReplaceAttendance(
+                            entity.id, entity.student_id, entity.date, entity.status,
+                            entity.server_version, entity.is_deleted, SyncStatus.SYNCED.name, 
+                            entity.created_at, entity.updated_at
+                        )
+                    }
+                    SyncStatus.PENDING_DELETE.name -> {
+                        supabase.from("attendance").delete { filter { eq("id", entity.id) } }
+                        queries.deleteAttendanceEntity(entity.id)
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Failed to sync attendance ${entity.id}: ${e.message}")
             }
-            
-            syncEntity("students", { queries.getUnsyncedStudentEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
+        }
+    }
+
+    private suspend fun syncStudents() {
+        val pending = queries.getUnsyncedStudentEntities().asFlow().mapToList(getIoDispatcher()).first()
+        if (pending.isEmpty()) return
+
+        pending.forEach { entity ->
+            try {
                 val names = entity.full_name.split(" ")
-                mapOf(
+                val dto = mapOf(
                     "id" to entity.id,
                     "first_name" to (names.firstOrNull() ?: ""),
                     "last_name" to names.drop(1).joinToString(" "),
@@ -51,19 +92,68 @@ class SyncManager(
                     "parent_id" to entity.parent_id,
                     "updated_at" to epochMsToIso(entity.updated_at)
                 )
+                
+                when (entity.sync_status) {
+                    SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
+                        supabase.from("students").upsert(dto)
+                        queries.insertOrReplaceStudent(
+                            entity.id, entity.full_name, entity.student_rut, 
+                            entity.course_id, entity.parent_id,
+                            entity.server_version, entity.is_deleted,
+                            SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
+                        )
+                    }
+                    SyncStatus.PENDING_DELETE.name -> {
+                        supabase.from("students").delete { filter { eq("id", entity.id) } }
+                        queries.deleteStudentEntity(entity.id)
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Failed to sync student ${entity.id}: ${e.message}")
             }
+        }
+    }
 
-            syncEntity("profiles", { queries.getUnsyncedProfileEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
-                mapOf(
+    private suspend fun syncProfiles() {
+        val pending = queries.getUnsyncedProfileEntities().asFlow().mapToList(getIoDispatcher()).first()
+        if (pending.isEmpty()) return
+
+        pending.forEach { entity ->
+            try {
+                val dto = mapOf(
                     "id" to entity.id,
                     "full_name" to entity.full_name,
                     "role" to entity.role,
                     "updated_at" to epochMsToIso(entity.updated_at)
                 )
+                
+                when (entity.sync_status) {
+                    SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
+                        supabase.from("profiles").upsert(dto)
+                        queries.insertOrReplaceProfile(
+                            entity.id, entity.full_name, entity.role,
+                            entity.server_version, entity.is_deleted,
+                            SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
+                        )
+                    }
+                    SyncStatus.PENDING_DELETE.name -> {
+                        supabase.from("profiles").delete { filter { eq("id", entity.id) } }
+                        queries.deleteProfileEntity(entity.id)
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Failed to sync profile ${entity.id}: ${e.message}")
             }
+        }
+    }
 
-            syncEntity("grades", { queries.getUnsyncedGradeEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
-                mapOf(
+    private suspend fun syncGrades() {
+        val pending = queries.getUnsyncedGradeEntities().asFlow().mapToList(getIoDispatcher()).first()
+        if (pending.isEmpty()) return
+
+        pending.forEach { entity ->
+            try {
+                val dto = mapOf(
                     "id" to entity.id,
                     "student_id" to entity.student_id,
                     "course_id" to entity.course_id,
@@ -74,102 +164,26 @@ class SyncManager(
                     "subject" to entity.subject,
                     "updated_at" to epochMsToIso(entity.updated_at)
                 )
-            }
-
-            AppLogger.d("SyncManager", "Synchronization completed successfully.")
-        } catch (e: Exception) {
-            AppLogger.e("SyncManager", "Sync failed: ${e.message}")
-        } finally {
-            _isSyncing.value = false
-        }
-    }
-
-    /**
-     * Motor genérico de sincronización por entidad
-     */
-    private suspend fun <T : Any> syncEntity(
-        tableName: String,
-        fetchPending: suspend () -> List<T>,
-        mapToDto: (T) -> Map<String, Any?>
-    ) {
-        val pending = fetchPending()
-        if (pending.isEmpty()) return
-
-        pending.forEach { entity ->
-            try {
-                processEntitySync(tableName, entity, mapToDto)
+                
+                when (entity.sync_status) {
+                    SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
+                        supabase.from("grades").upsert(dto)
+                        queries.insertOrReplaceGrade(
+                            entity.id, entity.student_id, entity.course_id,
+                            entity.title, entity.score, entity.weight,
+                            entity.term, entity.subject, 
+                            entity.server_version, entity.is_deleted,
+                            SyncStatus.SYNCED.name,
+                            entity.created_at, entity.updated_at
+                        )
+                    }
+                    SyncStatus.PENDING_DELETE.name -> {
+                        supabase.from("grades").delete { filter { eq("id", entity.id) } }
+                        queries.deleteGradeEntity(entity.id)
+                    }
+                }
             } catch (e: Exception) {
-                AppLogger.e("SyncManager", "Failed to sync $tableName: ${e.message}")
-            }
-        }
-    }
-
-    private suspend fun <T : Any> processEntitySync(
-        tableName: String,
-        entity: T,
-        mapToDto: (T) -> Map<String, Any?>
-    ) {
-        when (tableName) {
-            "attendance" -> {
-                val e = entity as AttendanceEntity
-                handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
-                    queries.insertOrReplaceAttendance(
-                        e.id, e.student_id, e.date, e.status, e.server_version, 
-                        e.is_deleted, SyncStatus.SYNCED.name, e.created_at, e.updated_at
-                    )
-                }
-            }
-            "students" -> {
-                val e = entity as StudentEntity
-                handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
-                    queries.insertOrReplaceStudent(
-                        e.id, e.full_name, e.student_rut, e.course_id, e.parent_id,
-                        e.server_version, e.is_deleted, SyncStatus.SYNCED.name, e.created_at, e.updated_at
-                    )
-                }
-            }
-            "profiles" -> {
-                val e = entity as ProfileEntity
-                handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
-                    queries.insertOrReplaceProfile(
-                        e.id, e.full_name, e.role, e.server_version, e.is_deleted,
-                        SyncStatus.SYNCED.name, e.created_at, e.updated_at
-                    )
-                }
-            }
-            "grades" -> {
-                val e = entity as GradeEntity
-                handleSync(tableName, e.id, e.sync_status, mapToDto(entity)) {
-                    queries.insertOrReplaceGrade(
-                        e.id, e.student_id, e.course_id, e.title, e.score, e.weight,
-                        e.term, e.subject, e.server_version, e.is_deleted,
-                        SyncStatus.SYNCED.name, e.created_at, e.updated_at
-                    )
-                }
-            }
-        }
-    }
-
-    private suspend fun handleSync(
-        tableName: String,
-        id: String,
-        syncStatus: String,
-        dto: Map<String, Any?>,
-        onSynced: suspend () -> Unit
-    ) {
-        when (syncStatus) {
-            SyncStatus.PENDING_INSERT.name, SyncStatus.PENDING_UPDATE.name -> {
-                supabase.from(tableName).upsert(dto)
-                onSynced()
-            }
-            SyncStatus.PENDING_DELETE.name -> {
-                supabase.from(tableName).delete { filter { eq("id", id) } }
-                when (tableName) {
-                    "attendance" -> queries.deleteAttendanceEntity(id)
-                    "students"   -> queries.deleteStudentEntity(id)
-                    "profiles"    -> queries.deleteProfileEntity(id)
-                    "grades"      -> queries.deleteGradeEntity(id)
-                }
+                AppLogger.e("SyncManager", "Failed to sync grade ${entity.id}: ${e.message}")
             }
         }
     }

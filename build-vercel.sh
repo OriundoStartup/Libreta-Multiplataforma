@@ -10,9 +10,8 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
   exit 1
 fi
 
-# Aumentamos la memoria de Node.js. Gradle descarga Node internamente para empaquetar Wasm/JS.
-# Si Node se queda sin RAM durante Webpack, Gradle falla silenciosamente.
-export NODE_OPTIONS="--max-old-space-size=3072"
+# Aumentamos la memoria de Node.js a 4GB para el empaquetado final.
+export NODE_OPTIONS="--max-old-space-size=4096"
 
 # --- 2. CONFIGURACIÓN DE JAVA ---
 echo "--- [SRE] Instalando Amazon Corretto 17 ---"
@@ -27,19 +26,17 @@ echo "Java version:"
 java -version
 
 # --- 3. CONSTRUCCIÓN ---
-echo "--- [SRE] Iniciando Compilación Gradle (Wasm Optimized) ---"
+echo "--- [SRE] Iniciando Compilación Gradle (Maximum Resources) ---"
 chmod +x gradlew
 
-# CAMBIOS CLAVE:
-# 1. Subimos -Xmx a 3072m (3GB). Vital para el compilador Wasm.
-# 2. MaxMetaspaceSize a 512m (Compose genera muchas clases en tiempo de compilación).
-# 3. Quitamos --info para no saturar el buffer de logs de Vercel.
+# Ejecutamos con 4GB de Heap.
+# Se utiliza el recolector G1 para manejar eficientemente los picos de memoria de Wasm/Compose.
 ./gradlew :composeApp:wasmJsBrowserDistribution \
   --no-daemon \
   --stacktrace \
   --max-workers=1 \
   --no-configuration-cache \
-  -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" \
+  -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC" \
   -Dfile.encoding=UTF-8
 
 echo "--- [SRE] Despliegue completado exitosamente ---"
