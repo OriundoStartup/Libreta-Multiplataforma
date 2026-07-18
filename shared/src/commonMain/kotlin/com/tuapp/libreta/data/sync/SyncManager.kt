@@ -1,6 +1,7 @@
 package com.tuapp.libreta.data.sync
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
 import com.tuapp.libreta.db.AttendanceEntity
@@ -14,6 +15,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class SyncManager(
@@ -29,7 +31,7 @@ class SyncManager(
         AppLogger.d("SyncManager", "Starting full synchronization...")
 
         try {
-            syncEntity("attendance", { queries.getUnsyncedAttendanceEntities().awaitAsList() }) { entity ->
+            syncEntity("attendance", { queries.getUnsyncedAttendanceEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
                 mapOf(
                     "id" to entity.id,
                     "student_id" to entity.student_id,
@@ -39,7 +41,7 @@ class SyncManager(
                 )
             }
             
-            syncEntity("students", { queries.getUnsyncedStudentEntities().awaitAsList() }) { entity ->
+            syncEntity("students", { queries.getUnsyncedStudentEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
                 val names = entity.full_name.split(" ")
                 mapOf(
                     "id" to entity.id,
@@ -51,7 +53,7 @@ class SyncManager(
                 )
             }
 
-            syncEntity("profiles", { queries.getUnsyncedProfileEntities().awaitAsList() }) { entity ->
+            syncEntity("profiles", { queries.getUnsyncedProfileEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
                 mapOf(
                     "id" to entity.id,
                     "full_name" to entity.full_name,
@@ -60,7 +62,7 @@ class SyncManager(
                 )
             }
 
-            syncEntity("grades", { queries.getUnsyncedGradeEntities().awaitAsList() }) { entity ->
+            syncEntity("grades", { queries.getUnsyncedGradeEntities().asFlow().mapToList(getIoDispatcher()).first() }) { entity ->
                 mapOf(
                     "id" to entity.id,
                     "student_id" to entity.student_id,
