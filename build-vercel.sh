@@ -23,7 +23,7 @@ echo "Java version:"
 java -version
 
 # --- 3. CONSTRUCCIÓN ---
-echo "--- Iniciando compilación Gradle ---"
+echo "--- Iniciando compilación Gradle (v2.1) ---"
 chmod +x gradlew
 ./gradlew :composeApp:wasmJsBrowserDistribution \
   --no-daemon \

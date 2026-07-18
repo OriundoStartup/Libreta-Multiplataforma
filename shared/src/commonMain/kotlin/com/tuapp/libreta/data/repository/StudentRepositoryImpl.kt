@@ -7,6 +7,7 @@ import com.tuapp.libreta.data.sync.SyncManager
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.db.StudentEntity
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.domain.repository.StudentRepository
@@ -50,7 +51,7 @@ class StudentRepositoryImpl(
 
     override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = withContext(getIoDispatcher()) {
         runCatching {
-            val current = queries.getStudentById(id.value).awaitAsOneOrNull()
+            val current: StudentEntity? = queries.getStudentById(id.value).awaitAsOneOrNull()
             if (current != null) {
                 queries.insertOrReplaceStudent(
                     id = id.value,
