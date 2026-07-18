@@ -109,12 +109,15 @@ private fun handleWebOAuthCallback() {
             println("Web App: Session established SUCCESSFULLY.")
             
             // Limpiar URL para evitar re-canje (el code es de un solo uso)
-            window.history.replaceState(null, "LibretApp", window.location.pathname)
+            // Usamos replaceState con el hash actual para no perder la posición del usuario
+            val targetUrl = window.location.pathname + window.location.hash
+            window.history.replaceState(null, "LibretApp", targetUrl)
         } catch (e: Exception) {
             println("Web App: FATAL ERROR during code exchange: ${e.message}")
             e.printStackTrace()
-            // Si falla el canje, limpiamos de todos modos para permitir reintento manual
-            window.history.replaceState(null, "LibretApp", window.location.pathname)
+            // Si falla el canje, también limpiamos para permitir reintento manual
+            val targetUrl = window.location.pathname + window.location.hash
+            window.history.replaceState(null, "LibretApp", targetUrl)
         }
     }
 }
