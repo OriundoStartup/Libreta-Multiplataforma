@@ -1,0 +1,4 @@
+- `[x]` Rollback del repositorio al commit estable `bc75f36`.
+- `[x]` Aplicación de límites de memoria "Survival Mode" (2.5GB Heap + Kotlin In-Process).
+- `[x]` Commit y Force Push a la rama principal para disparar despliegue.
+- `[ ]` Monitorear el despliegue en Vercel (esperando feedback del usuario).
