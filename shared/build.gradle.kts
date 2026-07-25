@@ -71,6 +71,12 @@ kotlin {
             }
         }
 
+        findByName("androidUnitTest")?.apply {
+            dependencies {
+                implementation(libs.mockk)
+            }
+        }
+
         findByName("iosMain")?.apply {
             dependencies {
                 implementation(libs.sqldelight.native)

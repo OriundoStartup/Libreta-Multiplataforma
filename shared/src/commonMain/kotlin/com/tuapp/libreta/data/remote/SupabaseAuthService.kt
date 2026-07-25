@@ -96,12 +96,10 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         }
     }
 
-    suspend fun signInWithGoogle() = supabase.auth.signInWith(Google) {
-        // En Web, si no pasamos redirectUrl, Supabase usa la 'Site URL' por defecto.
-        // Es mejor ser explícitos y usar la configurada en BuildKonfig.
-        if (SupabaseConfig.REDIRECT_URL.isNotBlank()) {
-            redirectUrl = SupabaseConfig.REDIRECT_URL
-        }
+    suspend fun signInWithGoogle() = supabase.auth.signInWith(
+        provider = Google,
+        redirectUrl = if (SupabaseConfig.REDIRECT_URL.isNotBlank()) SupabaseConfig.REDIRECT_URL else null
+    ) {
         queryParams["prompt"] = "select_account"
     }
 
