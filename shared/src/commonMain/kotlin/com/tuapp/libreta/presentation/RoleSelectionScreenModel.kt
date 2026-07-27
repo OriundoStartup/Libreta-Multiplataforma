@@ -42,19 +42,19 @@ class RoleSelectionScreenModel(
             val uid = UuidString(user.id)
             val role = authService.getUserRole(user.id)
             
+            val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
+
             if (role != null && !forceShowSelection) {
-                // Si ya tiene un rol y no estamos forzando la selección, saltamos al dashboard
-                // Pero primero nos aseguramos de que el flujo global se entere
-                authService.refreshProfile()
-                _state.value = RoleSelectionUiState.Success(role, uid)
-                return@launch
+                // Si es profesor, o si es apoderado y ya tiene alumnos, saltamos al dashboard
+                if (role == UserRole.TEACHER || (role == UserRole.PARENT && students.isNotEmpty())) {
+                    authService.refreshProfile()
+                    _state.value = RoleSelectionUiState.Success(role, uid)
+                    return@launch
+                }
             }
 
             // Si llegamos aquí, mostramos la selección de roles
             _state.value = RoleSelectionUiState.Loading
-            
-            // Verificar si tiene alumnos (apoderado real)
-            val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
             
             // Verificar si tiene cursos asignados (profesor real)
             // Nota: Podríamos usar un repository de asignaciones, pero por ahora 

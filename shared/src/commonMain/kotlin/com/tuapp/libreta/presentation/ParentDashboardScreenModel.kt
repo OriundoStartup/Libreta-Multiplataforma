@@ -46,9 +46,6 @@ enum class TimelineEventType { ATTENDANCE_PRESENT, ATTENDANCE_ABSENT, MESSAGE, J
 
 data class ParentDashboardState(
     val uiState: ParentDashboardUiState = ParentDashboardUiState.Loading,
-    val showAddStudentDialog: Boolean = false,
-    val isActionLoading: Boolean = false,
-    val error: String? = null,
     val successMessage: String? = null
 )
 
@@ -221,35 +218,8 @@ class ParentDashboardScreenModel(
         screenModelScope.launch { authService.signOut() }
     }
 
-    fun onAddStudentClick() {
-        _state.update { it.copy(showAddStudentDialog = true) }
-    }
-
-    fun onDismissDialog() {
-        _state.update { it.copy(showAddStudentDialog = false, error = null) }
-    }
-
     fun clearSuccessMessage() {
         _state.update { it.copy(successMessage = null) }
-    }
-
-    fun enrollStudent(name: String, rut: String?) {
-        val userId = authService.currentUserId() ?: return
-        screenModelScope.launch {
-            _state.update { it.copy(isActionLoading = true, error = null) }
-            try {
-                val profile = authService.getProfile(userId.value)
-                val courseId = profile?.courseId ?: throw Exception("No se encontró curso vinculado")
-                coursesRepo.enrollStudent(courseId, name, rut)
-                    .onSuccess {
-                        _state.update { it.copy(showAddStudentDialog = false, isActionLoading = false, successMessage = "Registrado: $name") }
-                        load()
-                    }
-                    .onFailure { e -> _state.update { it.copy(isActionLoading = false, error = e.message) } }
-            } catch (e: Exception) {
-                _state.update { it.copy(isActionLoading = false, error = e.message) }
-            }
-        }
     }
 
     fun selectStudent(index: Int) {

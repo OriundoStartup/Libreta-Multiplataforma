@@ -164,9 +164,9 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                     ParentDashboardUiState.NoStudents -> EmptyStateView(
                         icon = Icons.Default.PersonAdd,
                         title = "Sin alumnos vinculados",
-                        description = "Registra a tus hijos para ver su asistencia y comunicaciones escolares.",
-                        actionText = "Ir a mi perfil",
-                        onAction = { navigator.push(AppNavigation.profile()) },
+                        description = "Registra a tus hijos usando el código que te entregó el profesor para ver su progreso.",
+                        actionText = "Inscribir a mi hijo",
+                        onAction = { navigator.push(AppNavigation.enrollment()) },
                         modifier = Modifier.padding(padding)
                     )
 
@@ -284,13 +284,6 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                 }
             }
         }
-        if (state.showAddStudentDialog) {
-            AddStudentDialog(
-                isLoading = state.isActionLoading,
-                error = state.error,
-                onDismiss = { model.onDismissDialog() },
-                onConfirm = { name, rut -> model.enrollStudent(name, rut) }
-            )
         }
     }
 }
