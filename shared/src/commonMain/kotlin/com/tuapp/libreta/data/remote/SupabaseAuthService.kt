@@ -104,9 +104,9 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         }
     }
 
-    suspend fun signInWithGoogle() = supabase.auth.signInWith(
+    suspend fun signInWithGoogle(redirectUrl: String? = null) = supabase.auth.signInWith(
         provider = Google,
-        redirectUrl = if (SupabaseConfig.REDIRECT_URL.isNotBlank()) SupabaseConfig.REDIRECT_URL else null
+        redirectUrl = redirectUrl ?: if (SupabaseConfig.REDIRECT_URL.isNotBlank()) SupabaseConfig.REDIRECT_URL else null
     ) {
         queryParams["prompt"] = "select_account"
     }
