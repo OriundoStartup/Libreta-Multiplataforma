@@ -19,10 +19,12 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
                 // DETECCIÓN DINÁMICA: Usamos el origen actual del navegador (ej: https://tudominio.vercel.app)
                 // Esto evita que en producción intente redirigir a 'localhost'.
                 val currentOrigin = window.location.origin
-                // Usamos auth-callback.html como puente intermedio
-                val redirectUrl = "$currentOrigin/auth-callback.html"
+                
+                // ELIMINAR EL INTERMEDIARIO: Redirigimos directamente a la raíz (/)
+                // Esto asegura que el PKCE verifier se encuentre en el mismo contexto de URL.
+                val redirectUrl = "$currentOrigin/"
 
-                println("Wasm Launcher: Initiating PKCE flow with redirect: $redirectUrl")
+                println("Wasm Launcher: Initiating PKCE flow directly to: $redirectUrl")
 
                 // CRÍTICO: Usar signInWith para que la SDK gestione el PKCE Verifier
                 // Esto guarda el code_verifier en el LocalStorage antes de redirigir.
