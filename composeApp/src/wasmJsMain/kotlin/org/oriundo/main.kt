@@ -30,31 +30,30 @@ fun main() {
         println("Web App: Initializing Koin...")
         initKoin()
 
-        // 2.5. Procesar callback OAuth (PKCE).
-        // Tras el login con Google, auth-callback.html redirige a /?code=xxx.
-        // En wasmJs la SDK NO intercambia ese code automáticamente (a diferencia de
-        // Android/iOS que usan handleDeeplinks), así que lo hacemos manualmente aquí.
-        // Sin esto, la sesión nunca se crea y la app rebota de vuelta al login.
-        handleWebOAuthCallback()
-
-        // 3. Montar App en el DOM
+        // 3. Montar App en el DOM (dentro de una corrutina para manejar el canje de código OAuth)
         val root = document.getElementById("app-root") as? HTMLElement
         if (root != null) {
-            ComposeViewport(root) {
-                App()
-            }
-            
-            // 4. Ocultar pantalla de carga una vez Compose tome el control
-            window.setTimeout({
-                loadingScreen?.style?.opacity = "0"
+            CoroutineScope(Dispatchers.Main).launch {
+                // 2.5. Procesar callback OAuth (PKCE) de forma síncrona/secuencial
+                // Esto garantiza que la sesión exista ANTES de que App() se renderice.
+                handleWebOAuthCallback()
+
+                ComposeViewport(root) {
+                    App()
+                }
+
+                // 4. Ocultar pantalla de carga una vez Compose tome el control
                 window.setTimeout({
-                    loadingScreen?.style?.display = "none"
+                    loadingScreen?.style?.opacity = "0"
+                    window.setTimeout({
+                        loadingScreen?.style?.display = "none"
+                        null
+                    }, 500)
                     null
                 }, 500)
-                null
-            }, 500)
-            
-            println("Web App: Successfully started.")
+
+                println("Web App: Successfully started.")
+            }
         } else {
             throw IllegalStateException("No se encontró el contenedor #app-root en el HTML")
         }
@@ -81,7 +80,7 @@ fun main() {
  * Detecta el parámetro `?code=` o `#code=` que Supabase deja en la URL tras el login OAuth
  * (flujo PKCE) y lo canjea por una sesión.
  */
-private fun handleWebOAuthCallback() {
+private suspend fun handleWebOAuthCallback() {
     val fullUrl = window.location.href
     println("Web App: Boot URL -> $fullUrl")
 
@@ -102,23 +101,20 @@ private fun handleWebOAuthCallback() {
     println("Web App: OAuth Code Found! Exchanging for session... (Code: ${authCode.take(5)}...)")
 
     val supabase = GlobalContext.get().get<SupabaseClient>()
-    CoroutineScope(Dispatchers.Default).launch {
-        try {
-            // El canje de código es crítico. Si falla aquí, la app no se loguea.
-            supabase.auth.exchangeCodeForSession(authCode)
-            println("Web App: Session established SUCCESSFULLY.")
-            
-            // Limpiar URL para evitar re-canje (el code es de un solo uso)
-            // Usamos replaceState con el hash actual para no perder la posición del usuario
-            val targetUrl = window.location.pathname + window.location.hash
-            window.history.replaceState(null, "LibretApp", targetUrl)
-        } catch (e: Exception) {
-            println("Web App: FATAL ERROR during code exchange: ${e.message}")
-            e.printStackTrace()
-            // Si falla el canje, también limpiamos para permitir reintento manual
-            val targetUrl = window.location.pathname + window.location.hash
-            window.history.replaceState(null, "LibretApp", targetUrl)
-        }
+    try {
+        // El canje de código es crítico. Si falla aquí, la app no se loguea.
+        supabase.auth.exchangeCodeForSession(authCode)
+        println("Web App: Session established SUCCESSFULLY.")
+        
+        // Limpiar URL para evitar re-canje (el code es de un solo uso)
+        val targetUrl = window.location.pathname + window.location.hash
+        window.history.replaceState(null, "LibretApp", targetUrl)
+    } catch (e: Exception) {
+        println("Web App: FATAL ERROR during code exchange: ${e.message}")
+        e.printStackTrace()
+        // Si falla el canje, también limpiamos para permitir reintento manual
+        val targetUrl = window.location.pathname + window.location.hash
+        window.history.replaceState(null, "LibretApp", targetUrl)
     }
 }
 

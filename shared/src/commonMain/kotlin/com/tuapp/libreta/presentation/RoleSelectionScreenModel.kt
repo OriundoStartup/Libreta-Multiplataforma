@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.UserRole
 import com.tuapp.libreta.domain.repository.StudentRepository
@@ -38,7 +39,11 @@ class RoleSelectionScreenModel(
 
     fun checkExistingProfile(forceShowSelection: Boolean = false) {
         screenModelScope.launch {
-            val user = authService.currentUser() ?: return@launch
+            val user = authService.currentUser() ?: run {
+                AppLogger.d("RoleSelection", "No current user. Navigating back to Login.")
+                _state.value = RoleSelectionUiState.Error("Debes iniciar sesión primero.")
+                return@launch
+            }
             val uid = UuidString(user.id)
             val role = authService.getUserRole(user.id)
             

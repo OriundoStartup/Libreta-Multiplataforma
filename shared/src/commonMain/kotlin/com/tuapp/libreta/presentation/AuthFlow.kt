@@ -1,6 +1,7 @@
 package com.tuapp.libreta.presentation
 
 import com.tuapp.libreta.data.remote.SessionStatus
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.domain.model.UserRole
 
 /**
@@ -52,8 +53,9 @@ sealed interface AuthFlow {
                     val userId = status.user.id
 
                     when {
-                        // Caso 1: Sin rol definido
+                        // Caso 1: Sin rol definido (Usuario recién registrado vía Google)
                         role == null -> {
+                            AppLogger.d("AuthFlow", "Role is NULL. Redirecting to RoleSelection if not already there.")
                             if (currentScreenKind != ScreenKind.ROLE_SELECTION) {
                                 NeedsRole(userId)
                             } else {

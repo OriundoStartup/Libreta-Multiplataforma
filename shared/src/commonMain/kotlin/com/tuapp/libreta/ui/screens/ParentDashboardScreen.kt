@@ -284,7 +284,6 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                 }
             }
         }
-        }
     }
 }
 
