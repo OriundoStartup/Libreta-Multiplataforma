@@ -19,6 +19,7 @@ fun main() {
     val loadingScreen = document.getElementById("loading-screen") as? HTMLElement
     
     println("Web App: Starting Boot Sequence...")
+    println("Web App: Forcing deployment sync - July 29 2026")
     
     try {
         // 1. Validación de Configuración
