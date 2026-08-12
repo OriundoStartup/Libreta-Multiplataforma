@@ -29,7 +29,9 @@ java -version
 echo "--- [SRE] Iniciando Compilación Gradle (v2.4 Stable) ---"
 chmod +x gradlew
 
-# Ejecutamos limpieza y build con límites estrictos para no asfixiar el contenedor de 8GB.
+# Reintentar la descarga de Gradle si falla (Resiliencia ante error 503)
+export GRADLE_OPTS="-Dorg.gradle.internal.http.socketTimeout=60000 -Dorg.gradle.internal.http.connectionTimeout=60000"
+
 ./gradlew clean :composeApp:wasmJsBrowserDistribution \
   --no-daemon \
   --stacktrace \
