@@ -16,18 +16,19 @@ actual fun rememberGoogleAuthLauncher(): (suspend () -> Unit)? {
     return remember(authService) {
         suspend {
             try {
-                // DETECCIÓN DINÁMICA: Usamos el origen actual del navegador (ej: https://tudominio.vercel.app)
-                // Esto evita que en producción intente redirigir a 'localhost'.
+                // DETECCIÓN DINÁMICA DE ORIGEN
+                // window.location.origin devuelve el dominio sin la barra final (ej: https://tudominio.vercel.app)
                 val currentOrigin = window.location.origin
                 
-                // ELIMINAR EL INTERMEDIARIO: Redirigimos directamente a la raíz (/)
-                // Esto asegura que el PKCE verifier se encuentre en el mismo contexto de URL.
-                val redirectUrl = "$currentOrigin/"
+                // Forzamos que la URL de redirección coincida EXACTAMENTE con lo configurado en Supabase.
+                // Si estamos en localhost, usamos el puerto 8080. Si no, el dominio actual.
+                val redirectUrl = if (currentOrigin.contains("localhost")) {
+                    "http://localhost:8080"
+                } else {
+                    currentOrigin // Esto enviará "https://libretappestudiantil.vercel.app"
+                }
 
-                println("Wasm Launcher: Initiating PKCE flow directly to: $redirectUrl")
-
-                // CRÍTICO: Usar signInWith para que la SDK gestione el PKCE Verifier
-                // Esto guarda el code_verifier en el LocalStorage antes de redirigir.
+                println("Wasm Launcher: Redirecting dynamically to: $redirectUrl")
                 authService.signInWithGoogle(redirectUrl = redirectUrl)
 
             } catch (e: Exception) {

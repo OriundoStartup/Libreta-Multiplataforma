@@ -103,20 +103,18 @@ private suspend fun handleWebOAuthCallback() {
 
     val supabase = GlobalContext.get().get<SupabaseClient>()
     try {
-        // El canje de código es crítico. Si falla aquí, la app no se loguea.
         println("Web App: Calling exchangeCodeForSession...")
         supabase.auth.exchangeCodeForSession(authCode)
         println("Web App: Session established SUCCESSFULLY.")
         
-        // Limpiar URL para evitar re-canje (el code es de un solo uso)
-        val targetUrl = window.location.origin + "/"
+        // Limpiar URL de forma inteligente: mantener la ruta actual pero quitar el ?code=
+        val targetUrl = window.location.origin + window.location.pathname
         println("Web App: Cleaning URL to: $targetUrl")
         window.history.replaceState(null, "LibretApp", targetUrl)
     } catch (e: Exception) {
         println("Web App: FATAL ERROR during code exchange: ${e.message}")
         e.printStackTrace()
-        // Si falla el canje, también limpiamos para permitir reintento manual
-        val targetUrl = window.location.origin + "/"
+        val targetUrl = window.location.origin + window.location.pathname
         window.history.replaceState(null, "LibretApp", targetUrl)
     }
 }
