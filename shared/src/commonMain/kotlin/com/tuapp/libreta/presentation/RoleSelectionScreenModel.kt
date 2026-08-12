@@ -31,7 +31,8 @@ sealed interface RoleSelectionUiState {
 class RoleSelectionScreenModel(
     private val authService: SupabaseAuthService,
     private val coursesRepository: CoursesRepository,
-    private val studentRepository: StudentRepository
+    private val studentRepository: StudentRepository,
+    private val syncManager: com.tuapp.libreta.data.sync.SyncManager
 ) : ScreenModel {
 
     private val _state = MutableStateFlow<RoleSelectionUiState>(RoleSelectionUiState.Idle)
@@ -88,7 +89,6 @@ class RoleSelectionScreenModel(
                 withTimeout(15_000) {
                     when (role) {
                         UserRole.TEACHER -> {
-                            // Validar si ya es profesor o si tiene un código de invitación para profesores
                             val currentRole = authService.getUserRole(uid.value)
                             if (currentRole != UserRole.TEACHER && code.isBlank()) {
                                 throw Exception("Para registrarte como profesor debes ingresar un código de autorización.")
@@ -107,6 +107,8 @@ class RoleSelectionScreenModel(
                                 val course = coursesRepository.getCourseByInviteCode(code).getOrNull()
                                     ?: throw Exception("Código de invitación inválido.")
                                 
+                                AppLogger.d("RoleSelection", "Vinculando apoderado a curso: ${course.name}")
+                                
                                 // 1. Actualizar Rol
                                 authService.updateRole(role)
                                 
@@ -115,9 +117,12 @@ class RoleSelectionScreenModel(
                                     courseId = course.id,
                                     studentName = studentName
                                 ).getOrThrow()
+                                
+                                // 3. Sincronización Forzada para que el Dashboard vea los datos de inmediato
+                                AppLogger.d("RoleSelection", "Disparando sincronización inicial...")
+                                syncManager.syncAll()
 
                             } else {
-                                // ¿Tiene alumnos ya?
                                 val students = studentRepository.getStudentsByParent(uid).firstOrNull()
                                 if (students.isNullOrEmpty()) {
                                     throw Exception("Para entrar como apoderado por primera vez debes ingresar el código del curso y nombre del alumno.")
@@ -126,6 +131,9 @@ class RoleSelectionScreenModel(
                             }
                         }
                     }
+                    
+                    // Pequeña pausa para asegurar que los cambios de RLS se propaguen en Supabase
+                    kotlinx.coroutines.delay(1000)
                     authService.refreshProfile()
                     _state.value = RoleSelectionUiState.Success(role, uid)
                 }
