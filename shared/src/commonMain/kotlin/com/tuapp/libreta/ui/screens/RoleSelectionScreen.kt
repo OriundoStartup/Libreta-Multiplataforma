@@ -65,6 +65,7 @@ data class RoleSelectionScreen(val isSwitchingRole: Boolean = false) : Screen {
 
         var selectedRole by remember { mutableStateOf<UserRole?>(null) }
         var invitationCode by remember { mutableStateOf("") }
+        var studentName by remember { mutableStateOf("") }
         var isExistingParent by remember { mutableStateOf(false) }
         var isExistingTeacher by remember { mutableStateOf(false) }
         var userEmail by remember { mutableStateOf("") }
@@ -154,6 +155,21 @@ data class RoleSelectionScreen(val isSwitchingRole: Boolean = false) : Screen {
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = studentName,
+                        onValueChange = { studentName = it },
+                        label = { Text("Nombre del alumno", color = Color.White.copy(alpha = 0.75f)) },
+                        placeholder = { Text("Nombre completo de tu hijo/a", color = Color.White.copy(alpha = 0.4f)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = ChileBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 } else if (selectedRole == UserRole.TEACHER && !isExistingTeacher) {
                     Spacer(Modifier.height(24.dp))
                     OutlinedTextField(
@@ -191,13 +207,13 @@ data class RoleSelectionScreen(val isSwitchingRole: Boolean = false) : Screen {
                     is RoleSelectionUiState.Loading -> CircularProgressIndicator(color = Color.White)
                     else -> {
                         val isButtonEnabled = selectedRole != null && when (selectedRole) {
-                            UserRole.PARENT -> isExistingParent || invitationCode.length == 6
+                            UserRole.PARENT -> isExistingParent || (invitationCode.length == 6 && studentName.isNotBlank())
                             UserRole.TEACHER -> isExistingTeacher || invitationCode.isNotBlank()
                             else -> false
                         }
 
                         Button(
-                            onClick = { selectedRole?.let { model.confirmRole(it, invitationCode) } },
+                            onClick = { selectedRole?.let { model.confirmRole(it, invitationCode, studentName) } },
                             enabled = isButtonEnabled,
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(8.dp),

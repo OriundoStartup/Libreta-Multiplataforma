@@ -75,7 +75,7 @@ class RoleSelectionScreenModel(
         }
     }
 
-    fun confirmRole(role: UserRole, code: String = "") {
+    fun confirmRole(role: UserRole, code: String = "", studentName: String = "") {
         screenModelScope.launch {
             _state.value = RoleSelectionUiState.Loading
             
@@ -85,7 +85,7 @@ class RoleSelectionScreenModel(
             }
 
             try {
-                withTimeout(10_000) {
+                withTimeout(15_000) {
                     when (role) {
                         UserRole.TEACHER -> {
                             // Validar si ya es profesor o si tiene un código de invitación para profesores
@@ -95,9 +95,6 @@ class RoleSelectionScreenModel(
                             }
                             
                             if (code.isNotBlank()) {
-                                // Si proporciona un código, intentamos asignarlo
-                                // Asumimos que existe un método en assignmentRepo para esto
-                                // Por ahora solo actualizamos el rol si el código es "válido" (lógica a definir)
                                 if (code.length < 4) throw Exception("Código de profesor inválido.")
                             }
                             
@@ -105,15 +102,25 @@ class RoleSelectionScreenModel(
                         }
                         UserRole.PARENT -> {
                             if (code.isNotBlank()) {
+                                if (studentName.isBlank()) throw Exception("Debes ingresar el nombre de tu hijo/a.")
+                                
                                 val course = coursesRepository.getCourseByInviteCode(code).getOrNull()
                                     ?: throw Exception("Código de invitación inválido.")
+                                
+                                // 1. Actualizar Rol
                                 authService.updateRole(role)
-                                // TODO: Enrollment logic here if needed (3NF)
+                                
+                                // 2. Inscribir Alumno (Enrollment)
+                                coursesRepository.enrollStudent(
+                                    courseId = course.id,
+                                    studentName = studentName
+                                ).getOrThrow()
+
                             } else {
                                 // ¿Tiene alumnos ya?
                                 val students = studentRepository.getStudentsByParent(uid).firstOrNull()
                                 if (students.isNullOrEmpty()) {
-                                    throw Exception("Para entrar como apoderado por primera vez debes ingresar el código del curso.")
+                                    throw Exception("Para entrar como apoderado por primera vez debes ingresar el código del curso y nombre del alumno.")
                                 }
                                 authService.updateRole(role)
                             }
