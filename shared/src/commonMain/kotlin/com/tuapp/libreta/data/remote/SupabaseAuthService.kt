@@ -60,29 +60,35 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                 AppLogger.d("AuthService", "Processing session status: $status")
                 when (status) {
                     is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
-                        AppLogger.d("AuthService", "Status: NotAuthenticated")
                         emit(SessionStatus.NotAuthenticated)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> {
-                        AppLogger.d("AuthService", "Status: Initializing...")
                         emit(SessionStatus.Loading)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
                         val user = status.session.user
                         if (user != null) {
                             AppLogger.d("AuthService", "Status: Authenticated (User: ${user.id}). Checking role...")
-                            emit(SessionStatus.Loading)
+                            
+                            // Primero emitimos el estado autenticado sin rol para que el AuthFlow decida.
+                            // Esto evita quedar bloqueado en Loading si el check de rol tarda.
+                            emit(SessionStatus.Authenticated(user, null))
                             
                             val role = try {
-                                kotlinx.coroutines.withTimeout(10000) { getUserRole(user.id) }
+                                // Reducimos el timeout para que el fallo sea rápido
+                                kotlinx.coroutines.withTimeout(5000) { getUserRole(user.id) }
                             } catch (e: Exception) {
-                                AppLogger.e("AuthService", "Error/Timeout al obtener rol para ${user.id}: ${e.message}")
+                                AppLogger.e("AuthService", "Error/Timeout al obtener rol: ${e.message}")
                                 null
                             }
-                            AppLogger.d("AuthService", "Role check complete. Role: ${role?.name ?: "NULL"}")
-                            emit(SessionStatus.Authenticated(user, role))
+                            
+                            if (role != null) {
+                                AppLogger.d("AuthService", "Role found: ${role.name}. Emitting full Authenticated.")
+                                emit(SessionStatus.Authenticated(user, role))
+                            } else {
+                                AppLogger.d("AuthService", "Role not found. Staying as Authenticated(null)")
+                            }
                         } else {
-                            AppLogger.d("AuthService", "Authenticated but user is NULL")
                             emit(SessionStatus.NotAuthenticated)
                         }
                     }
