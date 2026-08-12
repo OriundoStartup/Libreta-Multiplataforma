@@ -145,35 +145,28 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         return getUserRole(uid) != null
     }
 
-    suspend fun updateRole(role: UserRole, courseId: String? = null) {
+    suspend fun updateRole(role: UserRole) {
         val uid = supabase.auth.currentUserOrNull()?.id ?: run {
-            AppLogger.e("updateRole", "Error: No hay usuario autenticado")
+            AppLogger.e("AuthService", "updateRole: No hay usuario autenticado")
             return
         }
         
-        AppLogger.d("updateRole", "Iniciando UPDATE para UID: $uid con Rol: ${role.name}")
+        AppLogger.d("AuthService", "Iniciando UPDATE de rol para $uid -> ${role.name}")
         
         runCatching {
-            // profiles.course_id fue eliminado en 002_normalize_3nf — solo se actualiza el rol.
-            // El curso del apoderado se modela vía enrollments; el del docente vía courses.teacher_id.
-            val updateData = mapOf<String, String?>(
-                "role" to role.name
-            )
+            // Nota: profiles.course_id fue eliminado en la normalización 3NF.
+            // El rol se guarda en public.profiles, las vinculaciones en sus respectivas tablas.
+            val updateData = mapOf("role" to role.name)
 
             supabase.postgrest["profiles"].update(updateData) {
                 filter { eq("id", uid) }
             }
         }.onSuccess {
-            AppLogger.d("updateRole", "Update EXITOSO para $uid")
-            
-            // Forzar actualización del flujo de sesión
-            _profileRefreshTrigger.value += 1
-            
-            // Verificación inmediata
-            val check = getUserRole(uid)
-            AppLogger.d("updateRole", "Verificación post-update: rol en BD = ${check?.name}")
+            AppLogger.d("AuthService", "Rol actualizado exitosamente en BD para $uid")
+            refreshProfile()
         }.onFailure { e ->
-            AppLogger.e("updateRole", "ERROR CRÍTICO en update: ${e.message}", e)
+            AppLogger.e("AuthService", "Error al actualizar rol: ${e.message}")
+            throw e
         }
     }
 

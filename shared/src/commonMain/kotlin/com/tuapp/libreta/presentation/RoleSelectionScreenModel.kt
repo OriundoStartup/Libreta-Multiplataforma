@@ -107,7 +107,8 @@ class RoleSelectionScreenModel(
                             if (code.isNotBlank()) {
                                 val course = coursesRepository.getCourseByInviteCode(code).getOrNull()
                                     ?: throw Exception("Código de invitación inválido.")
-                                authService.updateRole(role, course.id)
+                                authService.updateRole(role)
+                                // TODO: Enrollment logic here if needed (3NF)
                             } else {
                                 // ¿Tiene alumnos ya?
                                 val students = studentRepository.getStudentsByParent(uid).firstOrNull()
