@@ -50,6 +50,8 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         _profileRefreshTrigger.value += 1
     }
 
+    private var _cachedRole: UserRole? = null
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val sessionStatusFlow: Flow<SessionStatus> = kotlinx.coroutines.flow.combine(
         supabase.auth.sessionStatus,
@@ -60,6 +62,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                 AppLogger.d("AuthService", "Processing session status: $status")
                 when (status) {
                     is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
+                        _cachedRole = null
                         emit(SessionStatus.NotAuthenticated)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> {
@@ -68,26 +71,18 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                     is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
                         val user = status.session.user
                         if (user != null) {
-                            AppLogger.d("AuthService", "Status: Authenticated (User: ${user.id}). Checking role...")
-                            
-                            // Primero emitimos el estado autenticado sin rol para que el AuthFlow decida.
-                            // Esto evita quedar bloqueado en Loading si el check de rol tarda.
-                            emit(SessionStatus.Authenticated(user, null))
+                            // Si tenemos un rol en caché, lo usamos de inmediato para evitar loops
+                            _cachedRole?.let { emit(SessionStatus.Authenticated(user, it)) }
                             
                             val role = try {
-                                // Reducimos el timeout para que el fallo sea rápido
-                                kotlinx.coroutines.withTimeout(5000) { getUserRole(user.id) }
+                                kotlinx.coroutines.withTimeout(4000) { getUserRole(user.id) }
                             } catch (e: Exception) {
-                                AppLogger.e("AuthService", "Error/Timeout al obtener rol: ${e.message}")
-                                null
+                                AppLogger.e("AuthService", "Error al obtener rol: ${e.message}")
+                                _cachedRole // Revertir al caché si falla
                             }
                             
-                            if (role != null) {
-                                AppLogger.d("AuthService", "Role found: ${role.name}. Emitting full Authenticated.")
-                                emit(SessionStatus.Authenticated(user, role))
-                            } else {
-                                AppLogger.d("AuthService", "Role not found. Staying as Authenticated(null)")
-                            }
+                            _cachedRole = role
+                            emit(SessionStatus.Authenticated(user, role))
                         } else {
                             emit(SessionStatus.NotAuthenticated)
                         }
