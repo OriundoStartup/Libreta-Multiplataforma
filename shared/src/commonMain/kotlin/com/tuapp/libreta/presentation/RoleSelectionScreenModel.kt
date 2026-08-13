@@ -118,9 +118,9 @@ class RoleSelectionScreenModel(
                                     studentName = studentName
                                 ).getOrThrow()
                                 
-                                // 3. Sincronización Forzada para que el Dashboard vea los datos de inmediato
-                                AppLogger.d("RoleSelection", "Disparando sincronización inicial...")
-                                syncManager.syncAll()
+                                // 3. Sincronización en segundo plano (No bloquea la entrada)
+                                AppLogger.d("RoleSelection", "Disparando sincronización en background...")
+                                screenModelScope.launch { syncManager.syncAll() }
 
                             } else {
                                 val students = studentRepository.getStudentsByParent(uid).firstOrNull()
@@ -131,10 +131,14 @@ class RoleSelectionScreenModel(
                             }
                         }
                     }
-                    
-                    // Pequeña pausa para asegurar que los cambios de RLS se propaguen en Supabase
-                    kotlinx.coroutines.delay(1000)
+
+                    // 4. Refresco y Navegación
+                    AppLogger.d("RoleSelection", "Finalizando registro y refrescando sesión...")
                     authService.refreshProfile()
+                    
+                    // Pequeña espera para asegurar estabilidad del flujo
+                    kotlinx.coroutines.delay(500)
+                    
                     _state.value = RoleSelectionUiState.Success(role, uid)
                 }
             } catch (e: Exception) {
