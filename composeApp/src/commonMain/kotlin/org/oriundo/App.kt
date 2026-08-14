@@ -123,14 +123,15 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                         }
                                         is AuthFlow.Ready -> {
                                             val target = AppNavigation.initialScreen(flow.role, flow.userId)
-                                            if (currentScreen != target) {
+                                            // Comparación robusta por clase para evitar bucles infinitos en Wasm
+                                            if (currentScreen::class != target::class) {
                                                 println("AuthFlow: Redirecting to Dashboard (${flow.role})")
                                                 navigator.replaceAll(target)
                                             }
                                         }
                                         is AuthFlow.Forbidden -> {
                                             val target = AppNavigation.initialScreen(flow.role, flow.userId)
-                                            if (currentScreen != target) {
+                                            if (currentScreen::class != target::class) {
                                                 println("AuthFlow: Access Forbidden. Redirecting to Home.")
                                                 navigator.replaceAll(target)
                                             }
