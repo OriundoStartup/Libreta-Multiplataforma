@@ -27,6 +27,7 @@ java -version
 
 # --- 3. CONSTRUCCIÓN ---
 echo "--- [SRE] Iniciando Compilación Gradle (v2.4 Stable) ---"
+# Forced sync build: Aug 14 2026
 chmod +x gradlew
 
 # Reintentar la descarga de Gradle si falla (Resiliencia ante error 503)
