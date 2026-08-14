@@ -132,15 +132,11 @@ class RoleSelectionScreenModel(
                         }
                     }
 
-                    // 4. Refresco y Navegación
+                    // 4. Refresco y Notificación
                     AppLogger.d("RoleSelection", "Finalizando registro y refrescando sesión...")
                     
-                    // Forzar el refresco del flujo global
+                    // Forzar el refresco del flujo global para que el Guardian reaccione
                     authService.refreshProfile()
-                    
-                    // ESPERA CRÍTICA: Damos tiempo a que el caché de SupabaseAuthService se actualice
-                    // y emita el nuevo rol ANTES de que la UI intente navegar.
-                    kotlinx.coroutines.delay(1500)
                     
                     _state.value = RoleSelectionUiState.Success(role, uid)
                 }

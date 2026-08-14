@@ -84,7 +84,8 @@ data class RoleSelectionScreen(val isSwitchingRole: Boolean = false) : Screen {
                     userEmail = s.userEmail
                 }
                 is RoleSelectionUiState.Success -> {
-                    navigator.replaceAll(AppNavigation.initialScreen(s.role, s.userId.value))
+                    // Navegación centralizada en App.kt (El Guardián)
+                    println("RoleSelection: Registro exitoso, esperando redirección del Guardián...")
                 }
                 else -> {}
             }
