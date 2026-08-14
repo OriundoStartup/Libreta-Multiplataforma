@@ -91,7 +91,7 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     updateBrowserHistory(WebPathMapper.toPath(navigator.lastItem))
                                 }
 
-                                LaunchedEffect(sessionStatus) {
+                                LaunchedEffect(sessionStatus, navigator.lastItem) {
                                     val currentScreen = navigator.lastItem
                                     val kind = when (currentScreen) {
                                         is LoginScreen -> ScreenKind.LOGIN
