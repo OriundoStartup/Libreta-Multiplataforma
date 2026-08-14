@@ -36,8 +36,13 @@ fun main() {
         if (root != null) {
             CoroutineScope(Dispatchers.Main).launch {
                 // 2.5. Procesar callback OAuth (PKCE) de forma síncrona/secuencial
-                // Esto garantiza que la sesión exista ANTES de que App() se renderice.
                 handleWebOAuthCallback()
+
+                // INFORMACIÓN OFICIAL: Configurar mapeo de recursos para web
+                // Evita problemas de 404 en subrutas y despliegues edge (Vercel)
+                org.jetbrains.compose.resources.configureWebResources {
+                    resourcePathMapping { path -> "./$path" }
+                }
 
                 ComposeViewport(root) {
                     App()

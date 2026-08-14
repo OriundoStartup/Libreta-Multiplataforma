@@ -123,9 +123,12 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                         }
                                         is AuthFlow.Ready -> {
                                             val target = AppNavigation.initialScreen(flow.role, flow.userId)
+                                            // DEBUG LOG de Identidad
+                                            println("AuthFlow [Ready]: Current=${currentScreen::class.simpleName} | Target=${target::class.simpleName}")
+                                            
                                             // Comparación robusta por clase para evitar bucles infinitos en Wasm
                                             if (currentScreen::class != target::class) {
-                                                println("AuthFlow: Redirecting to Dashboard (${flow.role})")
+                                                println("AuthFlow: Executing redirection to Dashboard")
                                                 navigator.replaceAll(target)
                                             }
                                         }

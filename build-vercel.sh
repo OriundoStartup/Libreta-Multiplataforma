@@ -2,19 +2,12 @@
 set -e
 
 # --- 1. VALIDACIÓN DE AMBIENTE ---
-echo "--- [SRE] Validación de Recursos ---"
-free -m || echo "Comando 'free' no disponible"
+echo "--- [SRE] Iniciando Build de Supervivencia de Recursos ---"
 
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-  echo "ERROR: Las variables SUPABASE_URL o SUPABASE_KEY no están configuradas en Vercel."
-  exit 1
-fi
+# Memoria limitada para Node.js
+export NODE_OPTIONS="--max-old-space-size=1024"
 
-# Memoria controlada para Node.js
-export NODE_OPTIONS="--max-old-space-size=3072"
-
-# --- 2. CONFIGURACIÓN DE JAVA ---
-echo "--- [SRE] Instalando Amazon Corretto 17 ---"
+# --- 2. CONFIGURACIÓN DE JAVA 17 ---
 mkdir -p /tmp/jdk17
 curl -sL "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz" \
   | tar -xz -C /tmp/jdk17 --strip-components=1
@@ -22,24 +15,24 @@ curl -sL "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk
 export JAVA_HOME=/tmp/jdk17
 export PATH="$JAVA_HOME/bin:$PATH"
 
-echo "Java version:"
-java -version
-
-# --- 3. CONSTRUCCIÓN ---
-echo "--- [SRE] Iniciando Compilación Gradle (v2.4 Stable) ---"
-# Forced sync build: Aug 14 2026
+# --- 3. CONFIGURACIÓN DE GRADLE ---
 chmod +x gradlew
 
-# Reintentar la descarga de Gradle si falla (Resiliencia ante error 503)
-export GRADLE_OPTS="-Dorg.gradle.internal.http.socketTimeout=60000 -Dorg.gradle.internal.http.connectionTimeout=60000"
+# Crear un archivo de propiedades LIMPIO para Vercel
+# Aumentamos el Heap a 5GB para permitir la optimización de Wasm sin OOM
+cat <<EOF > gradle.properties
+org.gradle.jvmargs=-Xmx5120m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC
+org.gradle.daemon=false
+org.gradle.parallel=false
+org.gradle.workers.max=1
+kotlin.incremental=false
+kotlin.compiler.execution.strategy=in-process
+EOF
 
-./gradlew clean :composeApp:wasmJsBrowserDistribution \
-  --no-daemon \
-  --stacktrace \
-  --max-workers=1 \
-  --no-configuration-cache \
-  -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseParallelGC" \
-  -Dkotlin.daemon.jvm.options="-Xmx1024m" \
-  -Dfile.encoding=UTF-8
+echo "--- [SRE] Ejecutando compilación Wasm con optimización ACTIVADA ---"
+# Re-activamos la optimización para reducir el tamaño del Wasm (evita crashes en el navegador)
+./gradlew :composeApp:wasmJsBrowserDistribution \
+  -Pkotlin.wasm.optimization=true \
+  --stacktrace
 
-echo "--- [SRE] Despliegue completado exitosamente ---"
+echo "--- [SRE] Build completado con éxito ---"
