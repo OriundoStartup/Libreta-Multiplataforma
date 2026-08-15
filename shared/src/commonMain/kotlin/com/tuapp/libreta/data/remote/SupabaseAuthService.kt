@@ -156,14 +156,17 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         
         runCatching {
             // Nota: profiles.course_id fue eliminado en la normalización 3NF.
-            // El rol se guarda en public.profiles, las vinculaciones en sus respectivas tablas.
             val updateData = mapOf("role" to role.name)
 
             supabase.postgrest["profiles"].update(updateData) {
                 filter { eq("id", uid) }
             }
         }.onSuccess {
-            AppLogger.d("AuthService", "Rol actualizado exitosamente en BD para $uid")
+            AppLogger.d("AuthService", "Rol actualizado exitosamente en BD para $uid -> ${role.name}")
+            
+            // ACTUALIZACIÓN DE CACHÉ: Vital para que la navegación no entre en loop
+            _cachedRole = role
+            
             refreshProfile()
         }.onFailure { e ->
             AppLogger.e("AuthService", "Error al actualizar rol: ${e.message}")
