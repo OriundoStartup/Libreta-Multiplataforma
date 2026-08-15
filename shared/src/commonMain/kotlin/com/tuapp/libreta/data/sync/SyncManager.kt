@@ -28,21 +28,125 @@ class SyncManager(
     suspend fun syncAll() = withContext(getIoDispatcher()) {
         if (_isSyncing.value) return@withContext
         _isSyncing.value = true
-        AppLogger.d("SyncManager", "Starting full synchronization...")
+        AppLogger.d("SyncManager", "Starting bidirectional synchronization (PUSH + PULL)...")
 
         try {
+            // 1. PUSH: Subir cambios locales al servidor
             syncAttendance()
             syncStudents()
             syncProfiles()
             syncGrades()
             syncCourses()
             syncJustifications()
-            AppLogger.d("SyncManager", "Synchronization completed successfully.")
+            
+            // 2. PULL: Descargar cambios nuevos desde el servidor
+            pullAll()
+            
+            AppLogger.d("SyncManager", "Bidirectional synchronization completed successfully.")
         } catch (e: Exception) {
             AppLogger.e("SyncManager", "Sync failed: ${e.message}")
         } finally {
             _isSyncing.value = false
         }
+    }
+
+    /**
+     * Descarga incremental de todas las tablas desde Supabase.
+     */
+    suspend fun pullAll() = withContext(getIoDispatcher()) {
+        AppLogger.d("SyncManager", "Starting PULL phase...")
+        val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
+        
+        tables.forEach { table ->
+            runCatching { pullTable(table) }.onFailure { e ->
+                AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
+                queries.recordSyncError(e.message, table)
+            }
+        }
+    }
+
+    private suspend fun pullTable(tableName: String) {
+        val lastPullIso = queries.getLastPullAt(tableName).executeAsOneOrNull()?.let { 
+            if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
+        } ?: "1970-01-01T00:00:00Z"
+
+        AppLogger.d("SyncManager", "Pulling $tableName since $lastPullIso")
+
+        val query = supabase.from(tableName).select {
+            filter { gt("updated_at", lastPullIso) }
+        }
+
+        when (tableName) {
+            "profiles" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceProfile(
+                        dto.id, dto.fullName, dto.role ?: "PARENT", 
+                        1, 0, SyncStatus.SYNCED.name, 
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+            "courses" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.CourseSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceCourse(
+                        dto.id, dto.name, dto.description, dto.subject, dto.grade,
+                        dto.section, dto.teacherId, dto.schoolId, dto.inviteCode,
+                        if (dto.isActive) 1 else 0, 1, 0, SyncStatus.SYNCED.name,
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+            "students" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.StudentSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceStudent(
+                        dto.id, dto.fullName, dto.studentRut, dto.courseId, dto.parentId,
+                        1, 0, SyncStatus.SYNCED.name,
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+            "attendance" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.AttendanceSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceAttendance(
+                        dto.id, dto.studentId, dto.date, dto.status,
+                        1, 0, SyncStatus.SYNCED.name,
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+            "justifications" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.JustificationSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceJustification(
+                        dto.id, dto.studentId, null, null, dto.date, dto.reason, dto.status,
+                        1, 0, SyncStatus.SYNCED.name,
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+            "grades" -> {
+                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.GradeSyncDto>()
+                remote.forEach { dto ->
+                    queries.insertOrReplaceGrade(
+                        dto.id, dto.studentId, dto.courseId, dto.title, dto.score,
+                        dto.weight, dto.term, dto.subject, 1, 0, SyncStatus.SYNCED.name,
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                    )
+                }
+            }
+        }
+
+        queries.setLastPullAt(tableName, com.tuapp.libreta.data.util.currentEpochMs(), tableName)
     }
 
     private suspend fun syncAttendance() {

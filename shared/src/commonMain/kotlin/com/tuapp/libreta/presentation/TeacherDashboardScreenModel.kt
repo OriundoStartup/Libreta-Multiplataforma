@@ -38,7 +38,8 @@ class TeacherDashboardScreenModel(
     private val globalStatsUseCase: GetGlobalStatsUseCase,
     private val getInbox: GetInboxUseCase,
     private val dataSeeder: DataSeeder,
-    private val supabase: SupabaseClient
+    private val supabase: SupabaseClient,
+    private val syncManager: com.tuapp.libreta.data.sync.SyncManager
 ) : ScreenModel {
 
     private val _state = MutableStateFlow<TeacherDashboardUiState>(TeacherDashboardUiState.Loading)
@@ -60,6 +61,9 @@ class TeacherDashboardScreenModel(
                 _state.value = TeacherDashboardUiState.Error("No autenticado")
                 return@launch
             }
+
+            // Sincronizar cambios nuevos en background
+            launch { syncManager.pullAll() }
 
             // 1. Cargar cursos con Tiempo Límite (7 seg) para no bloquear la UI
             val courses = try {

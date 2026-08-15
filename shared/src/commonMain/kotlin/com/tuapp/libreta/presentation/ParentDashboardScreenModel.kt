@@ -66,7 +66,8 @@ class ParentDashboardScreenModel(
     private val attendanceRepo: AttendanceRepository,
     private val messageRepo: MessageRepository,
     private val coursesRepo: CoursesRepository,
-    private val authService: SupabaseAuthService
+    private val authService: SupabaseAuthService,
+    private val syncManager: com.tuapp.libreta.data.sync.SyncManager
 ) : ScreenModel {
 
     private val _state = MutableStateFlow(ParentDashboardState())
@@ -86,6 +87,9 @@ class ParentDashboardScreenModel(
             _state.update { it.copy(uiState = ParentDashboardUiState.Error("No hay sesión activa")) }
             return
         }
+
+        // DISPARAR PULL: Traer datos nuevos antes de mostrar la lista local
+        screenModelScope.launch { syncManager.pullAll() }
 
         loadJob = studentRepo.getStudentsByParent(userId)
             .onEach { students ->

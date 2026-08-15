@@ -78,9 +78,9 @@ val appModule = module {
     // ── ScreenModels ──────────────────────────────────────────────────────────
     factory { LoginScreenModel(get()) }
     factory { RoleSelectionScreenModel(get(), get(), get(), get()) }
-    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get(), get(), get()) }
+    factory { TeacherDashboardScreenModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { StudentListScreenModel(get(), get(), get(), get(), get()) }
-    factory { ParentDashboardScreenModel(get(), get(), get(), get(), get()) }
+    factory { ParentDashboardScreenModel(get(), get(), get(), get(), get(), get()) }
     factory { ProfileScreenModel(get(), get(), get(), get()) }
     factory { MessageScreenModel(get(), get(), get(), get(), get(), get(), get()) }
     factory { JustificationScreenModel(get(), get(), get(), get()) }
