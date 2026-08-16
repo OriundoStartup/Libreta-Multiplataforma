@@ -19,9 +19,9 @@ export PATH="$JAVA_HOME/bin:$PATH"
 chmod +x gradlew
 
 # Crear un archivo de propiedades LIMPIO para Vercel
-# Aumentamos el Heap a 5GB para permitir la optimización de Wasm sin OOM
+# Bajamos el Heap a 3GB para evitar ser matados por el OOM Killer de Vercel
 cat <<EOF > gradle.properties
-org.gradle.jvmargs=-Xmx5120m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC
+org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC
 org.gradle.daemon=false
 org.gradle.parallel=false
 org.gradle.workers.max=1
