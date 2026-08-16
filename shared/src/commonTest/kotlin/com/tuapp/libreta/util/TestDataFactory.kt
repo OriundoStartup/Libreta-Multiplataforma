@@ -37,11 +37,11 @@ object TestDataFactory {
     fun makeProfile(
         id: UuidString = randomUuid(),
         fullName: String = "User ${Random.nextInt(100)}",
-        role: UserRole? = UserRole.PARENT
+        role: UserRole = UserRole.PARENT
     ) = Profile(
         id = id,
-        fullName = fullName,
-        role = role
+        role = role,
+        fullName = fullName
     )
 
     fun makeCourse(

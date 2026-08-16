@@ -7,17 +7,12 @@ import com.tuapp.libreta.domain.repository.AttendanceRepository
 import com.tuapp.libreta.domain.repository.MessageRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
 import io.github.jan.supabase.auth.user.UserInfo
+import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertTrue
+import kotlinx.coroutines.test.*
+import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ParentDashboardScreenModelTest {
