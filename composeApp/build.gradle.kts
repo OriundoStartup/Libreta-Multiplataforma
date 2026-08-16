@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenExec
+
 val isVercel = System.getenv("VERCEL") != null
 
 plugins {
@@ -40,14 +42,6 @@ kotlin {
             }
         }
         binaries.executable()
-    }
-
-    // CONFIGURACIÓN DE BINARYEN (WasmJs)
-    // Se aplica a todas las tareas de optimización de Wasm
-    tasks.withType<org.jetbrains.kotlin.gradle.targets.js.binaryen.BinaryenExec> {
-        if (isVercel) {
-            binaryenArgs = mutableListOf("-O1", "--low-memory", "--fast")
-        }
     }
 
     sourceSets {
@@ -95,6 +89,14 @@ kotlin {
     }
 }
 
+// CONFIGURACIÓN DE BINARYEN (WasmJs) - Movid fuera de kotlin { } a nivel raíz
+// Se utiliza addAll para evitar ambigüedades con el operador set de Kotlin
+tasks.withType<BinaryenExec>().configureEach {
+    if (isVercel) {
+        binaryenArgs.addAll(listOf("-O1", "--low-memory", "--fast"))
+    }
+}
+
 // Configuración segura de Android
 if (!isVercel) {
     configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
@@ -139,5 +141,3 @@ plugins.withId("com.android.application") {
 // El worker SQLDelight se distribuye como un asset estático en
 // composeApp/src/wasmJsMain/resources/sqldelight-worker.js — no se extrae del klib
 // porque web-worker-driver 2.x no incluye un worker por defecto.
-
-
