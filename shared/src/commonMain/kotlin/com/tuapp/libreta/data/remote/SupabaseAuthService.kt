@@ -50,7 +50,9 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         _profileRefreshTrigger.value += 1
     }
 
+    // CAPA 2: Estado de cache y marca de tiempo para blindaje temporal
     private var _cachedRole: UserRole? = null
+    private var _lastUpdateTimestamp: Long = 0
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val sessionStatusFlow: Flow<SessionStatus> = kotlinx.coroutines.flow.combine(
@@ -62,26 +64,45 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                 AppLogger.d("AuthService", "Processing session status: $status")
                 when (status) {
                     is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
+                        // Invalida explícitamente el cache en desconexión
                         _cachedRole = null
+                        _lastUpdateTimestamp = 0
                         emit(SessionStatus.NotAuthenticated)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> {
                         emit(SessionStatus.Loading)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
-                        val user = status.session.user
+                        val session = status.session
+                        val user = session.user
                         if (user != null) {
-                            // Si tenemos un rol en caché, lo usamos de inmediato para evitar loops
-                            _cachedRole?.let { emit(SessionStatus.Authenticated(user, it)) }
+                            // Emisión optimista inmediata desde caché para evitar parpadeos
+                            _cachedRole?.let { 
+                                AppLogger.d("AuthService", "Emitiendo desde CACHE: $it")
+                                emit(SessionStatus.Authenticated(user, it)) 
+                            }
                             
                             val role = try {
-                                kotlinx.coroutines.withTimeout(4000) { getUserRole(user.id) }
+                                kotlinx.coroutines.withTimeout(4000) { 
+                                    val dbRole = getUserRole(user.id)
+                                    val now = currentEpochMs()
+                                    
+                                    // CAPA 2 REFINADA: Solo ignora null si estamos dentro de la ventana de 5s 
+                                    // tras un updateRole exitoso. Un null fuera de esta ventana es legítimo.
+                                    if (dbRole == null && _cachedRole != null && (now - _lastUpdateTimestamp) < 5000) {
+                                        AppLogger.d("AuthService", "Capa 2: Ignorando null transitorio (ventana de 5s activa).")
+                                        _cachedRole
+                                    } else {
+                                        dbRole
+                                    }
+                                }
                             } catch (e: Exception) {
                                 AppLogger.e("AuthService", "Error al obtener rol: ${e.message}")
-                                _cachedRole // Revertir al caché si falla
+                                _cachedRole // Revertir al caché si falla la red/timeout
                             }
                             
                             _cachedRole = role
+                            AppLogger.d("AuthService", "Emisión FINAL sessionStatusFlow: role=$role")
                             emit(SessionStatus.Authenticated(user, role))
                         } else {
                             emit(SessionStatus.NotAuthenticated)
@@ -147,25 +168,31 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
     }
 
     suspend fun updateRole(role: UserRole) {
-        val uid = supabase.auth.currentUserOrNull()?.id ?: run {
-            AppLogger.e("AuthService", "updateRole: No hay usuario autenticado")
-            return
-        }
+        val uid = supabase.auth.currentUserOrNull()?.id ?: throw Exception("No hay sesión activa: updateRole falló")
         
-        AppLogger.d("AuthService", "Iniciando UPDATE de rol para $uid -> ${role.name}")
+        AppLogger.d("AuthService", "Iniciando UPDATE atómico de rol para $uid -> ${role.name}")
         
         runCatching {
-            // Nota: profiles.course_id fue eliminado en la normalización 3NF.
             val updateData = mapOf("role" to role.name)
 
-            supabase.postgrest["profiles"].update(updateData) {
+            // CAPA 1: Atomicidad usando .select() en el update
+            val response = supabase.postgrest["profiles"].update(updateData) {
                 filter { eq("id", uid) }
-            }
-        }.onSuccess {
-            AppLogger.d("AuthService", "Rol actualizado exitosamente en BD para $uid -> ${role.name}")
+                select()
+            }.decodeSingleOrNull<ProfileSupabaseDto>()
+                ?: throw Exception("Error de consistencia: El perfil no existe en la base de datos.")
             
-            // ACTUALIZACIÓN DE CACHÉ: Vital para que la navegación no entre en loop
-            _cachedRole = role
+            val confirmedRole = response.role?.let { 
+                UserRole.valueOf(it.uppercase().trim()) 
+            } ?: throw Exception("El servidor devolvió un rol nulo inesperado tras el update.")
+            
+            confirmedRole
+        }.onSuccess { confirmedRole ->
+            AppLogger.d("AuthService", "Rol confirmado atómicamente por el servidor: $confirmedRole")
+            
+            // Actualización de estado para la ventana de blindaje (Capa 2)
+            _cachedRole = confirmedRole
+            _lastUpdateTimestamp = currentEpochMs()
             
             refreshProfile()
         }.onFailure { e ->
@@ -195,7 +222,13 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
         check.claimedBy == null && expiresMs > now
     }.getOrElse { false }
 
-    suspend fun signOut() = supabase.auth.signOut()
+    suspend fun signOut() {
+        // Confirmación de invalidación de caché
+        _cachedRole = null
+        _lastUpdateTimestamp = 0
+        AppLogger.d("AuthService", "Cache invalidado por SignOut.")
+        supabase.auth.signOut()
+    }
 
     fun isLoggedIn(): Boolean = supabase.auth.currentUserOrNull() != null
 

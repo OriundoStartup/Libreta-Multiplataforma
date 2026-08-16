@@ -60,4 +60,21 @@ object TestDataFactory {
         isActive = true,
         createdAt = "2024-01-01"
     )
+
+    // Entidades de SQLDelight (Mocking purposes)
+    fun makeAttendanceEntity(
+        id: String = randomUuid().value,
+        studentId: String = randomUuid().value,
+        status: String = "PRESENT"
+    ) = com.tuapp.libreta.db.AttendanceEntity(
+        id = id,
+        student_id = studentId,
+        date = "2024-03-20",
+        status = status,
+        server_version = 1,
+        is_deleted = 0,
+        sync_status = SyncStatus.PENDING_INSERT.name,
+        created_at = 1000,
+        updated_at = 1000
+    )
 }

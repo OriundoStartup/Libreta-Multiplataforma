@@ -47,10 +47,10 @@ class SyncManagerTest {
 
     @Test
     fun `syncAttendance - Success - realiza bulk upsert y marca como sincronizado`() = runTest {
-        // GIVEN: 2 registros pendientes de subida
+        // GIVEN: Registros dinámicos usando el Factory (evita hardcoding)
         val pendingEntities = listOf(
-            AttendanceEntity("id-1", "student-1", "2024-03-20", "PRESENT", 1, 0, SyncStatus.PENDING_INSERT.name, 1000, 1000),
-            AttendanceEntity("id-2", "student-1", "2024-03-21", "LATE", 1, 0, SyncStatus.PENDING_UPDATE.name, 1000, 1000)
+            com.tuapp.libreta.util.TestDataFactory.makeAttendanceEntity(status = "PRESENT"),
+            com.tuapp.libreta.util.TestDataFactory.makeAttendanceEntity(status = "LATE")
         )
         
         setupMockQuery(queries.getUnsyncedAttendanceEntities(), pendingEntities)
