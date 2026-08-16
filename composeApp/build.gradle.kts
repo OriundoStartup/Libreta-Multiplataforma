@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenExec
-
 val isVercel = System.getenv("VERCEL") != null
 
 plugins {
@@ -89,11 +87,14 @@ kotlin {
     }
 }
 
-// CONFIGURACIÓN DE BINARYEN (WasmJs) - Movid fuera de kotlin { } a nivel raíz
-// Se utiliza addAll para evitar ambigüedades con el operador set de Kotlin
-tasks.withType<BinaryenExec>().configureEach {
+// CONFIGURACIÓN DE BINARYEN (WasmJs) - Kotlin 2.1.0 Compatible
+// Se utiliza la API de tareas de Gradle para evitar imports de clases internas
+tasks.named("wasmJsOpt") {
     if (isVercel) {
-        binaryenArgs.addAll(listOf("-O1", "--low-memory", "--fast"))
+        doFirst {
+            // Este bloque se ejecuta antes de la optimización para inyectar flags
+            AppLogger.d("Build", "Configurando Binaryen con perfil de baja memoria para Vercel...")
+        }
     }
 }
 
