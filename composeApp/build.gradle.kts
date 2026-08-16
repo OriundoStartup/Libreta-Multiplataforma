@@ -38,6 +38,14 @@ kotlin {
                     port = 8080
                 }
             }
+            // CAPA DE SUPERVIVENCIA: Evitar OOM en Vercel durante la optimización Wasm
+            applyBinaryen {
+                binaryenArgs = if (isVercel) {
+                    mutableListOf("-O1", "--low-memory", "--fast")
+                } else {
+                    mutableListOf("-O3")
+                }
+            }
         }
         binaries.executable()
     }

@@ -18,10 +18,10 @@ export PATH="$JAVA_HOME/bin:$PATH"
 # --- 3. CONFIGURACIÓN DE GRADLE ---
 chmod +x gradlew
 
-# Crear un archivo de propiedades LIMPIO para Vercel
-# Bajamos el Heap a 3GB para evitar ser matados por el OOM Killer de Vercel
+# Crear un archivo de propiedades ULTRA-LIMPIO para Vercel
+# Reducimos los workers a 1 y bajamos el metaspace para liberar RAM para Binaryen
 cat <<EOF > gradle.properties
-org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC
+org.gradle.jvmargs=-Xmx2560m -XX:MaxMetaspaceSize=384m -XX:+UseSerialGC
 org.gradle.daemon=false
 org.gradle.parallel=false
 org.gradle.workers.max=1
@@ -29,10 +29,9 @@ kotlin.incremental=false
 kotlin.compiler.execution.strategy=in-process
 EOF
 
-echo "--- [SRE] Ejecutando compilación Wasm con optimización ACTIVADA ---"
-# Re-activamos la optimización para reducir el tamaño del Wasm (evita crashes en el navegador)
-./gradlew :composeApp:wasmJsBrowserDistribution \
-  -Pkotlin.wasm.optimization=true \
-  --stacktrace
+echo "--- [SRE] Ejecutando compilación Wasm con perfil de BAJA MEMORIA ---"
+# Eliminamos la optimización agresiva via CLI para dejar que build.gradle.kts
+# use los flags --low-memory configurados.
+./gradlew :composeApp:wasmJsBrowserDistribution --stacktrace --info
 
 echo "--- [SRE] Build completado con éxito ---"
