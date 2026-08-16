@@ -4,7 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
-import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.db.LibretaAppDatabase
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.util.getIoDispatcher
 import io.github.jan.supabase.SupabaseClient
@@ -19,9 +19,11 @@ import kotlinx.coroutines.withContext
  * Se eliminan los genéricos complejos para evitar fallos de enlazado en el compilador IR.
  */
 class SyncManager(
-    private val queries: LibretaAppQueries,
+    private val database: LibretaAppDatabase,
     private val supabase: SupabaseClient
 ) {
+    private val queries = database.libretaAppQueries
+    private val syncQueries = database.syncMetadataQueries
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
@@ -60,13 +62,14 @@ class SyncManager(
         tables.forEach { table ->
             runCatching { pullTable(table) }.onFailure { e ->
                 AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
-                queries.recordSyncError(e.message, table)
+                syncQueries.recordSyncError(e.message, table)
             }
         }
     }
 
     private suspend fun pullTable(tableName: String) {
-        val lastPullIso = queries.getLastPullAt(tableName).executeAsOneOrNull()?.let { 
+        val lastPullAt: Long? = syncQueries.getLastPullAt(tableName).executeAsOneOrNull()
+        val lastPullIso = lastPullAt?.let { 
             if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
         } ?: "1970-01-01T00:00:00Z"
 
@@ -146,7 +149,7 @@ class SyncManager(
             }
         }
 
-        queries.setLastPullAt(tableName, com.tuapp.libreta.data.util.currentEpochMs(), tableName)
+        syncQueries.setLastPullAt(tableName, com.tuapp.libreta.data.util.currentEpochMs(), tableName)
     }
 
     private suspend fun syncAttendance() {
