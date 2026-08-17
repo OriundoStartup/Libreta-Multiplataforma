@@ -11,8 +11,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.select
-import io.github.jan.supabase.postgrest.result.decodeSingleOrNull
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -137,7 +136,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     suspend fun getProfile(userId: String): ProfileSupabaseDto? {
         return try {
-            supabase.postgrest["profiles"]
+            supabase.from("profiles")
                 .select {
                     filter { eq("id", userId) }
                 }
@@ -178,7 +177,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
             val updateData = mapOf("role" to role.name)
 
             // CAPA 1: Atomicidad usando .select() en el update
-            val response = supabase.postgrest["profiles"].update(updateData) {
+            val response = supabase.from("profiles").update(updateData) {
                 filter { eq("id", uid) }
                 select()
             }.decodeSingleOrNull<ProfileSupabaseDto>()
@@ -205,13 +204,13 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     suspend fun claimInvitationCode(code: String) {
         val uid = supabase.auth.currentUserOrNull()?.id ?: return
-        supabase.postgrest["invitation_codes"].update({ set("claimed_by", uid) }) {
+        supabase.from("invitation_codes").update({ set("claimed_by", uid) }) {
             filter { eq("code", code.uppercase()) }
         }
     }
 
     suspend fun validateInvitationCode(code: String): Boolean = runCatching {
-        val result = supabase.postgrest["invitation_codes"]
+        val result = supabase.from("invitation_codes")
             .select { filter { eq("code", code.uppercase()) } }
             .decodeList<InvitationCodeCheck>()
         

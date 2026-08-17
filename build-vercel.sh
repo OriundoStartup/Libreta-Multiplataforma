@@ -27,6 +27,7 @@ org.gradle.parallel=false
 org.gradle.workers.max=1
 kotlin.incremental=false
 kotlin.compiler.execution.strategy=in-process
+android.useAndroidX=true
 EOF
 
 echo "--- [SRE] Ejecutando compilación Wasm con perfil de BAJA MEMORIA ---"
