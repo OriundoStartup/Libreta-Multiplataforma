@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.AttendanceStatus
 import com.tuapp.libreta.domain.model.Student

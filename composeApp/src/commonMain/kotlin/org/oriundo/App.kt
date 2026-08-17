@@ -35,6 +35,7 @@ import com.tuapp.libreta.navigation.updateBrowserHistory
 import com.tuapp.libreta.presentation.AuthFlow
 import com.tuapp.libreta.presentation.ScreenKind
 import com.tuapp.libreta.ui.screens.LoginScreen
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.ui.screens.ParentDashboardScreen
 import com.tuapp.libreta.ui.screens.RoleSelectionScreen
 import com.tuapp.libreta.ui.screens.TeacherDashboardScreen
@@ -106,7 +107,7 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     val flow = AuthFlow.from(sessionStatus, kind, isSwitching)
                                     
                                     // DEBUG LOG
-                                    com.tuapp.libreta.data.util.AppLogger.d("Guardian", "Flow status update: Status=$sessionStatus | Screen=$kind | Flow=$flow")
+                                    AppLogger.d("Guardian", "Flow status update: Status=$sessionStatus | Screen=$kind | Flow=$flow")
 
                                     when (flow) {
                                         AuthFlow.LoginRequired -> {

@@ -2,6 +2,7 @@ package com.tuapp.libreta.data.remote
 
 import com.tuapp.libreta.data.remote.dtos.CourseDto
 import com.tuapp.libreta.data.remote.dtos.EnrollmentDto
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.domain.model.Course
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -126,7 +127,7 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
             studentRut = studentRut
         )
         
-        com.tuapp.libreta.data.util.AppLogger.d("EnrollStudent", "Auth UID: ${user.id} | Payload DTO: $dto")
+        AppLogger.d("EnrollStudent", "Auth UID: ${user.id} | Payload DTO: $dto")
         
         supabase.postgrest["enrollments"].insert(dto)
         Unit
