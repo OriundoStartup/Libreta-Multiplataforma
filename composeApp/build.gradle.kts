@@ -87,16 +87,7 @@ kotlin {
     }
 }
 
-// CONFIGURACIÓN DE BINARYEN (WasmJs) - Kotlin 2.1.0 Compatible
-// Se utiliza la API de tareas de Gradle para evitar imports de clases internas
-tasks.named("wasmJsOpt") {
-    if (isVercel) {
-        doFirst {
-            // Este bloque se ejecuta antes de la optimización para inyectar flags
-            AppLogger.d("Build", "Configurando Binaryen con perfil de baja memoria para Vercel...")
-        }
-    }
-}
+// CONFIGURACIÓN DE BINARYEN (WasmJs) - Eliminada para compatibilidad total con Kotlin 2.1.0 CI
 
 // Configuración segura de Android
 if (!isVercel) {
