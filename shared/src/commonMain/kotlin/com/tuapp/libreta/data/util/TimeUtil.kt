@@ -9,7 +9,7 @@ import kotlin.time.TimeSource
 
 private val startMark = TimeSource.Monotonic.markNow()
 
-fun currentEpochMs(): Long = Clock.System.now().toEpochMilliseconds()
+fun currentEpochMs(): Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
 fun monotonicTimeMs(): Long = startMark.elapsedNow().inWholeMilliseconds
 
 /** Converts epoch milliseconds to an ISO-8601 string that Supabase TIMESTAMPTZ accepts. */
