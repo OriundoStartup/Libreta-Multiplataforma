@@ -7,6 +7,7 @@ import com.tuapp.libreta.domain.model.Course
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.from
 
 interface CoursesRepository {
     suspend fun createCourse(
