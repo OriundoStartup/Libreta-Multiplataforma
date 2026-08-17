@@ -18,7 +18,7 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
 
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> = flow {
         try {
-            val result = supabase.postgrest["enrollments"]
+            val result = supabase.from("enrollments")
                 .select { filter { eq("course_id", classId.value) } }
                 .decodeList<EnrollmentSupabaseDto>()
             emit(result.map { enrollment ->
@@ -52,14 +52,13 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
         }
 
         try {
-            val result = supabase.postgrest["enrollments"]
+            val list = supabase.from("enrollments")
                 .select {
                     filter { eq("parent_id", currentUser.id) }
                 }
-            println("DEBUG getStudents: respuesta raw = ${result.data}")
-
-            val list = result.decodeList<EnrollmentSupabaseDto>()
-            println("DEBUG getStudents: registros decodificados = ${list.size}")
+                .decodeList<EnrollmentSupabaseDto>()
+            
+            AppLogger.d("StudentRepository", "Decoded ${list.size} students for parent ${currentUser.id}")
             
             emit(list.map { it.toStudentDomain() })
 
@@ -96,13 +95,14 @@ class SupabaseStudentRepository(private val supabase: SupabaseClient) : StudentR
     }
 
     override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = runCatching {
-        supabase.postgrest["enrollments"].update({
+        supabase.from("enrollments").update({
             set("student_name", name)
             set("student_rut", rut)
         }) { filter { eq("id", id.value) } }
+        Unit
     }
 
     override suspend fun deleteStudent(id: UuidString) {
-        supabase.postgrest["enrollments"].delete { filter { eq("id", id.value) } }
+        supabase.from("enrollments").delete { filter { eq("id", id.value) } }
     }
 }

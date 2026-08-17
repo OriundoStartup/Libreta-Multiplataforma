@@ -11,11 +11,15 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.dsl.module
 import org.w3c.dom.Worker
+
+// Guardián de inicialización para evitar "no such table" en Wasm
+val dbReady = CompletableDeferred<Unit>()
 
 actual val platformModule = module {
     single<SqlDriver> {
@@ -23,14 +27,21 @@ actual val platformModule = module {
             WebWorkerDriver(Worker("sqldelight-worker.js"))
         } catch (e: Throwable) {
             println("Wasm DB: Worker failed to start. ${e.message}")
-            // Si el worker falla en local, lanzamos el error para verlo en el HTML que configuramos
             throw RuntimeException("Fallo al cargar la base de datos (Worker no encontrado). Revisa si sqldelight-worker.js existe.")
         }
-        // A diferencia de los drivers nativos, el WebWorkerDriver NO crea el esquema
-        // automáticamente. Hay que crearlo (operación asíncrona del driver web).
+        
         CoroutineScope(Dispatchers.Default).launch {
-            runCatching { LibretaAppDatabase.Schema.create(driver).await() }
-                .onFailure { println("Wasm DB: error creando esquema: ${it.message}") }
+            runCatching { 
+                LibretaAppDatabase.Schema.create(driver).await() 
+                println("Wasm DB: Esquema creado exitosamente.")
+                dbReady.complete(Unit)
+            }.onFailure { 
+                println("Wasm DB: error creando esquema: ${it.message}")
+                // Si ya existe, también marcamos como listo
+                if (it.message?.contains("already exists") == true) {
+                    dbReady.complete(Unit)
+                }
+            }
         }
         driver
     }

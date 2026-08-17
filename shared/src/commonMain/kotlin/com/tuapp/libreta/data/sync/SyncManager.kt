@@ -27,7 +27,18 @@ class SyncManager(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
+    private suspend fun ensureDatabaseReady() {
+        try {
+            kotlinx.coroutines.withTimeout(5000) {
+                com.tuapp.libreta.di.dbReady.await()
+            }
+        } catch (e: Exception) {
+            AppLogger.e("SyncManager", "Database initialization timeout: ${e.message}")
+        }
+    }
+
     suspend fun syncAll() = withContext(getIoDispatcher()) {
+        ensureDatabaseReady()
         if (_isSyncing.value) return@withContext
         _isSyncing.value = true
         AppLogger.d("SyncManager", "Starting bidirectional synchronization (PUSH + PULL)...")

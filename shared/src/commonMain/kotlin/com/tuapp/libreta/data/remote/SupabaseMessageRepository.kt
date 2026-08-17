@@ -47,8 +47,9 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
 
     override suspend fun getInbox(currentUserId: String): List<MessageThread> {
         return try {
+            AppLogger.d("MessageRepository", "Fetching inbox for $currentUserId")
             val messages = supabase.from("messages")
-                .select(columns = Columns.raw("id,sender_id,receiver_id,message_text,created_at,read_at")) {
+                .select {
                     filter {
                         or {
                             eq("sender_id", currentUserId)
@@ -59,6 +60,8 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
                     limit(INBOX_LIMIT.toLong())
                 }
                 .decodeList<MessageSupabaseDto>()
+            
+            AppLogger.d("MessageRepository", "Received ${messages.size} messages for inbox")
 
             val grouped = messages
                 .groupBy { msg ->
@@ -101,7 +104,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
     override suspend fun getConversation(currentUserId: String, contactId: String): List<Message> {
         return try {
             supabase.from("messages")
-                .select(columns = Columns.raw("id,sender_id,receiver_id,message_text,created_at,read_at")) {
+                .select {
                     filter {
                         or {
                             and {

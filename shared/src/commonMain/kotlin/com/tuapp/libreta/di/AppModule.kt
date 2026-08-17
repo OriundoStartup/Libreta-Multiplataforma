@@ -40,8 +40,8 @@ val appModule = module {
 
     // ── Repositories (Symbiosis: Local + Remote) ─────────────────────────────
     single<AttendanceRepository>       { SymbioticAttendanceRepository(get(), get()) }
-    single<StudentRepository>          { SupabaseStudentRepository(get()) }
-    single<JustificationRepository>    { JustificationRepositoryImpl(get(), get()) }
+    single<StudentRepository>          { StudentRepositoryImpl(get(), get()) }
+    single<JustificationRepository>    { com.tuapp.libreta.data.remote.SupabaseJustificationRepository(get()) }
     single<ProfileRepository>          { ProfileRepositoryImpl(get(), get()) }
     single<ClassRoomRepository>        { ClassRoomRepositoryImpl(get(), get()) }
     single<GradeRepository>            { GradeRepositoryImpl(get(), get()) }
