@@ -86,6 +86,7 @@ class RoleSelectionScreenModel(
             }
 
             try {
+                AppLogger.d("RoleSelection", "Confirming role: $role with code: $code")
                 withTimeout(15_000) {
                     when (role) {
                         UserRole.TEACHER -> {
@@ -141,8 +142,10 @@ class RoleSelectionScreenModel(
                     _state.value = RoleSelectionUiState.Success(role, uid)
                 }
             } catch (e: Exception) {
+                AppLogger.e("RoleSelection", "CRITICAL ERROR in confirmRole: ${e.message}", e)
                 _state.value = RoleSelectionUiState.Error(e.message ?: "Error de validación")
                 // Refrescar estado para que el usuario vea su email y opciones de nuevo
+                AppLogger.d("RoleSelection", "Resetting profile view after error...")
                 checkExistingProfile(forceShowSelection = true)
             }
         }

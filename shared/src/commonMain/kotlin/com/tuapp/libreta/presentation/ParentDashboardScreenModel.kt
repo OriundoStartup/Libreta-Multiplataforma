@@ -100,6 +100,7 @@ class ParentDashboardScreenModel(
 
                 try {
                     val user = authService.currentUser()
+                    AppLogger.d("ParentDashboard", "Loaded students: ${students.size}. Current User: ${user?.id}")
                     val parentName = user?.userMetadata?.get("full_name")
                         ?.let { runCatching { (it as kotlinx.serialization.json.JsonPrimitive).content }.getOrNull() }
                         ?: user?.email ?: "Apoderado"
@@ -132,11 +133,13 @@ class ParentDashboardScreenModel(
                     enrichStudentData(students, userId, parentProfile)
 
                 } catch (e: Exception) {
+                    AppLogger.e("ParentDashboard", "Error processing data: ${e.message}", e)
                     _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error al procesar datos")) }
                 }
             }
             .catch { e ->
                 if (e !is CancellationException) {
+                    AppLogger.e("ParentDashboard", "Flow catch error: ${e.message}", e)
                     _state.update { it.copy(uiState = ParentDashboardUiState.Error(e.message ?: "Error de red")) }
                 }
             }

@@ -51,6 +51,7 @@ sealed interface AuthFlow {
                 is SessionStatus.Authenticated -> {
                     val role = status.role
                     val userId = status.user.id
+                    AppLogger.d("AuthFlow", "Evaluando Authenticated: Role=$role, UID=$userId")
 
                     when {
                         // Caso 1: Sin rol definido (Usuario recién registrado vía Google)

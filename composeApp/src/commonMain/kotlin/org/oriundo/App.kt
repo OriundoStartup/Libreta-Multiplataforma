@@ -106,7 +106,7 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     val flow = AuthFlow.from(sessionStatus, kind, isSwitching)
                                     
                                     // DEBUG LOG
-                                    println("AuthFlow [Web]: Status=$sessionStatus | Screen=$kind | Flow=$flow")
+                                    com.tuapp.libreta.data.util.AppLogger.d("Guardian", "Flow status update: Status=$sessionStatus | Screen=$kind | Flow=$flow")
 
                                     when (flow) {
                                         AuthFlow.LoginRequired -> {

@@ -125,6 +125,9 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
             parentId = user.id,
             studentRut = studentRut
         )
+        
+        com.tuapp.libreta.data.util.AppLogger.d("EnrollStudent", "Auth UID: ${user.id} | Payload DTO: $dto")
+        
         supabase.postgrest["enrollments"].insert(dto)
         Unit
     }.onFailure { error ->
