@@ -17,6 +17,7 @@ allprojects {
     }
     configurations.all {
         resolutionStrategy {
+            force("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             force("androidx.browser:browser:1.8.0")
             force("androidx.activity:activity:1.9.3")
             force("androidx.activity:activity-ktx:1.9.3")

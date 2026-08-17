@@ -3,8 +3,8 @@ package com.tuapp.libreta.data.util
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
-import kotlin.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.time.TimeSource
 
 private val startMark = TimeSource.Monotonic.markNow()
