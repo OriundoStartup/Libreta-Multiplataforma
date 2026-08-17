@@ -129,7 +129,8 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
         
         AppLogger.d("EnrollStudent", "Auth UID: ${user.id} | Payload DTO: $dto")
         
-        supabase.postgrest["enrollments"].insert(dto)
+        // Usamos .from() y aseguramos la ejecución
+        supabase.from("enrollments").insert(dto)
         Unit
     }.onFailure { error ->
         val message = if (error.message?.contains("duplicate") == true ||

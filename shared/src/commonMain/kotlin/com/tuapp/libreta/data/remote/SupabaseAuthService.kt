@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 private data class ProfileRole(val role: String? = null)
@@ -169,23 +170,32 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
     }
 
     suspend fun updateRole(role: UserRole) {
-        val uid = supabase.auth.currentUserOrNull()?.id ?: throw Exception("No hay sesión activa: updateRole falló")
+        val user = supabase.auth.currentUserOrNull() ?: throw Exception("No hay sesión activa: updateRole falló")
+        val uid = user.id
         
-        AppLogger.d("AuthService", "Iniciando UPDATE atómico de rol para $uid -> ${role.name}")
+        AppLogger.d("AuthService", "Iniciando UPSERT atómico de rol para $uid -> ${role.name}")
         
         runCatching {
-            val updateData = mapOf("role" to role.name)
+            // Extraer metadatos para asegurar que el perfil tenga nombre y email
+            val fullName = user.userMetadata?.get("full_name")
+                ?.let { if (it is JsonPrimitive) it.content else it.toString().replace("\"", "") }
+            
+            val profileUpdate = ProfileSupabaseDto(
+                id = uid,
+                email = user.email,
+                fullName = fullName,
+                role = role.name
+            )
 
-            // CAPA 1: Atomicidad usando .select() en el update
-            val response = supabase.from("profiles").update(updateData) {
-                filter { eq("id", uid) }
+            // Cambiamos UPDATE por UPSERT para manejar usuarios nuevos sin perfil previo
+            val response = supabase.from("profiles").upsert(profileUpdate) {
                 select()
             }.decodeSingleOrNull<ProfileSupabaseDto>()
-                ?: throw Exception("Error de consistencia: El perfil no existe en la base de datos.")
+                ?: throw Exception("Error crítico: El servidor no devolvió el perfil tras el upsert.")
             
             val confirmedRole = response.role?.let { 
                 UserRole.valueOf(it.uppercase().trim()) 
-            } ?: throw Exception("El servidor devolvió un rol nulo inesperado tras el update.")
+            } ?: throw Exception("El servidor devolvió un rol nulo inesperado tras el registro.")
             
             confirmedRole
         }.onSuccess { confirmedRole ->

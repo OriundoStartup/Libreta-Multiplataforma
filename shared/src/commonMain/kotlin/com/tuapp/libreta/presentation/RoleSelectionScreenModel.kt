@@ -144,9 +144,6 @@ class RoleSelectionScreenModel(
             } catch (e: Exception) {
                 AppLogger.e("RoleSelection", "CRITICAL ERROR in confirmRole: ${e.message}", e)
                 _state.value = RoleSelectionUiState.Error(e.message ?: "Error de validación")
-                // Refrescar estado para que el usuario vea su email y opciones de nuevo
-                AppLogger.d("RoleSelection", "Resetting profile view after error...")
-                checkExistingProfile(forceShowSelection = true)
             }
         }
     }
