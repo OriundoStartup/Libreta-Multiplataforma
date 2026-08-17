@@ -130,7 +130,7 @@ private fun JustificationCard(
 ) {
     val dt = Instant.fromEpochMilliseconds(justification.date)
         .toLocalDateTime(TimeZone.currentSystemDefault())
-    val dateStr = "${dt.day}/${dt.monthNumber}/${dt.year}"
+    val dateStr = "${dt.dayOfMonth}/${dt.monthNumber}/${dt.year}"
 
     Card(
         shape  = RoundedCornerShape(16.dp),

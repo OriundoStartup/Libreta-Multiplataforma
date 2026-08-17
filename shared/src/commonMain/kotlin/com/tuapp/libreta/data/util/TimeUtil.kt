@@ -9,7 +9,7 @@ import kotlin.time.TimeSource
 
 private val startMark = TimeSource.Monotonic.markNow()
 
-fun currentEpochMs(): Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+fun currentEpochMs(): Long = Clock.System.now().toEpochMilliseconds()
 fun monotonicTimeMs(): Long = startMark.elapsedNow().inWholeMilliseconds
 
 /** Converts epoch milliseconds to an ISO-8601 string that Supabase TIMESTAMPTZ accepts. */
@@ -22,8 +22,8 @@ fun epochMsToIso(ms: Long): String = Instant.fromEpochMilliseconds(ms).toString(
  */
 fun epochMsToSqlDate(ms: Long): String {
     val dt = Instant.fromEpochMilliseconds(ms).toLocalDateTime(TimeZone.UTC)
-    val mm = dt.month.number.toString().padStart(2, '0')
-    val dd = dt.day.toString().padStart(2, '0')
+    val mm = dt.monthNumber.toString().padStart(2, '0')
+    val dd = dt.dayOfMonth.toString().padStart(2, '0')
     return "${dt.year}-$mm-$dd"
 }
 
@@ -60,7 +60,7 @@ fun formatEpochToDate(ms: Long): String {
     return try {
         val instant = Instant.fromEpochMilliseconds(ms)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-        "${localDateTime.day.toString().padStart(2, '0')}/${localDateTime.month.number.toString().padStart(2, '0')}/${localDateTime.year}"
+        "${localDateTime.dayOfMonth.toString().padStart(2, '0')}/${localDateTime.monthNumber.toString().padStart(2, '0')}/${localDateTime.year}"
     } catch (_: Exception) {
         "Fecha inválida"
     }
