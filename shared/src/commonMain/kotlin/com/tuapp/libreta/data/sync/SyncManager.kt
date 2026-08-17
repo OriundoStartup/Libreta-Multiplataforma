@@ -5,6 +5,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
 import com.tuapp.libreta.db.LibretaAppDatabase
+import com.tuapp.libreta.di.dbReady
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.util.getIoDispatcher
 import io.github.jan.supabase.SupabaseClient
@@ -30,7 +31,7 @@ class SyncManager(
     private suspend fun ensureDatabaseReady() {
         try {
             kotlinx.coroutines.withTimeout(5000) {
-                com.tuapp.libreta.di.dbReady.await()
+                dbReady.await()
             }
         } catch (e: Exception) {
             AppLogger.e("SyncManager", "Database initialization timeout: ${e.message}")

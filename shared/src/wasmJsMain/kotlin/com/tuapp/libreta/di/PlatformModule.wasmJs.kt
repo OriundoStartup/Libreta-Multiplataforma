@@ -19,7 +19,7 @@ import org.koin.dsl.module
 import org.w3c.dom.Worker
 
 // Guardián de inicialización para evitar "no such table" en Wasm
-val dbReady = CompletableDeferred<Unit>()
+actual val dbReady = CompletableDeferred<Unit>()
 
 actual val platformModule = module {
     single<SqlDriver> {

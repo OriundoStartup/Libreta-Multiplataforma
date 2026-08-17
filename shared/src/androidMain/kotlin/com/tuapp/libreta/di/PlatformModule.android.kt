@@ -18,6 +18,9 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import org.koin.dsl.module
+import kotlinx.coroutines.CompletableDeferred
+
+actual val dbReady = CompletableDeferred(Unit)
 
 actual val platformModule = module {
     single<SqlDriver> {

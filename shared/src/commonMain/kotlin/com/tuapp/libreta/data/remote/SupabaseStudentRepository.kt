@@ -3,6 +3,7 @@ package com.tuapp.libreta.data.remote
 import com.tuapp.libreta.data.remote.dto.EnrollmentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.StudentSupabaseDto
 import com.tuapp.libreta.data.remote.dto.toDomain
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Student
 import com.tuapp.libreta.domain.repository.StudentRepository
