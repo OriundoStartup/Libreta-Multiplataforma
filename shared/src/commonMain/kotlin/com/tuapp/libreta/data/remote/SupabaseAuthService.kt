@@ -169,11 +169,13 @@ class SupabaseAuthService(
 
     suspend fun getProfile(userId: String): ProfileSupabaseDto? {
         return try {
-            supabase.from("profiles")
+            val response = supabase.from("profiles")
                 .select {
                     filter { eq("id", userId) }
                 }
                 .decodeSingleOrNull<ProfileSupabaseDto>()
+            AppLogger.d("AuthService", "Profile fetched for $userId: role=${response?.role}, email=${response?.email}")
+            response
         } catch (e: Exception) {
             AppLogger.e("getProfile", "Error al obtener perfil para $userId: ${e.message}")
             null
@@ -186,10 +188,15 @@ class SupabaseAuthService(
      */
     suspend fun getUserRole(userId: String): UserRole? {
         val profile = getProfile(userId)
-        val roleStr = profile?.role ?: return null
+        val roleStr = profile?.role ?: run {
+            AppLogger.d("AuthService", "No role found in DB for $userId")
+            return null
+        }
         
         return try {
-            UserRole.valueOf(roleStr.uppercase().trim())
+            val role = UserRole.valueOf(roleStr.uppercase().trim())
+            AppLogger.d("AuthService", "Role resolved for $userId: $role")
+            role
         } catch (e: Exception) {
             AppLogger.e("AuthService", "Rol inválido en BD: '$roleStr' para usuario $userId")
             null
