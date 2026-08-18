@@ -32,17 +32,14 @@ actual val platformModule = module {
         }
         
         CoroutineScope(Dispatchers.Default).launch {
-            runCatching { 
+            val result = runCatching { 
                 LibretaAppDatabase.Schema.create(driver).await() 
                 println("Wasm DB: Esquema creado exitosamente.")
-                dbReady.complete(Unit)
             }.onFailure { 
-                println("Wasm DB: error creando esquema: ${it.message}")
-                // Si ya existe, también marcamos como listo
-                if (it.message?.contains("already exists") == true) {
-                    dbReady.complete(Unit)
-                }
+                println("Wasm DB: error creando esquema (Ignorado si ya existe): ${it.message}")
             }
+            // Siempre marcamos como listo para no bloquear el flujo de la app por timeouts
+            dbReady.complete(Unit)
         }
         driver
     }
@@ -62,15 +59,8 @@ actual val platformModule = module {
             install(Postgrest)
             install(Auth) {
                 flowType = FlowType.PKCE
-                
-                // Sanitización del REDIRECT_URL para evitar errores de construcción de URL
-                val cleanRedirect = SupabaseConfig.REDIRECT_URL.removeSuffix("/")
-                if (cleanRedirect.isNotBlank()) {
-                    host = cleanRedirect.removePrefix("https://").removePrefix("http://").split("/").firstOrNull()
-                    scheme = if (cleanRedirect.startsWith("https")) "https" else "http"
-                }
-                
-                AppLogger.d("SupabaseAuth", "Configurado PKCE con host=$host, scheme=$scheme")
+                // Eliminamos overrides de host/scheme que causaban 404 al apuntar al lugar equivocado.
+                // La SDK usará baseUrl por defecto para el intercambio PKCE.
             }
             install(Realtime)
             install(Storage)

@@ -439,25 +439,19 @@ class SyncManager(
         
         // Ejecutamos cada borrado individualmente fuera de una transacción global
         // para que el fallo de una tabla (ej. SyncMetadata) no aborte el borrado de las demás.
-        val clearActions = listOf(
-            "Profiles" to { queries.deleteAllProfiles() },
-            "Courses" to { queries.deleteAllCourses() },
-            "Students" to { queries.deleteAllStudents() },
-            "Attendance" to { queries.deleteAllAttendance() },
-            "Justifications" to { queries.deleteAllJustifications() },
-            "Messages" to { queries.deleteAllMessages() },
-            "Communications" to { queries.deleteAllCommunications() },
-            "InvitationCodes" to { queries.deleteAllInvitationCodes() },
-            "Schools" to { queries.deleteAllSchools() },
-            "Grades" to { queries.deleteAllGrades() },
-            "SyncMetadata" to { syncQueries.deleteAllSyncMetadata() }
-        )
-
-        clearActions.forEach { (name, action) ->
-            runCatching { action() }.onFailure { e ->
-                AppLogger.e("SyncManager", "No se pudo borrar tabla $name (probablemente no existe aún): ${e.message}")
-            }
-        }
+        // Llamamos directamente a las funciones suspend para evitar problemas de inferencia en lambdas.
+        
+        runCatching { queries.deleteAllProfiles() }.onFailure { AppLogger.e("SyncManager", "Profiles clear failed: ${it.message}") }
+        runCatching { queries.deleteAllCourses() }.onFailure { AppLogger.e("SyncManager", "Courses clear failed: ${it.message}") }
+        runCatching { queries.deleteAllStudents() }.onFailure { AppLogger.e("SyncManager", "Students clear failed: ${it.message}") }
+        runCatching { queries.deleteAllAttendance() }.onFailure { AppLogger.e("SyncManager", "Attendance clear failed: ${it.message}") }
+        runCatching { queries.deleteAllJustifications() }.onFailure { AppLogger.e("SyncManager", "Justifications clear failed: ${it.message}") }
+        runCatching { queries.deleteAllMessages() }.onFailure { AppLogger.e("SyncManager", "Messages clear failed: ${it.message}") }
+        runCatching { queries.deleteAllCommunications() }.onFailure { AppLogger.e("SyncManager", "Communications clear failed: ${it.message}") }
+        runCatching { queries.deleteAllInvitationCodes() }.onFailure { AppLogger.e("SyncManager", "InvitationCodes clear failed: ${it.message}") }
+        runCatching { queries.deleteAllSchools() }.onFailure { AppLogger.e("SyncManager", "Schools clear failed: ${it.message}") }
+        runCatching { queries.deleteAllGrades() }.onFailure { AppLogger.e("SyncManager", "Grades clear failed: ${it.message}") }
+        runCatching { syncQueries.deleteAllSyncMetadata() }.onFailure { AppLogger.e("SyncManager", "SyncMetadata clear failed (Ignorado): ${it.message}") }
         
         AppLogger.d("SyncManager", "Proceso de limpieza local finalizado.")
     }
