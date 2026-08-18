@@ -51,8 +51,11 @@ class RoleSelectionScreenModel(
             val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
 
             if (role != null && !forceShowSelection) {
-                // Si es profesor, o si es apoderado y ya tiene alumnos, saltamos al dashboard
-                if (role == UserRole.TEACHER || (role == UserRole.PARENT && students.isNotEmpty())) {
+                // Seguridad: Solo auto-redirigir si el rol es PARENT con alumnos, 
+                // o si es TEACHER confirmado (asumimos que si ya es Teacher, es por algo).
+                // Pero ahora que el default es NULL, esto solo afectará a usuarios establecidos.
+                if ((role == UserRole.TEACHER) || (role == UserRole.PARENT && students.isNotEmpty())) {
+                    AppLogger.d("RoleSelection", "Rol establecido detectado ($role). Saltando selección.")
                     authService.refreshProfile()
                     _state.value = RoleSelectionUiState.Success(role, uid)
                     return@launch
