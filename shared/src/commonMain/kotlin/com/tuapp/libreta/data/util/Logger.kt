@@ -18,6 +18,11 @@ object AppLogger {
         throwable?.printStackTrace()
     }
 
+    fun w(tag: String, message: String) {
+        val timestamp = currentEpochMs()
+        println("[WARN] [$timestamp] [$tag] $message")
+    }
+
     fun d(tag: String, message: String) {
         val timestamp = currentEpochMs()
         println("[DEBUG] [$timestamp] [$tag] $message")

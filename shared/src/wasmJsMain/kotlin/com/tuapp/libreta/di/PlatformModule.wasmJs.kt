@@ -3,6 +3,7 @@ package com.tuapp.libreta.di
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
 import com.tuapp.libreta.data.remote.SupabaseConfig
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
 import io.github.jan.supabase.auth.Auth
