@@ -51,20 +51,25 @@ actual val platformModule = module {
     single { DataSeeder(get()) }
 
     single {
+        val baseUrl = SupabaseConfig.URL.removeSuffix("/")
+        println("Supabase Client: Inicializando con URL=$baseUrl")
+        
         createSupabaseClient(
-            supabaseUrl = SupabaseConfig.URL,
+            supabaseUrl = baseUrl,
             supabaseKey = SupabaseConfig.ANON_KEY
         ) {
             install(Postgrest)
             install(Auth) {
                 flowType = FlowType.PKCE
-                // IMPORTANTE: En Web/Wasm, la SDK maneja la persistencia en LocalStorage.
-                // Si el modo incógnito bloquea LocalStorage, la sesión no persistirá tras refrescar.
-                // Sin embargo, el login inicial debería funcionar si el intercambio de code tiene éxito.
                 
-                // Aseguramos que la URL de redirección base sea la correcta de producción si está definida
-                host = SupabaseConfig.REDIRECT_URL.removePrefix("https://").removePrefix("http://").split("/").firstOrNull()
-                scheme = if (SupabaseConfig.REDIRECT_URL.startsWith("https")) "https" else "http"
+                // Sanitización del REDIRECT_URL para evitar errores de construcción de URL
+                val cleanRedirect = SupabaseConfig.REDIRECT_URL.removeSuffix("/")
+                if (cleanRedirect.isNotBlank()) {
+                    host = cleanRedirect.removePrefix("https://").removePrefix("http://").split("/").firstOrNull()
+                    scheme = if (cleanRedirect.startsWith("https")) "https" else "http"
+                }
+                
+                AppLogger.d("SupabaseAuth", "Configurado PKCE con host=$host, scheme=$scheme")
             }
             install(Realtime)
             install(Storage)

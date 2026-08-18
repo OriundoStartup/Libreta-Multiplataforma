@@ -40,3 +40,6 @@ VALUES (?, COALESCE((SELECT last_pull_at FROM SyncMetadata WHERE table_name = ?)
 
 recordSyncError:
 UPDATE SyncMetadata SET last_error = ? WHERE table_name = ?;
+
+deleteAllSyncMetadata:
+DELETE FROM SyncMetadata;

@@ -427,5 +427,39 @@ class SyncManager(
             }
         }
     }
+
+    /**
+     * Limpia todos los datos locales de la base de datos de forma segura.
+     * Si alguna tabla no existe (ej. instalación vieja sin migrar), ignora el error
+     * y continúa con las demás para no bloquear el flujo de autenticación.
+     */
+    suspend fun clearAllLocalData() = withContext(getIoDispatcher()) {
+        ensureDatabaseReady()
+        AppLogger.w("SyncManager", "BORRADO SEGURO DE DATOS LOCALES INICIADO.")
+        
+        // Ejecutamos cada borrado individualmente fuera de una transacción global
+        // para que el fallo de una tabla (ej. SyncMetadata) no aborte el borrado de las demás.
+        val clearActions = listOf(
+            "Profiles" to { queries.deleteAllProfiles() },
+            "Courses" to { queries.deleteAllCourses() },
+            "Students" to { queries.deleteAllStudents() },
+            "Attendance" to { queries.deleteAllAttendance() },
+            "Justifications" to { queries.deleteAllJustifications() },
+            "Messages" to { queries.deleteAllMessages() },
+            "Communications" to { queries.deleteAllCommunications() },
+            "InvitationCodes" to { queries.deleteAllInvitationCodes() },
+            "Schools" to { queries.deleteAllSchools() },
+            "Grades" to { queries.deleteAllGrades() },
+            "SyncMetadata" to { syncQueries.deleteAllSyncMetadata() }
+        )
+
+        clearActions.forEach { (name, action) ->
+            runCatching { action() }.onFailure { e ->
+                AppLogger.e("SyncManager", "No se pudo borrar tabla $name (probablemente no existe aún): ${e.message}")
+            }
+        }
+        
+        AppLogger.d("SyncManager", "Proceso de limpieza local finalizado.")
+    }
 }
 

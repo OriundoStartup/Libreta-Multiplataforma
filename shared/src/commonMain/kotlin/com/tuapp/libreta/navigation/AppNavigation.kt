@@ -43,9 +43,15 @@ object AppNavigation {
 
     fun startDestination(): Screen = LoginScreen
 
-    fun initialScreen(role: UserRole = UserRole.TEACHER, userId: String = AppConfig.DEMO_PARENT_ID): Screen = when (role) {
+    /**
+     * FASE 6 — Eliminación de default UserRole.TEACHER.
+     * Si el rol es null, este flujo debe ser manejado por el Guardian 
+     * para enviar a RoleSelectionScreen.
+     */
+    fun initialScreen(role: UserRole?, userId: String = AppConfig.DEMO_PARENT_ID): Screen = when (role) {
         UserRole.TEACHER -> teacherDashboard()
         UserRole.PARENT  -> parentDashboard(userId)
+        null             -> LoginScreen // Fallback seguro
     }
 
     fun teacherDashboard(): Screen = TeacherDashboardScreen

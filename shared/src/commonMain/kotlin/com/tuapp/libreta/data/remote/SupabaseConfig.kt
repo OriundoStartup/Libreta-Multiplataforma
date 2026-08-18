@@ -3,9 +3,8 @@ package com.tuapp.libreta.data.remote
 import com.tuapp.libreta.BuildKonfig
 
 object SupabaseConfig {
-    // IMPORTANTE: En Web/Wasm, estas claves son visibles en el cliente.
-    // Usa siempre la 'anon public key', nunca la 'service_role key'.
-    val URL          get() = BuildKonfig.SUPABASE_URL
+    // Sanitización proactiva para evitar 404 por trailing slashes en el intercambio PKCE
+    val URL          get() = BuildKonfig.SUPABASE_URL.removeSuffix("/")
     val ANON_KEY     get() = BuildKonfig.SUPABASE_KEY
     val REDIRECT_URL get() = BuildKonfig.SUPABASE_REDIRECT_URL
     

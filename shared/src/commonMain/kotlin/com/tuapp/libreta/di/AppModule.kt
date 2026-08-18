@@ -36,7 +36,7 @@ val appModule = module {
     single { SyncManager(get(), get()) }
 
     // ── Auth ──────────────────────────────────────────────────────────────────
-    single { SupabaseAuthService(get()) }
+    single { SupabaseAuthService(get(), get()) }
 
     // ── Repositories (Symbiosis: Local + Remote) ─────────────────────────────
     single<AttendanceRepository>       { SymbioticAttendanceRepository(get(), get()) }

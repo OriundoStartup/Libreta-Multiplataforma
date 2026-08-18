@@ -38,7 +38,10 @@ sealed class SessionStatus {
     fun isAuthenticated(): Boolean = this is Authenticated
 }
 
-class SupabaseAuthService(private val supabase: SupabaseClient) {
+class SupabaseAuthService(
+    private val supabase: SupabaseClient,
+    private val syncManager: com.tuapp.libreta.data.sync.SyncManager
+) {
 
     private val jsonHelper = Json { ignoreUnknownKeys = true }
 
@@ -54,6 +57,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
 
     // CAPA 2: Estado de cache y marca de tiempo para blindaje temporal
     private var _cachedRole: UserRole? = null
+    private var _cachedUserId: String? = null
     private var _lastUpdateTimestamp: Long = 0
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -67,8 +71,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                 when (status) {
                     is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
                         // Invalida explícitamente el cache en desconexión
-                        _cachedRole = null
-                        _lastUpdateTimestamp = 0
+                        invalidateCache()
                         emit(SessionStatus.NotAuthenticated)
                     }
                     is io.github.jan.supabase.auth.status.SessionStatus.Initializing -> {
@@ -78,10 +81,31 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                         val session = status.session
                         val user = session.user
                         if (user != null) {
-                            // Emisión optimista inmediata desde caché para evitar parpadeos
-                            _cachedRole?.let { 
-                                AppLogger.d("AuthService", "Emitiendo desde CACHE: $it")
-                                emit(SessionStatus.Authenticated(user, it)) 
+                            // FASE 6 — Detección de cambio de usuario (Prevención de fuga de datos)
+                            if (_cachedUserId != null && _cachedUserId != user.id) {
+                                AppLogger.w("AuthService", "CAMBIO DE USUARIO DETECTADO sin logout previo. Limpiando estado.")
+                                invalidateCache()
+                                // Forzamos un estado de carga mientras limpiamos la DB
+                                emit(SessionStatus.Loading)
+                                
+                                runCatching { 
+                                    syncManager.clearAllLocalData() 
+                                }.onFailure { e ->
+                                    AppLogger.e("AuthService", "Error en limpieza local (procediendo de todos modos): ${e.message}")
+                                }
+                                
+                                AppLogger.d("AuthService", "Limpieza completada. Obteniendo rol para nuevo usuario.")
+                            }
+                            
+                            // Emisión optimista inmediata SOLO si el usuario es el mismo
+                            if (_cachedUserId == user.id && _cachedRole != null) {
+                                AppLogger.d("AuthService", "Emitiendo desde CACHE: $_cachedRole para $user.id")
+                                emit(SessionStatus.Authenticated(user, _cachedRole))
+                            }
+                            
+                            // Si no hay rol en caché (ej. tras limpieza), forzamos Loading mientras consultamos la DB
+                            if (_cachedRole == null) {
+                                emit(SessionStatus.Loading)
                             }
                             
                             val role = try {
@@ -91,7 +115,7 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                                     
                                     // CAPA 2 REFINADA: Solo ignora null si estamos dentro de la ventana de 5s 
                                     // tras un updateRole exitoso. Un null fuera de esta ventana es legítimo.
-                                    if (dbRole == null && _cachedRole != null && (now - _lastUpdateTimestamp) < 5000) {
+                                    if (dbRole == null && _cachedRole != null && (now - _lastUpdateTimestamp) < 5000 && _cachedUserId == user.id) {
                                         AppLogger.d("AuthService", "Capa 2: Ignorando null transitorio (ventana de 5s activa).")
                                         _cachedRole
                                     } else {
@@ -100,10 +124,11 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                                 }
                             } catch (e: Exception) {
                                 AppLogger.e("AuthService", "Error al obtener rol: ${e.message}")
-                                _cachedRole // Revertir al caché si falla la red/timeout
+                                if (_cachedUserId == user.id) _cachedRole else null
                             }
                             
                             _cachedRole = role
+                            _cachedUserId = user.id
                             AppLogger.d("AuthService", "Emisión FINAL sessionStatusFlow: role=$role")
                             emit(SessionStatus.Authenticated(user, role))
                         } else {
@@ -114,6 +139,13 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
                 }
             }
         }.distinctUntilChanged()
+
+    private fun invalidateCache() {
+        _cachedRole = null
+        _cachedUserId = null
+        _lastUpdateTimestamp = 0
+        AppLogger.d("AuthService", "Cache de sesión invalidado.")
+    }
 
     fun getGoogleOAuthUrl(redirectTo: String? = null, prompt: String? = null): String {
         val url = supabase.auth.getOAuthUrl(
@@ -234,10 +266,10 @@ class SupabaseAuthService(private val supabase: SupabaseClient) {
     }.getOrElse { false }
 
     suspend fun signOut() {
-        // Confirmación de invalidación de caché
-        _cachedRole = null
-        _lastUpdateTimestamp = 0
-        AppLogger.d("AuthService", "Cache invalidado por SignOut.")
+        // Confirmación de invalidación de caché y datos locales
+        invalidateCache()
+        syncManager.clearAllLocalData()
+        AppLogger.d("AuthService", "Datos locales y cache invalidados por SignOut.")
         supabase.auth.signOut()
     }
 

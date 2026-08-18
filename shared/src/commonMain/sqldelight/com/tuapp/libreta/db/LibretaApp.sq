@@ -321,3 +321,14 @@ SELECT * FROM GradeEntity WHERE sync_status != 'SYNCED';
 
 deleteGradeEntity:
 DELETE FROM GradeEntity WHERE id = ?;
+
+deleteAllProfiles: DELETE FROM ProfileEntity;
+deleteAllCourses: DELETE FROM CourseEntity;
+deleteAllStudents: DELETE FROM StudentEntity;
+deleteAllAttendance: DELETE FROM AttendanceEntity;
+deleteAllJustifications: DELETE FROM JustificationEntity;
+deleteAllMessages: DELETE FROM MessageEntity;
+deleteAllCommunications: DELETE FROM CommunicationEntity;
+deleteAllInvitationCodes: DELETE FROM InvitationCodeEntity;
+deleteAllSchools: DELETE FROM SchoolEntity;
+deleteAllGrades: DELETE FROM GradeEntity;
