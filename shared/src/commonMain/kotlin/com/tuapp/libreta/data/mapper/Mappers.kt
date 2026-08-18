@@ -30,7 +30,7 @@ fun now(): Long = currentEpochMs()
 
 fun ProfileEntity.toDomain() = Profile(
     UuidString(id),
-    runCatching { UserRole.valueOf(role) }.getOrElse { UserRole.TEACHER },
+    role?.let { r -> runCatching { UserRole.valueOf(r) }.getOrNull() } ?: UserRole.TEACHER, // Fallback a TEACHER solo para legacy local
     full_name
 )
 

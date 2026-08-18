@@ -96,7 +96,7 @@ class SyncManager(
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
                 remote.forEach { dto ->
                     queries.insertOrReplaceProfile(
-                        dto.id, dto.fullName, dto.role ?: "PARENT", 
+                        dto.id, dto.fullName, dto.role, // Permitir NULL desde el servidor
                         1, 0, SyncStatus.SYNCED.name, 
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
