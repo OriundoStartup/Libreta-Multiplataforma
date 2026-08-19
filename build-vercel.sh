@@ -1,38 +1,63 @@
 #!/bin/bash
 set -e
 
-# --- 1. VALIDACIÓN DE AMBIENTE ---
-echo "--- [SRE] Iniciando Build de Supervivencia de Recursos ---"
+echo "--- [SRE] Iniciando Build de Supervivencia v8 (Isolation + Artifact Export) ---"
 
-# Memoria limitada para Node.js
-export NODE_OPTIONS="--max-old-space-size=1024"
+# 1. AISLAMIENTO DE DIRECTORIOS
+# Forzamos a Gradle y Android a usar /tmp, que es 100% escribible en Vercel
+mkdir -p /tmp/.gradle
+mkdir -p /tmp/.android
+export GRADLE_USER_HOME="/tmp/.gradle"
+export ANDROID_USER_HOME="/tmp/.android"
+export ANDROID_HOME="/tmp"
 
-# --- 2. CONFIGURACIÓN DE JAVA 17 ---
+# 2. CONFIGURACIÓN DE JAVA 17
 mkdir -p /tmp/jdk17
-curl -sL "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz" \
-  | tar -xz -C /tmp/jdk17 --strip-components=1
-
+if [ ! -f "/tmp/jdk17/bin/java" ]; then
+    curl -sL "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz" \
+      | tar -xz -C /tmp/jdk17 --strip-components=1
+fi
 export JAVA_HOME=/tmp/jdk17
 export PATH="$JAVA_HOME/bin:$PATH"
 
-# --- 3. CONFIGURACIÓN DE GRADLE ---
+# 3. CONFIGURACIÓN DE GRADLE
 chmod +x gradlew
 
-# Crear un archivo de propiedades ULTRA-LIMPIO para Vercel
-# Reducimos los workers a 1 y bajamos el metaspace para liberar RAM para Binaryen
+# org.gradle.daemon=false es vital para CI
 cat <<EOF > gradle.properties
-org.gradle.jvmargs=-Xmx2560m -XX:MaxMetaspaceSize=384m -XX:+UseSerialGC
+org.gradle.jvmargs=-Xmx2560m -XX:MaxMetaspaceSize=512m -Djava.io.tmpdir=/tmp -Duser.home=/tmp -XX:+UseSerialGC
 org.gradle.daemon=false
 org.gradle.parallel=false
 org.gradle.workers.max=1
+org.gradle.vfs.watch=false
 kotlin.incremental=false
 kotlin.compiler.execution.strategy=in-process
 android.useAndroidX=true
 EOF
 
-echo "--- [SRE] Ejecutando compilación Wasm con perfil de BAJA MEMORIA ---"
-# Eliminamos la optimización agresiva via CLI para dejar que build.gradle.kts
-# use los flags --low-memory configurados.
-./gradlew :composeApp:wasmJsBrowserDistribution --stacktrace --info
+echo "--- [SRE] Ejecutando compilación... ---"
+./gradlew :composeApp:wasmJsBrowserDistribution \
+  --no-daemon \
+  --no-build-cache \
+  --stacktrace \
+  --console=plain \
+  --info
 
-echo "--- [SRE] Build completado con éxito ---"
+# 4. EXPORTACIÓN DE ARTEFACTOS
+echo "--- [SRE] Preparando carpeta dist ---"
+mkdir -p dist
+
+# Intentar producción, si no existe, usar development
+if [ -d "composeApp/build/dist/wasmJs/productionExecutable" ]; then
+    cp -r composeApp/build/dist/wasmJs/productionExecutable/* dist/
+    echo "Dist listo (Producción)"
+else
+    cp -r composeApp/build/dist/wasmJs/developmentExecutable/* dist/
+    echo "Dist listo (Desarrollo - Fallback)"
+fi
+
+# El worker debe estar siempre en la raíz
+cp composeApp/src/wasmJsMain/resources/sqldelight-worker.js dist/ 2>/dev/null || true
+
+echo "--- [SRE] Build Finalizado con éxito ---"
+ls -lh dist
