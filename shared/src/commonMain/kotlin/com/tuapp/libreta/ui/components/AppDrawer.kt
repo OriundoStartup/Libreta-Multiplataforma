@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+import com.tuapp.libreta.domain.model.UserRole
+
 @Composable
 fun AppDrawer(
     onClose: () -> Unit,
@@ -18,8 +20,12 @@ fun AppDrawer(
     onNavigateToCompose: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
-    onSwitchAccount: () -> Unit = {}
+    onSwitchAccount: () -> Unit = {},
+    userRole: UserRole? = null
 ) {
+    val dashboardLabel = if (userRole == UserRole.PARENT) "Mi Dashboard" else "Inicio / Mis Cursos"
+    val panelLabel = if (userRole == UserRole.PARENT) "Panel del Apoderado" else "Panel del Profesor"
+
     ModalDrawerSheet {
         Spacer(Modifier.height(24.dp))
         Text(
@@ -28,7 +34,7 @@ fun AppDrawer(
             modifier = Modifier.padding(horizontal = 24.dp)
         )
         Text(
-            text     = "Panel del Profesor",
+            text     = panelLabel,
             style    = MaterialTheme.typography.bodySmall,
             color    = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
@@ -38,7 +44,7 @@ fun AppDrawer(
         SectionHeader("Gestión")
         NavigationDrawerItem(
             icon    = { Icon(Icons.Default.Home, null) },
-            label   = { Text("Inicio / Mis Cursos") },
+            label   = { Text(dashboardLabel) },
             selected = false,
             onClick  = { onNavigateToDashboard(); onClose() }
         )

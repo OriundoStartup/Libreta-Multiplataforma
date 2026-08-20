@@ -69,7 +69,13 @@ sealed interface AuthFlow {
                         }
                         // Caso 3: Tiene rol y está en selección de rol (auto-redirect si no está swicheando)
                         currentScreenKind == ScreenKind.ROLE_SELECTION -> {
-                            if (!isSwitchingRole) Ready(role, userId) else Stay
+                            if (isSwitchingRole) {
+                                AppLogger.d("AuthFlow", "User is switching role manually. Staying on RoleSelection.")
+                                Stay 
+                            } else {
+                                AppLogger.d("AuthFlow", "User already has role $role. Auto-redirecting to dashboard.")
+                                Ready(role, userId)
+                            }
                         }
                         // Caso 4: Verificación de acceso denegado por rol
                         role == UserRole.TEACHER && currentScreenKind == ScreenKind.PARENT_HOME -> {

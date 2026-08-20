@@ -89,6 +89,8 @@ import com.tuapp.libreta.ui.util.LocalWindowSize
 import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
 
+import com.tuapp.libreta.domain.model.UserRole
+
 object TeacherDashboardScreen : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -120,6 +122,7 @@ object TeacherDashboardScreen : Screen {
                     onSwitchAccount = { 
                         navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) 
                     },
+                    userRole = UserRole.TEACHER
                 )
             }
         ) {

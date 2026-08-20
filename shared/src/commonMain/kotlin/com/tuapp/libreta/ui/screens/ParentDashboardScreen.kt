@@ -67,6 +67,8 @@ import com.tuapp.libreta.ui.util.LocalWindowSize
 import com.tuapp.libreta.ui.util.WindowSizeClass
 import kotlinx.coroutines.launch
 
+import com.tuapp.libreta.domain.model.UserRole
+
 data class ParentDashboardScreen(val parentId: String) : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +106,8 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                     onNavigateToCompose = { /* Consistent UI */ },
                     onNavigateToProfile = { navigator.push(AppNavigation.profile()) },
                     onLogout = { model.logout() },
-                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) }
+                    onSwitchAccount = { navigator.replaceAll(RoleSelectionScreen(isSwitchingRole = true)) },
+                    userRole = UserRole.PARENT
                 )
             }
         ) {
