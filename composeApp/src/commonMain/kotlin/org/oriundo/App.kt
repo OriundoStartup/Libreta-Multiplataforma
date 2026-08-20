@@ -106,8 +106,13 @@ fun App(initialScreen: cafe.adriel.voyager.core.screen.Screen? = null) {
                                     
                                     val flow = AuthFlow.from(sessionStatus, kind, isSwitching)
                                     
-                                    // DEBUG LOG
-                                    AppLogger.d("Guardian", "Flow status update: Status=$sessionStatus | Screen=$kind | Flow=$flow")
+                                    // DEBUG LOG CRÍTICO
+                                    if (sessionStatus is SessionStatus.Authenticated) {
+                                        val auth = sessionStatus as SessionStatus.Authenticated
+                                        AppLogger.d("Guardian", "CRITICAL-NAV: Email=${auth.user.email} | Role=${auth.role} | Flow=$flow | Screen=$kind")
+                                    } else {
+                                        AppLogger.d("Guardian", "Flow status update: Status=$sessionStatus | Screen=$kind | Flow=$flow")
+                                    }
 
                                     when (flow) {
                                         AuthFlow.LoginRequired -> {
