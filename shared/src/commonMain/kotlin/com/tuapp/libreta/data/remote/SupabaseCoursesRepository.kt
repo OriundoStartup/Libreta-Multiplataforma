@@ -131,9 +131,12 @@ class SupabaseCoursesRepository(private val supabase: SupabaseClient) : CoursesR
         AppLogger.d("EnrollStudent", "Auth UID: ${user.id} | Payload DTO: $dto")
         
         // Usamos .from() y aseguramos la ejecución
-        supabase.from("enrollments").insert(dto)
+        val response = supabase.from("enrollments").insert(dto)
         Unit
     }.onFailure { error ->
+        // LOG CRÍTICO PARA IDENTIFICAR LA CONSTRAINT REAL
+        AppLogger.e("EnrollStudent", "RAW ERROR FROM POSTGRES: ${error.message}")
+        
         val message = if (error.message?.contains("duplicate") == true ||
             error.message?.contains("unique") == true) {
             "Este alumno ya está registrado en el curso"
