@@ -9,9 +9,10 @@ import com.tuapp.libreta.db.LibretaAppDatabase
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,19 +28,24 @@ actual val platformModule = module {
         val driver = try {
             WebWorkerDriver(Worker("sqldelight-worker.js"))
         } catch (e: Throwable) {
-            println("Wasm DB: Worker failed to start. ${e.message}")
-            throw RuntimeException("Fallo al cargar la base de datos (Worker no encontrado). Revisa si sqldelight-worker.js existe.")
+            val errorMsg = "Wasm DB: Worker failed to start. ${e.message}"
+            println(errorMsg)
+            dbReady.completeExceptionally(RuntimeException(errorMsg))
+            throw RuntimeException(errorMsg)
         }
         
         CoroutineScope(Dispatchers.Default).launch {
-            val result = runCatching { 
+            try {
+                // Secuenciación Real: Esperamos a que el Worker confirme la creación del esquema.
+                // SQLDelight 2.x QueryResult tiene un método .await() para drivers asíncronos.
                 LibretaAppDatabase.Schema.create(driver).await() 
-                println("Wasm DB: Esquema creado exitosamente.")
-            }.onFailure { 
-                println("Wasm DB: error creando esquema (Ignorado si ya existe): ${it.message}")
+                println("Wasm DB: Esquema verificado/creado exitosamente.")
+                dbReady.complete(Unit)
+            } catch (e: Throwable) {
+                println("Wasm DB: Error crítico inicializando tablas: ${e.message}")
+                // Evitamos carga infinita: los consumidores de dbReady recibirán el fallo.
+                dbReady.completeExceptionally(e)
             }
-            // Siempre marcamos como listo para no bloquear el flujo de la app por timeouts
-            dbReady.complete(Unit)
         }
         driver
     }
@@ -59,8 +65,6 @@ actual val platformModule = module {
             install(Postgrest)
             install(Auth) {
                 flowType = FlowType.PKCE
-                // Eliminamos overrides de host/scheme que causaban 404 al apuntar al lugar equivocado.
-                // La SDK usará baseUrl por defecto para el intercambio PKCE.
             }
             install(Realtime)
             install(Storage)

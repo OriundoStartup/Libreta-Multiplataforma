@@ -1,6 +1,5 @@
 package com.tuapp.libreta.data.util
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
 import com.tuapp.libreta.data.util.DataSeeder.Companion.REMOTE_SEEDING_ENABLED
 import com.tuapp.libreta.db.LibretaAppQueries
 import com.tuapp.libreta.domain.model.AttendanceStatus
@@ -34,7 +33,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
 
     suspend fun seedIfEmpty() {
         queries.transaction {
-            val count = queries.getStudentsByCourse(DEMO_COURSE_ID).awaitAsList().size
+            val count = queries.getStudentsByCourse(DEMO_COURSE_ID).executeAsList().size
             if (count > 0) return@transaction
             
             seedLocalProfiles()
@@ -89,7 +88,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         if (attendance.isNotEmpty()) supabase.from("attendance").insert(attendance)
     }
 
-    private suspend fun seedLocalProfiles() {
+    private fun seedLocalProfiles() {
         queries.insertOrReplaceProfile(
             id = DEMO_TEACHER_ID,
             full_name = "Carlos Fuentes (Demo)",
@@ -112,7 +111,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         )
     }
 
-    private suspend fun seedLocalCourse() =
+    private fun seedLocalCourse() =
         queries.insertOrReplaceCourse(
             id = DEMO_COURSE_ID,
             name = "4° Básico A (Demo)",
@@ -144,7 +143,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         "de10de10-0000-0000-0000-000000000110" to "Diego Vargas"
     )
 
-    private suspend fun seedLocalStudents() {
+    private fun seedLocalStudents() {
         studentData.forEach { (id, name) ->
             queries.insertOrReplaceStudent(
                 id = id,
@@ -174,7 +173,7 @@ class DataSeeder(private val queries: LibretaAppQueries) {
         "de10de10-0000-0000-0000-000000000110" to listOf(true,true,false,false,true)
     )
 
-    private suspend fun seedLocalAttendance() {
+    private fun seedLocalAttendance() {
         val dayMs = 86_400_000L
         studentData.forEach { (studentId, _) ->
             (pattern[studentId] ?: List(5) { true }).forEachIndexed { i, present ->

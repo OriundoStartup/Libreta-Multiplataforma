@@ -1,7 +1,6 @@
 package com.tuapp.libreta.di
 
 import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.db.synchronous
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
@@ -11,9 +10,9 @@ import com.tuapp.libreta.data.remote.SupabaseConfig
 import com.tuapp.libreta.data.util.DataSeeder
 import com.tuapp.libreta.db.LibretaAppDatabase
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.ExternalAuthAction
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.FlowType
-import io.github.jan.supabase.auth.SettingsSessionStore
+import io.github.jan.supabase.auth.SettingsSessionManager
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
@@ -24,7 +23,7 @@ actual val dbReady = CompletableDeferred(Unit)
 
 actual val platformModule = module {
     single<SqlDriver> {
-        AndroidSqliteDriver(LibretaAppDatabase.Schema.synchronous(), get(), "libreta_v2.db")
+        AndroidSqliteDriver(LibretaAppDatabase.Schema, get(), "libreta_v2.db")
     }
 
     single<Settings> {
@@ -47,10 +46,7 @@ actual val platformModule = module {
             install(Postgrest)
             install(Auth) {
                 flowType                  = FlowType.PKCE
-                scheme                    = "org.oriundo"
-                host                      = "login-callback"
-                defaultExternalAuthAction = ExternalAuthAction.ExternalBrowser
-                sessionStore              = SettingsSessionStore(get())
+                sessionManager            = SettingsSessionManager(get())
             }
             install(Realtime)
         }

@@ -11,7 +11,7 @@ import com.tuapp.libreta.db.LibretaAppDatabase
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.ExternalAuthAction
 import io.github.jan.supabase.auth.FlowType
-import io.github.jan.supabase.auth.SettingsSessionStore
+import io.github.jan.supabase.auth.SettingsSessionManager
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
@@ -42,7 +42,7 @@ actual val platformModule = module {
                 scheme = "org.oriundo"
                 host = "login-callback"
                 defaultExternalAuthAction = ExternalAuthAction.ExternalBrowser
-                sessionStore = SettingsSessionStore(get())
+                sessionManager = SettingsSessionManager(get())
             }
             install(Realtime)
         }

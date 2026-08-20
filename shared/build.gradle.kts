@@ -103,9 +103,8 @@ sqldelight {
     databases {
         create("LibretaAppDatabase") {
             packageName.set("com.tuapp.libreta.db")
-            // Genera API suspend: el web-worker-driver es asíncrono. Los drivers nativos
-            // (Android/iOS) son síncronos y await() retorna de inmediato, así que siguen funcionando.
-            generateAsync.set(true)
+            // Genera API síncrona
+            generateAsync.set(false)
         }
     }
 }
