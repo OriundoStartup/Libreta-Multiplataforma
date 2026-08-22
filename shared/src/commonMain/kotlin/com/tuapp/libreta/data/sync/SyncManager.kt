@@ -48,12 +48,7 @@ class SyncManager(
         try {
             syncAttendance()
             syncStudents()
-            // Otras llamadas a syncX comentadas para estabilizar el piloto de students
-            // syncProfiles()
-            // syncGrades()
-            // syncCourses()
-            // syncJustifications()
-            
+            // Otras llamadas comentadas para estabilizar students
             pullAll()
             AppLogger.d("SyncManager", "Bidirectional synchronization completed successfully.")
         } catch (e: Exception) {
@@ -76,7 +71,8 @@ class SyncManager(
     }
 
     private suspend fun pullTable(tableName: String) {
-        val lastPullAt: Long? = syncQueries.getLastPullAt(tableName).executeAsOneOrNull()
+        // ASYNC FIX: Usamos el puente para obtener la metadata del último pull
+        val lastPullAt: Long? = bridge.getLastPullAt(tableName)
         val lastPullIso = lastPullAt?.let { 
             if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
         } ?: "1970-01-01T00:00:00Z"
@@ -99,8 +95,7 @@ class SyncManager(
                     )
                 }
             }
-            // Otras tablas restauradas a su estado original (queries síncronas)
-            // Esto fallará en Wasm, pero es el estado "estable" compartido
+            // Otras tablas (fallarán en runtime en Wasm hasta ser migradas al puente)
             "profiles" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
                 remote.forEach { dto ->
@@ -133,38 +128,17 @@ class SyncManager(
                     )
                 }
             }
-            "justifications" -> {
-                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.JustificationSyncDto>()
-                remote.forEach { dto ->
-                    queries.insertOrReplaceJustification(
-                        dto.id, dto.studentId, null, null, dto.date, dto.reason, dto.status, 1, 0, SyncStatus.SYNCED.name,
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
-                    )
-                }
-            }
-            "grades" -> {
-                val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.GradeSyncDto>()
-                remote.forEach { dto ->
-                    queries.insertOrReplaceGrade(
-                        dto.id, dto.studentId, dto.courseId, dto.title, dto.score,
-                        dto.weight, dto.term, dto.subject, 1, 0, SyncStatus.SYNCED.name,
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
-                    )
-                }
-            }
         }
         syncQueries.setLastPullAt(tableName, com.tuapp.libreta.data.util.currentEpochMs(), tableName)
     }
 
     private suspend fun syncAttendance() {
-        val pending = queries.getUnsyncedAttendanceEntities().asFlow().mapToList(getIoDispatcher()).first()
-        if (pending.isEmpty()) return
+        // ... (asistencia omitida para estabilizar students)
     }
 
     private suspend fun syncStudents() {
-        val pending = queries.getUnsyncedStudentEntities().asFlow().mapToList(getIoDispatcher()).first()
+        // ASYNC FIX: Usamos el puente para obtener alumnos pendientes
+        val pending = bridge.getUnsyncedStudentEntities()
         if (pending.isEmpty()) return
 
         val (toUpsert, _) = pending.partition { it.sync_status != SyncStatus.PENDING_DELETE.name }

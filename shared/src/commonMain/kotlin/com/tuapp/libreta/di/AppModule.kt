@@ -34,7 +34,7 @@ import org.koin.dsl.module
 val appModule = module {
 
     // ── Database Bridge ──────────────────────────────────────────────────────
-    single { LocalDataBridge(get(), get()) }
+    single { LocalDataBridge(get(), get(), get()) }
 
     // ── Sync ──────────────────────────────────────────────────────────────────
     single { SyncManager(get(), get(), get()) }

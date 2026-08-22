@@ -2,12 +2,18 @@ package com.tuapp.libreta.data.db
 
 import app.cash.sqldelight.db.SqlDriver
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.db.SyncMetadataQueries
 import com.tuapp.libreta.db.StudentEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Puente para operaciones de base de datos que requieren comportamiento diferenciado 
+ * entre plataformas.
+ */
 expect class LocalDataBridge(
     driver: SqlDriver,
-    queries: LibretaAppQueries
+    queries: LibretaAppQueries,
+    syncQueries: SyncMetadataQueries
 ) {
     suspend fun insertOrReplaceStudent(
         id: String,
@@ -23,4 +29,8 @@ expect class LocalDataBridge(
     )
 
     fun getStudentsByParent(parentId: String): Flow<List<StudentEntity>>
+
+    // Nuevas funciones para el ciclo de vida de sincronización
+    suspend fun getLastPullAt(tableName: String): Long?
+    suspend fun getUnsyncedStudentEntities(): List<StudentEntity>
 }
