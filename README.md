@@ -9,7 +9,7 @@ Una solución robusta y moderna para la gestión académica, construida con **Ko
 El sistema ha sido recientemente **estabilizado y blindado**, logrando una paridad de funciones y una robustez excepcional en todos sus objetivos de compilación.
 
 ### Hitos Recientes:
-- **Estabilización de Wasm (Web)**: Superamos las limitaciones del compilador Wasm para la integración con Supabase, permitiendo flujos de datos en tiempo real.
+- **Estabilización de Wasm (Web)**: Secuenciación de inicialización de base de datos (`dbReady`) implementada para garantizar disponibilidad de tablas en la carga inicial.
 - **Normalización de Dominio**: Modelos de datos (`Student`, `Attendance`, `Justification`) optimizados y normalizados (3NF) para asegurar integridad en la persistencia.
 - **Blindaje de Persistencia**: Implementación de políticas de RLS (Row Level Security) en Supabase y esquemas SQLDelight sincronizados.
 - **Suite de Pruebas al 100%**: Cobertura de tests unitarios validada en Android, iOS y Wasm, asegurando que la lógica de negocio es idéntica en todas las plataformas.
