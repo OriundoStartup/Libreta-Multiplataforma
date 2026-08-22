@@ -1,5 +1,6 @@
 package com.tuapp.libreta.di
 
+import com.tuapp.libreta.data.db.LocalDataBridge
 import com.tuapp.libreta.data.remote.SupabaseStudentRepository
 import com.tuapp.libreta.data.remote.SupabaseAuthService
 import com.tuapp.libreta.data.remote.SupabaseCommunicationRepository
@@ -32,15 +33,18 @@ import org.koin.dsl.module
 
 val appModule = module {
 
+    // ── Database Bridge ──────────────────────────────────────────────────────
+    single { LocalDataBridge(get(), get()) }
+
     // ── Sync ──────────────────────────────────────────────────────────────────
-    single { SyncManager(get(), get()) }
+    single { SyncManager(get(), get(), get()) }
 
     // ── Auth ──────────────────────────────────────────────────────────────────
     single { SupabaseAuthService(get(), get()) }
 
     // ── Repositories (Symbiosis: Local + Remote) ─────────────────────────────
     single<AttendanceRepository>       { SymbioticAttendanceRepository(get(), get()) }
-    single<StudentRepository>          { StudentRepositoryImpl(get(), get()) }
+    single<StudentRepository>          { StudentRepositoryImpl(get(), get(), get()) }
     single<JustificationRepository>    { com.tuapp.libreta.data.remote.SupabaseJustificationRepository(get()) }
     single<ProfileRepository>          { ProfileRepositoryImpl(get(), get()) }
     single<ClassRoomRepository>        { ClassRoomRepositoryImpl(get(), get()) }

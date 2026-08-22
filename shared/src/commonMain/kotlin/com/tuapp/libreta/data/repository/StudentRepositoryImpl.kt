@@ -2,6 +2,7 @@ package com.tuapp.libreta.data.repository
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import com.tuapp.libreta.data.db.LocalDataBridge
 import com.tuapp.libreta.data.mapper.toDomain
 import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
@@ -17,12 +18,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class StudentRepositoryImpl(
     private val queries: LibretaAppQueries,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val bridge: LocalDataBridge
 ) : StudentRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
@@ -30,22 +34,25 @@ class StudentRepositoryImpl(
     override fun getStudentsByClass(classId: UuidString): Flow<List<Student>> =
         queries.getStudentsByCourse(classId.value).toDomainList { it.toDomain() }
 
-    override fun getStudentsByParent(parentId: UuidString): Flow<List<Student>> =
-        queries.getStudentsByParent(parentId.value).toDomainList { it.toDomain() }
+    override fun getStudentsByParent(parentId: UuidString): Flow<List<Student>> {
+        return bridge.getStudentsByParent(parentId.value)
+            .map { list -> list.map { it.toDomain() } }
+            .catch { emit(emptyList()) }
+    }
 
     override suspend fun saveStudent(student: Student) {
         withContext(getIoDispatcher()) {
-            queries.insertOrReplaceStudent(
+            bridge.insertOrReplaceStudent(
                 id = student.id.value,
-                full_name = student.fullName,
-                student_rut = null,
-                course_id = student.courseId.value,
-                parent_id = student.parentId.value,
-                server_version = 1,
-                is_deleted = 0,
-                sync_status = SyncStatus.SYNCED.name,
-                created_at = currentEpochMs(),
-                updated_at = currentEpochMs()
+                fullName = student.fullName,
+                studentRut = null,
+                courseId = student.courseId.value,
+                parentId = student.parentId.value,
+                serverVersion = 1,
+                isDeleted = 0,
+                syncStatus = SyncStatus.SYNCED.name,
+                createdAt = currentEpochMs(),
+                updatedAt = currentEpochMs()
             )
             scope.launch { syncManager.syncAll() }
         }
@@ -53,24 +60,23 @@ class StudentRepositoryImpl(
 
     override suspend fun updateStudentEnrollment(id: UuidString, name: String, rut: String?): Result<Unit> = withContext(getIoDispatcher()) {
         runCatching {
-            // Usamos Flow + first() en lugar de extensiones asíncronas para máxima compatibilidad Wasm
             val current: StudentEntity? = queries.getStudentById(id.value)
                 .asFlow()
                 .mapToOneOrNull(getIoDispatcher())
                 .first()
 
             if (current != null) {
-                queries.insertOrReplaceStudent(
+                bridge.insertOrReplaceStudent(
                     id = id.value,
-                    full_name = name,
-                    student_rut = rut,
-                    course_id = current.course_id,
-                    parent_id = current.parent_id,
-                    server_version = current.server_version,
-                    is_deleted = current.is_deleted,
-                    sync_status = SyncStatus.PENDING_UPDATE.name,
-                    created_at = current.created_at,
-                    updated_at = currentEpochMs()
+                    fullName = name,
+                    studentRut = rut,
+                    courseId = current.course_id,
+                    parentId = current.parent_id,
+                    serverVersion = current.server_version,
+                    isDeleted = current.is_deleted,
+                    syncStatus = SyncStatus.PENDING_UPDATE.name,
+                    createdAt = current.created_at,
+                    updatedAt = currentEpochMs()
                 )
                 scope.launch { syncManager.syncAll() }
                 Unit
