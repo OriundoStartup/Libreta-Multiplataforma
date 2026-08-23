@@ -52,6 +52,7 @@ actual val platformModule = module {
 
     single { LibretaAppDatabase(get()) }
     single { get<LibretaAppDatabase>().libretaAppQueries }
+    single { get<LibretaAppDatabase>().syncMetadataQueries }
     single { DataSeeder(get()) }
 
     single {

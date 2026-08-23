@@ -68,13 +68,23 @@ fun main() {
         println("Web App: FATAL ERROR during startup")
         e.printStackTrace()
         
+        val causeMessage = e.cause?.message ?: "Sin causa detallada"
+        val causeTrace = e.cause?.let { 
+            // Intentar obtener algo útil del stacktrace de la causa
+            it.toString() 
+        } ?: ""
+
         // Mostrar el error visualmente para salir de la carga infinita
         if (loadingScreen != null) {
             loadingScreen.innerHTML = """
                 <div style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 80%; color: #d32f2f; font-family: sans-serif;">
                     <h2 style="margin-top: 0;">Error de Arranque</h2>
                     <p style="color: #444;">La aplicación no pudo iniciarse correctamente.</p>
-                    <pre style="background: #f5f5f5; padding: 10px; font-size: 12px; overflow: auto; max-height: 200px; border: 1px solid #ddd;">${e.message}\n$e</pre>
+                    <div style="background: #f5f5f5; padding: 10px; font-size: 12px; overflow: auto; max-height: 300px; border: 1px solid #ddd; text-align: left;">
+                        <strong>Mensaje:</strong> ${e.message}<br><br>
+                        <strong>Causa:</strong> $causeMessage<br>
+                        <pre style="margin-top: 10px; border-top: 1px solid #eee; pt: 10px;">$causeTrace</pre>
+                    </div>
                     <button onclick="location.reload()" style="background: #6750a4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Reintentar</button>
                 </div>
             """.trimIndent()

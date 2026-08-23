@@ -4,6 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.db.SyncMetadataQueries
 import com.tuapp.libreta.db.StudentEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -13,7 +14,7 @@ import app.cash.sqldelight.async.coroutines.await
 actual class LocalDataBridge actual constructor(
     private val driver: SqlDriver,
     private val queries: LibretaAppQueries,
-    private val syncQueries: com.tuapp.libreta.db.SyncMetadataQueries
+    private val syncQueries: SyncMetadataQueries
 ) {
     actual suspend fun insertOrReplaceStudent(
         id: String,
