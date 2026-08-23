@@ -29,7 +29,13 @@ fun main() {
         
         // 2. Inicialización de Koin
         println("Web App: Initializing Koin...")
-        initKoin()
+        try {
+            initKoin()
+            println("Web App: Koin initialized successfully.")
+        } catch (e: Throwable) {
+            println("Web App: KOIN ERROR -> ${e.message}")
+            throw e // Propagar para que se muestre en pantalla
+        }
 
         // 3. Montar App en el DOM (dentro de una corrutina para manejar el canje de código OAuth)
         val root = document.getElementById("app-root") as? HTMLElement

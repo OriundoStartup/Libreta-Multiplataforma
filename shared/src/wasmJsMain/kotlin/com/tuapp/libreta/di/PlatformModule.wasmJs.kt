@@ -37,17 +37,27 @@ actual val platformModule = module {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 // Secuenciación Real: Esperamos a que el Worker confirme la creación del esquema.
+                println("Wasm DB: Iniciando creación de esquema...")
                 LibretaAppDatabase.Schema.create(driver).await() 
-                println("Wasm DB: Esquema verificado/creado exitosamente.")
+                println("Wasm DB: Schema.create() retornado. Verificando persistencia...")
+
+                // Pequeño delay para permitir que el Worker procese todos los mensajes CREATE
+                kotlinx.coroutines.delay(500)
 
                 // Log de depuración para listar tablas reales creadas
                 driver.executeQuery(null, "SELECT name FROM sqlite_master WHERE type='table'", { cursor ->
                     app.cash.sqldelight.db.QueryResult.AsyncValue {
                         val tables = mutableListOf<String>()
                         while (cursor.next().await()) {
-                            tables.add(cursor.getString(0) ?: "")
+                            val name = cursor.getString(0) ?: ""
+                            if (name != "android_metadata" && name != "sqlite_sequence") {
+                                tables.add(name)
+                            }
                         }
                         println("Wasm DB: Tablas detectadas -> ${tables.joinToString(", ")}")
+                        if (tables.isEmpty()) {
+                            println("Wasm DB: ADVERTENCIA - No se detectaron tablas tras la creación.")
+                        }
                     }
                 }, 0).await()
 

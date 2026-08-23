@@ -59,11 +59,12 @@ class SyncManager(
     }
 
     suspend fun pullAll() = withContext(getIoDispatcher()) {
-        AppLogger.d("SyncManager", "Starting PULL phase...")
+        AppLogger.d("SyncManager", "Starting PULL phase for tables: profiles, courses, students...")
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         
         tables.forEach { table ->
             try {
+                AppLogger.d("SyncManager", "[TRACE] Calling pullTable for: $table")
                 pullTable(table)
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
