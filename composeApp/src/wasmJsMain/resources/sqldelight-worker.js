@@ -1,8 +1,8 @@
-// SQLDelight Web Worker — Protocolo de diagnóstico avanzado
+// SQLDelight Web Worker — Protocolo de diagnóstico y secuenciación corregido
 const SQL_JS_VERSION = "1.10.3";
 const SQL_JS_BASE = `https://cdn.jsdelivr.net/npm/sql.js@${SQL_JS_VERSION}/dist`;
 
-console.log("Worker: Iniciando carga de scripts...");
+console.log("Worker: Iniciando carga de SQL.js...");
 importScripts(`${SQL_JS_BASE}/sql-wasm.js`);
 
 let db = null;
@@ -11,33 +11,29 @@ const dbReady = (async () => {
   try {
     const SQL = await initSqlJs({ locateFile: () => `${SQL_JS_BASE}/sql-wasm.wasm` });
     db = new SQL.Database();
-    console.log("Worker: SQL.js cargado y base de datos en memoria lista.");
+    console.log("Worker: SQL.js cargado y base de datos inicializada.");
   } catch (e) {
-    console.error("Worker: ERROR CRÍTICO inicializando SQL.js:", e);
+    console.error("Worker: ERROR inicializando SQL.js:", e);
   }
 })();
 
 self.onmessage = async (event) => {
   const data = event.data;
+  if (!data || !data.action) return;
+
   try {
+    // Bloqueante: Aseguramos que SQL.js esté listo antes de procesar CUALQUIER mensaje
     await dbReady;
-    if (!data || !data.action) return;
 
     switch (data.action) {
       case "exec": {
-        if (!data.sql) throw new Error("exec: Missing SQL query");
-
-        // Log de ejecución
-        if (data.sql.includes("CREATE TABLE")) {
-           console.log(`Worker: Ejecutando DDL -> ${data.sql.substring(0, 100)}...`);
-        }
-
+        if (!data.sql) throw new Error("exec: Missing SQL");
         const results = db.exec(data.sql, data.params);
 
-        // Confirmar creación de tabla específica
+        // Log para trazar creación
         if (data.sql.includes("CREATE TABLE")) {
-           const tableName = data.sql.match(/CREATE TABLE IF NOT EXISTS (\w+)/i)?.[1] || "unknown";
-           console.log(`Worker: TABLA CONFIRMADA -> ${tableName}`);
+           const match = data.sql.match(/CREATE TABLE IF NOT EXISTS (\w+)/i);
+           if (match) console.log(`Worker: Ejecutado CREATE TABLE -> ${match[1]}`);
         }
 
         const response = results[0] ?? { values: [] };
@@ -56,9 +52,9 @@ self.onmessage = async (event) => {
         throw new Error(`Unsupported action: ${data.action}`);
     }
   } catch (err) {
-    console.error(`Worker: Error ejecutando [${data.action}]:`, err);
+    console.error(`Worker: Error en acción [${data.action}]:`, err);
     return self.postMessage({
-      id: data && data.id,
+      id: data.id,
       error: { message: String(err.message || err) }
     });
   }

@@ -1,6 +1,8 @@
 package com.tuapp.libreta.di
 
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
 import com.tuapp.libreta.data.remote.SupabaseConfig
 import com.tuapp.libreta.data.util.AppLogger
@@ -17,11 +19,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.koin.dsl.module
 import org.w3c.dom.Worker
 
 // Guardián de inicialización para evitar "no such table" en Wasm
 actual val dbReady = CompletableDeferred<Unit>()
+private var isInitializing = false
 
 actual val platformModule = module {
     single<SqlDriver> {
@@ -34,38 +38,59 @@ actual val platformModule = module {
             throw RuntimeException(errorMsg)
         }
         
-        CoroutineScope(Dispatchers.Default).launch {
-            try {
-                // Secuenciación Real: Esperamos a que el Worker confirme la creación del esquema.
-                println("Wasm DB: Iniciando creación de esquema...")
-                LibretaAppDatabase.Schema.create(driver).await() 
-                println("Wasm DB: Schema.create() retornado. Verificando persistencia...")
-
-                // Pequeño delay para permitir que el Worker procese todos los mensajes CREATE
-                kotlinx.coroutines.delay(500)
-
-                // Log de depuración para listar tablas reales creadas
-                driver.executeQuery(null, "SELECT name FROM sqlite_master WHERE type='table'", { cursor ->
-                    app.cash.sqldelight.db.QueryResult.AsyncValue {
-                        val tables = mutableListOf<String>()
-                        while (cursor.next().await()) {
-                            val name = cursor.getString(0) ?: ""
-                            if (name != "android_metadata" && name != "sqlite_sequence") {
-                                tables.add(name)
-                            }
-                        }
-                        println("Wasm DB: Tablas detectadas -> ${tables.joinToString(", ")}")
-                        if (tables.isEmpty()) {
-                            println("Wasm DB: ADVERTENCIA - No se detectaron tablas tras la creación.")
+        if (!isInitializing) {
+            isInitializing = true
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    println("Wasm DB: Iniciando secuencia de creación de esquema...")
+                    
+                    // PROBLEMA RAÍZ: Cuando generateAsync = false, Schema.create(driver) ignora los QueryResult.Async.
+                    // SOLUCIÓN: Interceptar las llamadas y colectar los resultados para esperarlos manualmente.
+                    val results = mutableListOf<QueryResult<*>>()
+                    val interceptor = object : SqlDriver by driver {
+                        override fun execute(
+                            identifier: Int?,
+                            sql: String,
+                            parameters: Int,
+                            binders: (SqlPreparedStatement.() -> Unit)?
+                        ): QueryResult<Long> {
+                            val r = driver.execute(identifier, sql, parameters, binders)
+                            results.add(r)
+                            return r
                         }
                     }
-                }, 0).await()
 
-                dbReady.complete(Unit)
-            } catch (e: Throwable) {
-                println("Wasm DB: Error crítico inicializando tablas: ${e.message}")
-                // Evitamos carga infinita: los consumidores de dbReady recibirán el fallo.
-                dbReady.completeExceptionally(e)
+                    // 1. Ejecutar creación
+                    LibretaAppDatabase.Schema.create(interceptor)
+                    
+                    // 2. Esperar CADA sentencia CREATE TABLE
+                    println("Wasm DB: Esperando confirmación de ${results.size} sentencias DDL...")
+                    results.forEach { it.await() }
+                    
+                    println("Wasm DB: Esquema creado. Verificando tablas finales...")
+                    delay(200)
+
+                    // 3. Verificación final de persistencia
+                    driver.executeQuery(null, "SELECT name FROM sqlite_master WHERE type='table'", { cursor ->
+                        QueryResult.AsyncValue {
+                            val tables = mutableListOf<String>()
+                            while (cursor.next().await()) {
+                                val name = cursor.getString(0) ?: ""
+                                if (!name.startsWith("sqlite_")) tables.add(name)
+                            }
+                            println("Wasm DB: Tablas CREADAS REALMENTE -> ${tables.joinToString(", ")}")
+                            if (tables.isEmpty()) {
+                                throw IllegalStateException("El Worker no creó las tablas.")
+                            }
+                        }
+                    }, 0).await()
+
+                    dbReady.complete(Unit)
+                } catch (e: Throwable) {
+                    println("Wasm DB: ERROR CRÍTICO inicializando tablas: ${e.message}")
+                    e.printStackTrace()
+                    dbReady.completeExceptionally(e)
+                }
             }
         }
         driver
@@ -78,16 +103,9 @@ actual val platformModule = module {
 
     single {
         val baseUrl = SupabaseConfig.URL.removeSuffix("/")
-        println("Supabase Client: Inicializando con URL=$baseUrl")
-        
-        createSupabaseClient(
-            supabaseUrl = baseUrl,
-            supabaseKey = SupabaseConfig.ANON_KEY
-        ) {
+        createSupabaseClient(supabaseUrl = baseUrl, supabaseKey = SupabaseConfig.ANON_KEY) {
             install(Postgrest)
-            install(Auth) {
-                flowType = FlowType.PKCE
-            }
+            install(Auth) { flowType = FlowType.PKCE }
             install(Realtime)
             install(Storage)
         }
