@@ -38,6 +38,18 @@ actual class LocalDataBridge actual constructor(
     actual suspend fun getLastPullAt(tableName: String): Long? =
         syncQueries.getLastPullAt(tableName).executeAsOneOrNull()
 
+    actual suspend fun setLastPullAt(tableName: String, timestamp: Long) {
+        syncQueries.setLastPullAt(tableName, timestamp, tableName)
+    }
+
+    actual suspend fun recordSyncError(errorMessage: String?, tableName: String) {
+        syncQueries.recordSyncError(errorMessage, tableName)
+    }
+
+    actual suspend fun deleteAllSyncMetadata() {
+        syncQueries.deleteAllSyncMetadata()
+    }
+
     actual suspend fun getUnsyncedStudentEntities(): List<StudentEntity> =
         queries.getUnsyncedStudentEntities().executeAsList()
 }

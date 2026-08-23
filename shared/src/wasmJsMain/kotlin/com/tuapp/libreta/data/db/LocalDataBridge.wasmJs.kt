@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.delay
 import app.cash.sqldelight.async.coroutines.await
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 actual class LocalDataBridge actual constructor(
     private val driver: SqlDriver,
@@ -57,12 +59,37 @@ actual class LocalDataBridge actual constructor(
     }
 
     actual suspend fun getLastPullAt(tableName: String): Long? {
-        val sql = "SELECT last_pull_at FROM SyncMetadataEntity WHERE table_name = ?"
+        val sql = "SELECT last_pull_at FROM SyncMetadata WHERE table_name = ?"
         return driver.executeQuery(null, sql, { cursor ->
             QueryResult.AsyncValue {
                 if (cursor.next().await()) cursor.getLong(0) else null
             }
         }, 1, { bindString(0, tableName) }).await()
+    }
+
+    actual suspend fun setLastPullAt(tableName: String, timestamp: Long) {
+        val sql = """
+            INSERT OR REPLACE INTO SyncMetadata (table_name, last_pull_at, last_push_at)
+            VALUES (?, ?, COALESCE((SELECT last_push_at FROM SyncMetadata WHERE table_name = ?), 0))
+        """.trimIndent()
+        driver.execute(null, sql, 3) {
+            bindString(0, tableName)
+            bindLong(1, timestamp)
+            bindString(2, tableName)
+        }.await()
+    }
+
+    actual suspend fun recordSyncError(errorMessage: String?, tableName: String) {
+        val sql = "UPDATE SyncMetadata SET last_error = ? WHERE table_name = ?"
+        driver.execute(null, sql, 2) {
+            bindString(0, errorMessage)
+            bindString(1, tableName)
+        }.await()
+    }
+
+    actual suspend fun deleteAllSyncMetadata() {
+        val sql = "DELETE FROM SyncMetadata"
+        driver.execute(null, sql, 0).await()
     }
 
     actual suspend fun getUnsyncedStudentEntities(): List<StudentEntity> {

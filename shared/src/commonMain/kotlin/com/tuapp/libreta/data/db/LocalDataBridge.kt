@@ -30,7 +30,10 @@ expect class LocalDataBridge(
 
     fun getStudentsByParent(parentId: String): Flow<List<StudentEntity>>
 
-    // Nuevas funciones para el ciclo de vida de sincronización
+    // Funciones para el ciclo de vida de sincronización
     suspend fun getLastPullAt(tableName: String): Long?
+    suspend fun setLastPullAt(tableName: String, timestamp: Long)
+    suspend fun recordSyncError(errorMessage: String?, tableName: String)
+    suspend fun deleteAllSyncMetadata()
     suspend fun getUnsyncedStudentEntities(): List<StudentEntity>
 }
