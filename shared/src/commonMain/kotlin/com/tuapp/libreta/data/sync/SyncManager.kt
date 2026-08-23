@@ -63,10 +63,12 @@ class SyncManager(
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         
         tables.forEach { table ->
-            runCatching { pullTable(table) }.onFailure { e ->
+            try {
+                pullTable(table)
+            } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
-                // BRIDGE FIX: Usar puente para registrar error de sync
-                bridge.recordSyncError(e.message, table)
+                // BRIDGE FIX: Usar puente para registrar error de sync (aislado para no romper el ciclo)
+                runCatching { bridge.recordSyncError(e.message, table) }
             }
         }
     }

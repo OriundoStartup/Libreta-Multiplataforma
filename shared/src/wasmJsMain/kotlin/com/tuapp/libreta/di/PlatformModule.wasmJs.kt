@@ -37,9 +37,20 @@ actual val platformModule = module {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 // Secuenciación Real: Esperamos a que el Worker confirme la creación del esquema.
-                // SQLDelight 2.x QueryResult tiene un método .await() para drivers asíncronos.
                 LibretaAppDatabase.Schema.create(driver).await() 
                 println("Wasm DB: Esquema verificado/creado exitosamente.")
+
+                // Log de depuración para listar tablas reales creadas
+                driver.executeQuery(null, "SELECT name FROM sqlite_master WHERE type='table'", { cursor ->
+                    app.cash.sqldelight.db.QueryResult.AsyncValue {
+                        val tables = mutableListOf<String>()
+                        while (cursor.next().await()) {
+                            tables.add(cursor.getString(0) ?: "")
+                        }
+                        println("Wasm DB: Tablas detectadas -> ${tables.joinToString(", ")}")
+                    }
+                }, 0).await()
+
                 dbReady.complete(Unit)
             } catch (e: Throwable) {
                 println("Wasm DB: Error crítico inicializando tablas: ${e.message}")
