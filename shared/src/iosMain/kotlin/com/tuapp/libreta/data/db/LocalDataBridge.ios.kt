@@ -15,21 +15,26 @@ actual class LocalDataBridge actual constructor(
     private val syncQueries: SyncMetadataQueries
 ) {
     actual suspend fun insertOrReplaceStudent(
-        id: String,
-        fullName: String,
-        studentRut: String?,
-        courseId: String,
-        parentId: String,
-        serverVersion: Long,
-        isDeleted: Long,
-        syncStatus: String,
-        createdAt: Long,
-        updatedAt: Long
+        id: String, fullName: String, studentRut: String?, courseId: String, parentId: String,
+        serverVersion: Long, isDeleted: Long, syncStatus: String, createdAt: Long, updatedAt: Long
     ) {
-        queries.insertOrReplaceStudent(
-            id, fullName, studentRut, courseId, parentId, 
-            serverVersion, isDeleted, syncStatus, createdAt, updatedAt
-        )
+        queries.insertOrReplaceStudent(id, fullName, studentRut, courseId, parentId, serverVersion, isDeleted, syncStatus, createdAt, updatedAt)
+    }
+
+    actual suspend fun insertOrReplaceProfile(
+        id: String, fullName: String, role: String?, 
+        serverVersion: Long, isDeleted: Long, syncStatus: String, createdAt: Long, updatedAt: Long
+    ) {
+        queries.insertOrReplaceProfile(id, fullName, role, serverVersion, isDeleted, syncStatus, createdAt, updatedAt)
+    }
+
+    actual suspend fun insertOrReplaceCourse(
+        id: String, name: String, description: String?, subject: String?, grade: String?,
+        section: String?, teacherId: String, schoolId: String?, inviteCode: String?,
+        isActive: Long, serverVersion: Long, isDeleted: Long, syncStatus: String,
+        createdAt: Long, updatedAt: Long
+    ) {
+        queries.insertOrReplaceCourse(id, name, description, subject, grade, section, teacherId, schoolId, inviteCode, isActive, serverVersion, isDeleted, syncStatus, createdAt, updatedAt)
     }
 
     actual fun getStudentsByParent(parentId: String): Flow<List<StudentEntity>> =

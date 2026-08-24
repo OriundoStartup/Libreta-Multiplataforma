@@ -30,13 +30,9 @@ class SyncManager(
     val isSyncing = _isSyncing.asStateFlow()
 
     private suspend fun ensureDatabaseReady() {
-        try {
-            kotlinx.coroutines.withTimeout(5000) {
-                dbReady.await()
-            }
-        } catch (e: Exception) {
-            AppLogger.e("SyncManager", "Database initialization timeout: ${e.message}")
-        }
+        runCatching {
+            kotlinx.coroutines.withTimeout(5000) { dbReady.await() }
+        }.onFailure { AppLogger.e("SyncManager", "Database initialization timeout") }
     }
 
     suspend fun syncAll() = withContext(getIoDispatcher()) {
@@ -46,9 +42,7 @@ class SyncManager(
         AppLogger.d("SyncManager", "Starting bidirectional synchronization (PUSH + PULL)...")
 
         try {
-            syncAttendance()
             syncStudents()
-            // Otras llamadas comentadas para estabilizar students
             pullAll()
             AppLogger.d("SyncManager", "Bidirectional synchronization completed successfully.")
         } catch (e: Exception) {
@@ -59,7 +53,6 @@ class SyncManager(
     }
 
     suspend fun pullAll() = withContext(getIoDispatcher()) {
-        ensureDatabaseReady()
         AppLogger.d("SyncManager", "Starting PULL phase for tables: profiles, courses, students...")
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         
@@ -69,24 +62,17 @@ class SyncManager(
                 pullTable(table)
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
-                // BRIDGE FIX: Usar puente para registrar error de sync (aislado para no romper el ciclo)
                 runCatching { bridge.recordSyncError(e.message, table) }
             }
         }
     }
 
     private suspend fun pullTable(tableName: String) {
-        // BRIDGE FIX: Usar puente para obtener metadata del último pull
         val lastPullAt: Long? = bridge.getLastPullAt(tableName)
-        val lastPullIso = lastPullAt?.let { 
-            if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
-        } ?: "1970-01-01T00:00:00Z"
+        val lastPullIso = lastPullAt?.let { if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z" } ?: "1970-01-01T00:00:00Z"
 
         AppLogger.d("SyncManager", "Pulling $tableName since $lastPullIso")
-
-        val query = supabase.from(tableName).select {
-            filter { gt("updated_at", lastPullIso) }
-        }
+        val query = supabase.from(tableName).select { filter { gt("updated_at", lastPullIso) } }
 
         when (tableName) {
             "students" -> {
@@ -100,11 +86,10 @@ class SyncManager(
                     )
                 }
             }
-            // Otras tablas (estatus síncrono - fallarán en Wasm)
             "profiles" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
                 remote.forEach { dto ->
-                    queries.insertOrReplaceProfile(
+                    bridge.insertOrReplaceProfile(
                         dto.id, dto.fullName, dto.role, 1, 0, SyncStatus.SYNCED.name, 
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
@@ -114,9 +99,9 @@ class SyncManager(
             "courses" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.CourseSyncDto>()
                 remote.forEach { dto ->
-                    queries.insertOrReplaceCourse(
-                        dto.id, dto.name, dto.description, dto.subject, dto.grade,
-                        dto.section, dto.teacherId, dto.schoolId, dto.inviteCode,
+                    bridge.insertOrReplaceCourse(
+                        dto.id, dto.name, dto.description, dto.subject, dto.grade, dto.section, 
+                        dto.teacherId, dto.schoolId, dto.inviteCode, 
                         if (dto.isActive) 1 else 0, 1, 0, SyncStatus.SYNCED.name,
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
@@ -124,12 +109,7 @@ class SyncManager(
                 }
             }
         }
-        // BRIDGE FIX: Usar puente para marcar éxito del pull
         bridge.setLastPullAt(tableName, com.tuapp.libreta.data.util.currentEpochMs())
-    }
-
-    private suspend fun syncAttendance() {
-        // Implementación simplificada (pendiente migrar a bridge si es necesario)
     }
 
     private suspend fun syncStudents() {
@@ -140,22 +120,14 @@ class SyncManager(
 
         if (toUpsert.isNotEmpty()) {
             val dtos = toUpsert.map { entity ->
-                mapOf(
-                    "id" to entity.id,
-                    "full_name" to entity.full_name,
-                    "course_id" to entity.course_id,
-                    "parent_id" to entity.parent_id,
-                    "updated_at" to epochMsToIso(entity.updated_at)
-                )
+                mapOf("id" to entity.id, "full_name" to entity.full_name, "course_id" to entity.course_id, "parent_id" to entity.parent_id, "updated_at" to epochMsToIso(entity.updated_at))
             }
             try {
                 supabase.from("students").upsert(dtos)
                 toUpsert.forEach { entity ->
                     bridge.insertOrReplaceStudent(
-                        entity.id, entity.full_name, entity.student_rut,
-                        entity.course_id, entity.parent_id,
-                        entity.server_version, entity.is_deleted,
-                        SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
+                        entity.id, entity.full_name, entity.student_rut, entity.course_id, entity.parent_id,
+                        entity.server_version, entity.is_deleted, SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
                     )
                 }
             } catch (e: Exception) {
@@ -176,7 +148,6 @@ class SyncManager(
         runCatching { queries.deleteAllInvitationCodes() }
         runCatching { queries.deleteAllSchools() }
         runCatching { queries.deleteAllGrades() }
-        // BRIDGE FIX: Usar puente para borrar metadata
         runCatching { bridge.deleteAllSyncMetadata() }
     }
 }
