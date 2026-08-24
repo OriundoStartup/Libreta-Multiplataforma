@@ -96,6 +96,9 @@ UPDATE StudentEntity SET sync_status = 'PENDING_DELETE', updated_at = ? WHERE id
 getUnsyncedStudentEntities:
 SELECT * FROM StudentEntity WHERE sync_status != 'SYNCED';
 
+countStudents:
+SELECT COUNT(*) FROM StudentEntity;
+
 -- ── ATTENDANCE ────────────────────────────────────────────────────────
 CREATE TABLE AttendanceEntity (
     id               TEXT    NOT NULL PRIMARY KEY,

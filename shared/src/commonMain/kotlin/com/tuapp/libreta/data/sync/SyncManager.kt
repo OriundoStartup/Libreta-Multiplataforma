@@ -77,7 +77,10 @@ class SyncManager(
         when (tableName) {
             "students" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.StudentSyncDto>()
+                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para students")
+                
                 remote.forEach { dto ->
+                    AppLogger.d("SyncManager", "Insertando localmente student: ${dto.fullName} (ID=${dto.id}, Parent=${dto.parentId})")
                     bridge.insertOrReplaceStudent(
                         dto.id, dto.fullName, dto.studentRut, dto.courseId, dto.parentId,
                         1, 0, SyncStatus.SYNCED.name,
@@ -85,9 +88,12 @@ class SyncManager(
                         com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
                     )
                 }
+                val count = bridge.countStudents()
+                AppLogger.d("SyncManager", "CONTEO FINAL en StudentEntity tras insert: $count")
             }
             "profiles" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
+                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para profiles")
                 remote.forEach { dto ->
                     bridge.insertOrReplaceProfile(
                         dto.id, dto.fullName, dto.role, 1, 0, SyncStatus.SYNCED.name, 
@@ -98,6 +104,7 @@ class SyncManager(
             }
             "courses" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.CourseSyncDto>()
+                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para courses")
                 remote.forEach { dto ->
                     bridge.insertOrReplaceCourse(
                         dto.id, dto.name, dto.description, dto.subject, dto.grade, dto.section, 

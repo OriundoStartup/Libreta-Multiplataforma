@@ -57,4 +57,6 @@ actual class LocalDataBridge actual constructor(
 
     actual suspend fun getUnsyncedStudentEntities(): List<StudentEntity> =
         queries.getUnsyncedStudentEntities().executeAsList()
+
+    actual suspend fun countStudents(): Long = queries.countStudents().executeAsOne()
 }

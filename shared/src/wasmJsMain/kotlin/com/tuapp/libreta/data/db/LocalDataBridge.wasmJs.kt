@@ -65,6 +65,12 @@ actual class LocalDataBridge actual constructor(
                     result.add(StudentEntity(cursor.getString(0)!!, cursor.getString(1)!!, cursor.getString(2), cursor.getString(3)!!, cursor.getString(4)!!, cursor.getLong(5)!!, cursor.getLong(6)!!, cursor.getString(7)!!, cursor.getLong(8)!!, cursor.getLong(9)!!))
                 }
             } }, 1, { bindString(0, parentId) }).await()
+            // DIAGNÓSTICO: Log del filtro y resultado
+            if (result.isEmpty()) {
+                println("Bridge Wasm: getStudentsByParent($parentId) -> 0 alumnos encontrados localmente.")
+            } else {
+                println("Bridge Wasm: getStudentsByParent($parentId) -> ${result.size} alumnos encontrados.")
+            }
             emit(result); delay(5000)
         }
     }
@@ -99,5 +105,12 @@ actual class LocalDataBridge actual constructor(
             }
         } }, 0).await()
         return result
+    }
+
+    actual suspend fun countStudents(): Long {
+        val sql = "SELECT COUNT(*) FROM StudentEntity"
+        return driver.executeQuery(null, sql, { cursor -> QueryResult.AsyncValue {
+            if (cursor.next().await()) cursor.getLong(0) ?: 0L else 0L
+        } }, 0).await() ?: 0L
     }
 }

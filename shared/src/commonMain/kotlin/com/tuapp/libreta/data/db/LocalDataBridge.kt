@@ -34,4 +34,7 @@ expect class LocalDataBridge(
     suspend fun recordSyncError(errorMessage: String?, tableName: String)
     suspend fun deleteAllSyncMetadata()
     suspend fun getUnsyncedStudentEntities(): List<StudentEntity>
+    
+    // Diagnóstico
+    suspend fun countStudents(): Long
 }
