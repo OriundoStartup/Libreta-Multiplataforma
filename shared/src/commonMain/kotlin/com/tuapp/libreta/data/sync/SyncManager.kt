@@ -96,14 +96,16 @@ class SyncManager(
 
     private suspend fun pullTable(tableName: String) {
         val lastPullAt: Long? = bridge.getLastPullAt(tableName)
-        val lastPullIso = lastPullAt?.let { 
-            if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
-        } ?: "1970-01-01T00:00:00Z"
+        val isFirstPull = lastPullAt == null || lastPullAt <= 0
+        
+        val lastPullIso = if (!isFirstPull) epochMsToIso(lastPullAt!!) else "1970-01-01T00:00:00Z"
 
-        AppLogger.d("SyncManager", "PULL $tableName desde $lastPullIso")
+        AppLogger.d("SyncManager", "PULL $tableName. First=$isFirstPull, Since=$lastPullIso")
 
         val query = supabase.from(tableName).select {
-            filter { gt("updated_at", lastPullIso) }
+            if (!isFirstPull) {
+                filter { gt("updated_at", lastPullIso) }
+            }
         }
 
         when (tableName) {
@@ -111,6 +113,10 @@ class SyncManager(
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.StudentSyncDto>()
                 AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para students")
                 
+                if (remote.isEmpty()) {
+                    AppLogger.w("SyncManager", "ADVERTENCIA: students devolvió 0 filas. Verifica RLS en Supabase.")
+                }
+
                 remote.forEach { dto ->
                     AppLogger.d("SyncManager", "Insertando local student: ${dto.fullName} (ID=${dto.id}, Parent=${dto.parentId})")
                     try {
