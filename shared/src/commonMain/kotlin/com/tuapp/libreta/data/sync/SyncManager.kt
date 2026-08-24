@@ -1,7 +1,5 @@
 package com.tuapp.libreta.data.sync
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
 import com.tuapp.libreta.data.db.LocalDataBridge
 import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.epochMsToIso
@@ -13,11 +11,12 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
- * SyncManager - Versión Robusta para Wasm con LocalDataBridge.
+ * SyncManager - Versión Robusta para Wasm con LocalDataBridge y Control de Concurrencia.
  */
 class SyncManager(
     private val database: LibretaAppDatabase,
@@ -25,43 +24,71 @@ class SyncManager(
     private val bridge: LocalDataBridge
 ) {
     private val queries = database.libretaAppQueries
-    private val syncQueries = database.syncMetadataQueries
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
+    private val syncMutex = Mutex()
+
     private suspend fun ensureDatabaseReady() {
         runCatching {
-            kotlinx.coroutines.withTimeout(5000) { dbReady.await() }
-        }.onFailure { AppLogger.e("SyncManager", "Database initialization timeout") }
+            AppLogger.d("SyncManager", "Esperando señal de base de datos (dbReady)...")
+            kotlinx.coroutines.withTimeout(5000) {
+                dbReady.await()
+            }
+            AppLogger.d("SyncManager", "Base de datos lista detectada.")
+        }.onFailure { 
+            AppLogger.e("SyncManager", "Timeout o cancelación esperando base de datos: ${it.message}") 
+        }
     }
 
     suspend fun syncAll() = withContext(getIoDispatcher()) {
-        ensureDatabaseReady()
-        if (_isSyncing.value) return@withContext
-        _isSyncing.value = true
-        AppLogger.d("SyncManager", "Starting bidirectional synchronization (PUSH + PULL)...")
+        syncMutex.withLock {
+            ensureDatabaseReady()
+            if (_isSyncing.value) {
+                AppLogger.d("SyncManager", "Sincronización ya en curso, omitiendo syncAll secundario.")
+                return@withLock
+            }
+            _isSyncing.value = true
+            AppLogger.d("SyncManager", "Iniciando sincronización bidireccional (PUSH + PULL)...")
 
-        try {
-            syncStudents()
-            pullAll()
-            AppLogger.d("SyncManager", "Bidirectional synchronization completed successfully.")
-        } catch (e: Exception) {
-            AppLogger.e("SyncManager", "Sync failed: ${e.message}")
-        } finally {
-            _isSyncing.value = false
+            try {
+                syncStudents()
+                pullAllInternal()
+                AppLogger.d("SyncManager", "Sincronización bidireccional completada con éxito.")
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Fallo en sincronización global: ${e.message}")
+            } finally {
+                _isSyncing.value = false
+            }
         }
     }
 
     suspend fun pullAll() = withContext(getIoDispatcher()) {
-        AppLogger.d("SyncManager", "Starting PULL phase for tables: profiles, courses, students...")
+        syncMutex.withLock {
+            if (_isSyncing.value) {
+                AppLogger.d("SyncManager", "Sincronización ya en curso, omitiendo pullAll secundario.")
+                return@withLock
+            }
+            _isSyncing.value = true
+            try {
+                pullAllInternal()
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
+    private suspend fun pullAllInternal() {
+        ensureDatabaseReady()
+        AppLogger.d("SyncManager", "Iniciando fase PULL para tablas: profiles, courses, students...")
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         
         tables.forEach { table ->
             try {
-                AppLogger.d("SyncManager", "[TRACE] Calling pullTable for: $table")
+                AppLogger.d("SyncManager", "[TRACE] Intentando pullTable para: $table")
                 pullTable(table)
             } catch (e: Exception) {
-                AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
+                AppLogger.e("SyncManager", "Fallo en tabla $table: ${e.message}")
                 runCatching { bridge.recordSyncError(e.message, table) }
             }
         }
@@ -69,10 +96,15 @@ class SyncManager(
 
     private suspend fun pullTable(tableName: String) {
         val lastPullAt: Long? = bridge.getLastPullAt(tableName)
-        val lastPullIso = lastPullAt?.let { if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z" } ?: "1970-01-01T00:00:00Z"
+        val lastPullIso = lastPullAt?.let { 
+            if (it > 0) epochMsToIso(it) else "1970-01-01T00:00:00Z"
+        } ?: "1970-01-01T00:00:00Z"
 
-        AppLogger.d("SyncManager", "Pulling $tableName since $lastPullIso")
-        val query = supabase.from(tableName).select { filter { gt("updated_at", lastPullIso) } }
+        AppLogger.d("SyncManager", "PULL $tableName desde $lastPullIso")
+
+        val query = supabase.from(tableName).select {
+            filter { gt("updated_at", lastPullIso) }
+        }
 
         when (tableName) {
             "students" -> {
@@ -80,16 +112,21 @@ class SyncManager(
                 AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para students")
                 
                 remote.forEach { dto ->
-                    AppLogger.d("SyncManager", "Insertando localmente student: ${dto.fullName} (ID=${dto.id}, Parent=${dto.parentId})")
-                    bridge.insertOrReplaceStudent(
-                        dto.id, dto.fullName, dto.studentRut, dto.courseId, dto.parentId,
-                        1, 0, SyncStatus.SYNCED.name,
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
-                        com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
-                    )
+                    AppLogger.d("SyncManager", "Insertando local student: ${dto.fullName} (ID=${dto.id}, Parent=${dto.parentId})")
+                    try {
+                        bridge.insertOrReplaceStudent(
+                            dto.id, dto.fullName, dto.studentRut, dto.courseId, dto.parentId,
+                            1, 0, SyncStatus.SYNCED.name,
+                            com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
+                            com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
+                        )
+                        AppLogger.d("SyncManager", "INSERT ÉXITO: student ${dto.fullName}")
+                    } catch (e: Exception) {
+                        AppLogger.e("SyncManager", "INSERT FALLO: student ${dto.fullName}: ${e.message}")
+                    }
                 }
                 val count = bridge.countStudents()
-                AppLogger.d("SyncManager", "CONTEO FINAL en StudentEntity tras insert: $count")
+                AppLogger.d("SyncManager", "VERIFICACIÓN POST-PULL: Conteo en StudentEntity = $count")
             }
             "profiles" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
@@ -127,14 +164,22 @@ class SyncManager(
 
         if (toUpsert.isNotEmpty()) {
             val dtos = toUpsert.map { entity ->
-                mapOf("id" to entity.id, "full_name" to entity.full_name, "course_id" to entity.course_id, "parent_id" to entity.parent_id, "updated_at" to epochMsToIso(entity.updated_at))
+                mapOf(
+                    "id" to entity.id,
+                    "full_name" to entity.full_name,
+                    "course_id" to entity.course_id,
+                    "parent_id" to entity.parent_id,
+                    "updated_at" to epochMsToIso(entity.updated_at)
+                )
             }
             try {
                 supabase.from("students").upsert(dtos)
                 toUpsert.forEach { entity ->
                     bridge.insertOrReplaceStudent(
-                        entity.id, entity.full_name, entity.student_rut, entity.course_id, entity.parent_id,
-                        entity.server_version, entity.is_deleted, SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
+                        entity.id, entity.full_name, entity.student_rut,
+                        entity.course_id, entity.parent_id,
+                        entity.server_version, entity.is_deleted,
+                        SyncStatus.SYNCED.name, entity.created_at, entity.updated_at
                     )
                 }
             } catch (e: Exception) {
