@@ -59,6 +59,7 @@ class SyncManager(
     }
 
     suspend fun pullAll() = withContext(getIoDispatcher()) {
+        ensureDatabaseReady()
         AppLogger.d("SyncManager", "Starting PULL phase for tables: profiles, courses, students...")
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         

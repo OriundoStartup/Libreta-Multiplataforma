@@ -5,7 +5,9 @@ import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.sync.SyncManager
 import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.data.util.UuidString
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.di.dbReady
 import com.tuapp.libreta.domain.model.Profile
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.domain.repository.ProfileRepository
@@ -23,10 +25,21 @@ class ProfileRepositoryImpl(
 
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
 
-    override fun getAll(): Flow<List<Profile>> =
-        queries.getAllProfiles().toDomainList { it.toDomain() }
+    private suspend fun waitForDb() {
+        runCatching {
+            kotlinx.coroutines.withTimeout(5000) { dbReady.await() }
+        }.onFailure { 
+            AppLogger.e("ProfileRepo", "Database ready timeout: ${it.message}")
+        }
+    }
+
+    override fun getAll(): Flow<List<Profile>> = kotlinx.coroutines.flow.flow {
+        waitForDb()
+        queries.getAllProfiles().toDomainList { it.toDomain() }.collect { emit(it) }
+    }
 
     override suspend fun save(profile: Profile) {
+        waitForDb()
         withContext(getIoDispatcher()) {
             val now = currentEpochMs()
             queries.insertOrReplaceProfile(
@@ -43,6 +56,7 @@ class ProfileRepositoryImpl(
         }
     }
     override suspend fun delete(id: UuidString) {
+        waitForDb()
         withContext(getIoDispatcher()) {
             queries.markProfileAsPendingDelete(updated_at = currentEpochMs(), id = id.value)
             scope.launch { syncManager.syncAll() }

@@ -5,7 +5,9 @@ import com.tuapp.libreta.data.util.toDomainList
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.data.util.currentEpochMs
 import com.tuapp.libreta.data.util.random
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.db.LibretaAppQueries
+import com.tuapp.libreta.di.dbReady
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.SyncStatus
 import com.tuapp.libreta.domain.repository.AttendanceRepository
@@ -23,13 +25,26 @@ class SymbioticAttendanceRepository(
 
     private val scope = CoroutineScope(SupervisorJob() + getIoDispatcher())
 
-    override fun getByStudent(studentId: UuidString): Flow<List<Attendance>> =
-        queries.getAttendanceByStudent(studentId.value).toDomainList { it.toDomain() }
+    private suspend fun waitForDb() {
+        runCatching {
+            kotlinx.coroutines.withTimeout(5000) { dbReady.await() }
+        }.onFailure { 
+            AppLogger.e("AttendanceRepo", "Database ready timeout: ${it.message}")
+        }
+    }
 
-    override fun getByCourse(courseId: UuidString): Flow<List<Attendance>> =
-        queries.getAttendanceByCourse(courseId.value).toDomainList { it.toDomain() }
+    override fun getByStudent(studentId: UuidString): Flow<List<Attendance>> = kotlinx.coroutines.flow.flow {
+        waitForDb()
+        queries.getAttendanceByStudent(studentId.value).toDomainList { it.toDomain() }.collect { emit(it) }
+    }
+
+    override fun getByCourse(courseId: UuidString): Flow<List<Attendance>> = kotlinx.coroutines.flow.flow {
+        waitForDb()
+        queries.getAttendanceByCourse(courseId.value).toDomainList { it.toDomain() }.collect { emit(it) }
+    }
 
     override suspend fun save(attendance: Attendance) {
+        waitForDb()
         withContext(getIoDispatcher()) {
             val now = currentEpochMs()
             val attendanceId = attendance.id ?: UuidString.random()
@@ -53,6 +68,7 @@ class SymbioticAttendanceRepository(
     }
 
     override suspend fun delete(id: UuidString) {
+        waitForDb()
         withContext(getIoDispatcher()) {
             queries.markAttendanceAsPendingDelete(
                 updated_at = currentEpochMs(),
