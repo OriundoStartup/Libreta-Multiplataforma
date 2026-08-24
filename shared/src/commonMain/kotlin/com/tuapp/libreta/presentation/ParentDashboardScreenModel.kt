@@ -80,7 +80,14 @@ class ParentDashboardScreenModel(
         load()
     }
 
+    private var isFirstLoad = true
+
     fun load() {
+        if (!isFirstLoad) {
+            AppLogger.d("ParentDashboard", "Load ya ejecutado, omitiendo recarga duplicada.")
+            return
+        }
+        isFirstLoad = false
         loadJob?.cancel()
         val userId = authService.currentUserId()
         
