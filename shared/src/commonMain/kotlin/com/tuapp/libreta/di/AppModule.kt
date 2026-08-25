@@ -92,7 +92,7 @@ val appModule = module {
     factory { JustificationListScreenModel(get()) }
     factory { NotificationScreenModel(get(), get(), get()) }
     factory { GlobalJustificationScreenModel(get(), get(), get()) }
-    factory { NoticeScreenModel(get(), get(), get(), get(), get(), get()) }
+    factory { NoticeScreenModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { NoticeListScreenModel(get()) }
     factory { StatsScreenModel(get()) }
     factory { GradeScreenModel(get(), get(), get()) }

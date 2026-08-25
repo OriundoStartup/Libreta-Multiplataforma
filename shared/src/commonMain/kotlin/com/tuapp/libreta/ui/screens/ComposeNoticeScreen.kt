@@ -54,6 +54,7 @@ data class ComposeNoticeScreen(
         val isStudentsLoading by model.isStudentsLoading.collectAsState()
         val composeMode by model.composeMode.collectAsState()
         val userRole    by model.userRole.collectAsState()
+        val teachers    by model.teachers.collectAsState()
 
         var content          by remember { mutableStateOf("") }
         var selectedCategory by remember { mutableStateOf<NoticeCategory?>(null) }
@@ -237,7 +238,9 @@ data class ComposeNoticeScreen(
                             }
                         }
                     } else {
-                        DestinatarioCard(name = "Profesor Jefe", subtext = "Mensaje directo al docente del curso")
+                        val teacherId = classes.find { it.id == selectedClassId?.value }?.teacherId
+                        val teacherName = teachers[teacherId] ?: "Profesor Jefe"
+                        DestinatarioCard(name = teacherName, subtext = "Mensaje directo al docente del curso")
                     }
 
                     // ── PASO 3: EL MENSAJE ──────────────────────────────────────

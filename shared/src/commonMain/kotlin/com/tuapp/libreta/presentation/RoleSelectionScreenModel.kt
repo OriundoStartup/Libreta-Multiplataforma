@@ -115,7 +115,11 @@ class RoleSelectionScreenModel(
                                 ).getOrThrow()
                                 
                                 // 3. Sincronización en segundo plano (No bloquea la entrada)
-                                screenModelScope.launch { syncManager.syncAll() }
+                                screenModelScope.launch { 
+                                    // Forzamos pull de perfiles para traer al profesor (antes bloqueado por RLS)
+                                    syncManager.forceFullPull("profiles")
+                                    syncManager.syncAll() 
+                                }
 
                             } else {
                                 val students = studentRepository.getStudentsByParent(uid).firstOrNull()

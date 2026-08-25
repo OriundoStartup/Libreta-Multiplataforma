@@ -11,6 +11,8 @@ import com.tuapp.libreta.domain.model.UserRole
 import com.tuapp.libreta.data.remote.CoursesRepository
 import com.tuapp.libreta.domain.repository.CommunicationRepository
 import com.tuapp.libreta.domain.repository.StudentRepository
+import com.tuapp.libreta.domain.repository.ClassRoomRepository
+import com.tuapp.libreta.domain.repository.ProfileRepository
 import com.tuapp.libreta.domain.usecase.GetStudentsByClassUseCase
 import com.tuapp.libreta.domain.usecase.SendMessageUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.launchIn
 
@@ -33,6 +36,8 @@ sealed interface NoticeUiState {
 
 class NoticeScreenModel(
     private val coursesRepo: CoursesRepository,
+    private val classroomRepo: ClassRoomRepository,
+    private val profileRepo: ProfileRepository,
     private val communicationRepo: CommunicationRepository,
     private val studentRepo: StudentRepository,
     private val getStudents: GetStudentsByClassUseCase,
@@ -48,6 +53,9 @@ class NoticeScreenModel(
 
     private val _classes = MutableStateFlow<List<Course>>(emptyList())
     val classes: StateFlow<List<Course>> = _classes.asStateFlow()
+
+    private val _teachers = MutableStateFlow<Map<String, String>>(emptyMap())
+    val teachers: StateFlow<Map<String, String>> = _teachers.asStateFlow()
 
     private val _students = MutableStateFlow<List<Student>>(emptyList())
     val students: StateFlow<List<Student>> = _students.asStateFlow()
@@ -75,11 +83,24 @@ class NoticeScreenModel(
                     .onFailure { println("ERROR loading courses: ${it.message}") }
             } else {
                 _composeMode.value = ComposeMode.DIRECT
-                studentRepo.getStudentsByParent(uid).collect { studentsList ->
+                // Usamos el repositorio local para obtener los cursos vinculados a los alumnos del apoderado
+                combine(
+                    studentRepo.getStudentsByParent(uid),
+                    classroomRepo.getAll(),
+                    profileRepo.getAll()
+                ) { studentsList, allCourses, allProfiles ->
                     val courseIds = studentsList.map { it.courseId.value }.distinct()
-                    val allCoursesResult = coursesRepo.getTeacherCourses() // Ajustar si hay getCoursesByIds
-                    val allCourses = allCoursesResult.getOrNull() ?: emptyList()
-                    _classes.value = allCourses.filter { it.id in courseIds }
+                    val filteredCourses = allCourses.filter { it.id in courseIds }
+                    
+                    val teacherMap = allProfiles
+                        .filter { it.role == UserRole.TEACHER }
+                        .associate { it.id.value to it.fullName }
+                    
+                    filteredCourses to teacherMap
+                }.collect { (filteredCourses, teacherMap) ->
+                    _classes.value = filteredCourses
+                    _teachers.value = teacherMap
+                    println("DEBUG NoticeModel: Loaded ${filteredCourses.size} courses and ${teacherMap.size} teachers for parent")
                 }
             }
         }

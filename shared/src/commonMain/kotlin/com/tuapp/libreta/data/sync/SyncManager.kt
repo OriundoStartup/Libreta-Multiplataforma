@@ -71,6 +71,16 @@ class SyncManager(
         }
     }
 
+    suspend fun forceFullPull(tableName: String) = withContext(getIoDispatcher()) {
+        syncMutex.withLock {
+            ensureDatabaseReady()
+            AppLogger.d("SyncManager", "Forcing FULL PULL for table: $tableName")
+            // Reset metadata to 1970
+            bridge.setLastPullAt(tableName, 0)
+            pullTable(tableName)
+        }
+    }
+
     private suspend fun pullAllInternal() {
         ensureDatabaseReady()
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
@@ -87,8 +97,14 @@ class SyncManager(
 
     private suspend fun pullTable(tableName: String) {
         val lastPullAt: Long? = bridge.getLastPullAt(tableName)
+        
+        // FASE 7: Forzar PULL completo de profiles si el RLS cambió recientemente
+        // O si es la primera vez que sincronizamos esta tabla.
         val isFirstPull = lastPullAt == null || lastPullAt <= 0
+        
         val lastPullIso = if (!isFirstPull) epochMsToIso(lastPullAt!!) else "1970-01-01T00:00:00Z"
+
+        AppLogger.d("SyncManager", "PULL $tableName. First=$isFirstPull, Since=$lastPullIso")
 
         val query = supabase.from(tableName).select {
             if (!isFirstPull) {
