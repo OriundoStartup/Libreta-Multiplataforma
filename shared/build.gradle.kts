@@ -141,5 +141,6 @@ buildkonfig {
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_URL", getProp("SUPABASE_URL"))
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_KEY", getProp("SUPABASE_KEY"))
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "SUPABASE_REDIRECT_URL", getProp("SUPABASE_REDIRECT_URL"))
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.BOOLEAN, "IS_DEBUG", (System.getenv("VERCEL") == null).toString())
     }
 }

@@ -83,31 +83,23 @@ class ParentDashboardScreenModel(
     private var isFirstLoad = true
 
     fun load() {
-        if (!isFirstLoad) {
-            AppLogger.d("ParentDashboard", "Load ya ejecutado, omitiendo recarga duplicada.")
-            return
-        }
+        if (!isFirstLoad) return
         isFirstLoad = false
         loadJob?.cancel()
         val userId = authService.currentUserId()
         
         if (userId == null) {
-            AppLogger.e("ParentDashboard", "No hay sesión activa al llamar a load()")
             _state.update { it.copy(uiState = ParentDashboardUiState.Error("No hay sesión activa")) }
             return
         }
 
-        AppLogger.d("ParentDashboard", "Iniciando carga de dashboard para UID: ${userId.value}")
-
         // DISPARAR PULL: Traer datos nuevos antes de mostrar la lista local
         screenModelScope.launch { 
-            AppLogger.d("ParentDashboard", "Disparando syncManager.pullAll() desde load()")
             syncManager.pullAll() 
         }
 
         loadJob = studentRepo.getStudentsByParent(userId)
             .onEach { students ->
-                AppLogger.d("ParentDashboard", "Repositorio devolvió ${students.size} alumnos para mapear con UID: ${userId.value}")
                 if (students.isEmpty()) {
                     _state.update { it.copy(uiState = ParentDashboardUiState.NoStudents) }
                     return@onEach
@@ -115,7 +107,6 @@ class ParentDashboardScreenModel(
 
                 try {
                     val user = authService.currentUser()
-                    AppLogger.d("ParentDashboard", "Loaded students: ${students.size}. Current User: ${user?.id}")
                     val parentName = user?.userMetadata?.get("full_name")
                         ?.let { runCatching { (it as kotlinx.serialization.json.JsonPrimitive).content }.getOrNull() }
                         ?: user?.email ?: "Apoderado"
@@ -255,7 +246,7 @@ class ParentDashboardScreenModel(
                 )
                 _state.update { it.copy(uiState = updatedSuccess) }
             } catch (e: Exception) {
-                println("ERROR selectStudent: ${e.message}")
+                AppLogger.e("ParentDashboard", "Error selecting student: ${e.message}")
             }
         }
     }

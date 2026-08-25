@@ -1,10 +1,15 @@
 package com.tuapp.libreta.data.util
 
+import com.tuapp.libreta.BuildKonfig
+
 enum class AuditOrigin {
     AUTH, DATA, UNKNOWN
 }
 
 object AppLogger {
+    // Flag de producción vía BuildKonfig (false en Vercel, true en local)
+    private val IS_DEBUG = BuildKonfig.IS_DEBUG
+    
     private val logCounts = mutableMapOf<String, Int>()
     private val lastLogTime = mutableMapOf<String, Long>()
     private val lastLogContext = mutableMapOf<String, LogContext>()
@@ -24,6 +29,7 @@ object AppLogger {
     }
 
     fun d(tag: String, message: String) {
+        if (!IS_DEBUG) return
         val timestamp = currentEpochMs()
         println("[DEBUG] [$timestamp] [$tag] $message")
     }

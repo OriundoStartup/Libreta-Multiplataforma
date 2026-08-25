@@ -42,10 +42,7 @@ actual val platformModule = module {
             isInitializing = true
             CoroutineScope(Dispatchers.Default).launch {
                 try {
-                    println("Wasm DB: Iniciando secuencia de creación de esquema...")
-                    
-                    // PROBLEMA RAÍZ: Cuando generateAsync = false, Schema.create(driver) ignora los QueryResult.Async.
-                    // SOLUCIÓN: Interceptar las llamadas y colectar los resultados para esperarlos manualmente.
+                    // 1. Interceptar y ejecutar creación
                     val results = mutableListOf<QueryResult<*>>()
                     val interceptor = object : SqlDriver by driver {
                         override fun execute(
@@ -60,17 +57,14 @@ actual val platformModule = module {
                         }
                     }
 
-                    // 1. Ejecutar creación
                     LibretaAppDatabase.Schema.create(interceptor)
                     
-                    // 2. Esperar CADA sentencia CREATE TABLE
-                    println("Wasm DB: Esperando confirmación de ${results.size} sentencias DDL...")
+                    // 2. Esperar confirmaciones
                     results.forEach { it.await() }
                     
-                    println("Wasm DB: Esquema creado. Verificando tablas finales...")
                     delay(200)
 
-                    // 3. Verificación final de persistencia
+                    // 3. Verificación final (Log mínimo)
                     driver.executeQuery(null, "SELECT name FROM sqlite_master WHERE type='table'", { cursor ->
                         QueryResult.AsyncValue {
                             val tables = mutableListOf<String>()
@@ -78,17 +72,14 @@ actual val platformModule = module {
                                 val name = cursor.getString(0) ?: ""
                                 if (!name.startsWith("sqlite_")) tables.add(name)
                             }
-                            println("Wasm DB: Tablas CREADAS REALMENTE -> ${tables.joinToString(", ")}")
-                            if (tables.isEmpty()) {
-                                throw IllegalStateException("El Worker no creó las tablas.")
-                            }
+                            if (tables.isEmpty()) throw IllegalStateException("DB Schema creation failed")
+                            AppLogger.d("WasmDB", "Schema initialized with ${tables.size} tables.")
                         }
                     }, 0).await()
 
                     dbReady.complete(Unit)
                 } catch (e: Throwable) {
-                    println("Wasm DB: ERROR CRÍTICO inicializando tablas: ${e.message}")
-                    e.printStackTrace()
+                    AppLogger.e("WasmDB", "Critical initialization error: ${e.message}")
                     dbReady.completeExceptionally(e)
                 }
             }

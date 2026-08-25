@@ -5,6 +5,7 @@ import androidx.compose.ui.window.ComposeViewport
 import kotlinx.browser.document
 import kotlinx.browser.window
 import com.tuapp.libreta.initKoin
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.remote.SupabaseConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -18,23 +19,22 @@ import org.w3c.dom.HTMLElement
 fun main() {
     val loadingScreen = document.getElementById("loading-screen") as? HTMLElement
     
-    println("Web App: Starting Boot Sequence...")
-    println("Web App: Forcing deployment sync - August 19 2026")
+    AppLogger.d("Main", "Starting Boot Sequence...")
     
     try {
         // 1. Validación de Configuración
         if (SupabaseConfig.URL.isBlank() || SupabaseConfig.ANON_KEY.isBlank()) {
-            throw IllegalStateException("Supabase URL/Key no configuradas en local.properties")
+            throw IllegalStateException("Supabase URL/Key no configuradas")
         }
         
         // 2. Inicialización de Koin
-        println("Web App: Initializing Koin...")
+        AppLogger.d("Main", "Initializing Koin...")
         try {
             initKoin()
-            println("Web App: Koin initialized successfully.")
+            AppLogger.d("Main", "Koin initialized successfully.")
         } catch (e: Throwable) {
-            println("Web App: KOIN ERROR -> ${e.message}")
-            throw e // Propagar para que se muestre en pantalla
+            AppLogger.e("Main", "KOIN ERROR -> ${e.message}")
+            throw e 
         }
 
         // 3. Montar App en el DOM (dentro de una corrutina para manejar el canje de código OAuth)
@@ -64,15 +64,14 @@ fun main() {
                     null
                 }, 500)
 
-                println("Web App: Successfully started.")
+                AppLogger.d("Main", "Web App: Successfully started.")
             }
         } else {
             throw IllegalStateException("No se encontró el contenedor #app-root en el HTML")
         }
 
     } catch (e: Throwable) {
-        println("Web App: FATAL ERROR during startup")
-        e.printStackTrace()
+        AppLogger.e("Main", "FATAL ERROR during startup", e)
         
         val causeMessage = e.cause?.message ?: "Sin causa detallada"
         val causeTrace = e.cause?.let { 
@@ -103,38 +102,31 @@ fun main() {
  * (flujo PKCE) y lo canjea por una sesión.
  */
 private suspend fun handleWebOAuthCallback() {
-    val fullUrl = window.location.href
-    println("Web App: Boot URL -> $fullUrl")
-
-    // Supabase puede devolver el código en el query (?) o en el fragmento (#) dependiendo de la config.
+    // No logueamos la URL completa para evitar filtrar el ?code= en logs de producción
     val authCode = extractQueryParam("code") ?: extractHashParam("code")
     
     if (authCode == null) {
         val error = extractQueryParam("error") ?: extractHashParam("error")
         if (error != null) {
             val desc = extractQueryParam("error_description") ?: extractHashParam("error_description")
-            println("Web App: OAuth Error Detected -> $error: $desc")
+            AppLogger.e("OAuth", "OAuth Error Detected -> $error: $desc")
         } else {
-            println("Web App: No auth code found in URL. Standard boot.")
+            AppLogger.d("OAuth", "No auth code found in URL. Standard boot.")
         }
         return
     }
 
-    println("Web App: OAuth Code Found! Exchanging for session... (Code: ${authCode.take(5)}...)")
+    AppLogger.d("OAuth", "OAuth Code Found! Exchanging for session...")
 
     val supabase = GlobalContext.get().get<SupabaseClient>()
     try {
-        println("Web App: Calling exchangeCodeForSession...")
         supabase.auth.exchangeCodeForSession(authCode)
-        println("Web App: Session established SUCCESSFULLY.")
+        AppLogger.d("OAuth", "Session established SUCCESSFULLY.")
         
-        // Limpiar URL de forma inteligente: mantener la ruta actual pero quitar el ?code=
         val targetUrl = window.location.origin + window.location.pathname
-        println("Web App: Cleaning URL to: $targetUrl")
         window.history.replaceState(null, "LibretApp", targetUrl)
     } catch (e: Exception) {
-        println("Web App: FATAL ERROR during code exchange: ${e.message}")
-        e.printStackTrace()
+        AppLogger.e("OAuth", "FATAL ERROR during code exchange: ${e.message}", e)
         val targetUrl = window.location.origin + window.location.pathname
         window.history.replaceState(null, "LibretApp", targetUrl)
     }

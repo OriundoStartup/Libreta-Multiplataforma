@@ -16,7 +16,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * SyncManager - Versión Robusta para Wasm con LocalDataBridge y Control de Concurrencia.
+ * SyncManager - Production ready synchronization service.
+ * Handles bidirectional PUSH/PULL logic with concurrency control.
  */
 class SyncManager(
     private val database: LibretaAppDatabase,
@@ -31,32 +32,27 @@ class SyncManager(
 
     private suspend fun ensureDatabaseReady() {
         runCatching {
-            AppLogger.d("SyncManager", "Esperando señal de base de datos (dbReady)...")
             kotlinx.coroutines.withTimeout(5000) {
                 dbReady.await()
             }
-            AppLogger.d("SyncManager", "Base de datos lista detectada.")
         }.onFailure { 
-            AppLogger.e("SyncManager", "Timeout o cancelación esperando base de datos: ${it.message}") 
+            AppLogger.e("SyncManager", "Database initialization timeout: ${it.message}") 
         }
     }
 
     suspend fun syncAll() = withContext(getIoDispatcher()) {
         syncMutex.withLock {
             ensureDatabaseReady()
-            if (_isSyncing.value) {
-                AppLogger.d("SyncManager", "Sincronización ya en curso, omitiendo syncAll secundario.")
-                return@withLock
-            }
+            if (_isSyncing.value) return@withLock
             _isSyncing.value = true
-            AppLogger.d("SyncManager", "Iniciando sincronización bidireccional (PUSH + PULL)...")
+            
+            AppLogger.d("SyncManager", "Starting global synchronization...")
 
             try {
                 syncStudents()
                 pullAllInternal()
-                AppLogger.d("SyncManager", "Sincronización bidireccional completada con éxito.")
             } catch (e: Exception) {
-                AppLogger.e("SyncManager", "Fallo en sincronización global: ${e.message}")
+                AppLogger.e("SyncManager", "Global sync failed: ${e.message}")
             } finally {
                 _isSyncing.value = false
             }
@@ -65,10 +61,7 @@ class SyncManager(
 
     suspend fun pullAll() = withContext(getIoDispatcher()) {
         syncMutex.withLock {
-            if (_isSyncing.value) {
-                AppLogger.d("SyncManager", "Sincronización ya en curso, omitiendo pullAll secundario.")
-                return@withLock
-            }
+            if (_isSyncing.value) return@withLock
             _isSyncing.value = true
             try {
                 pullAllInternal()
@@ -80,15 +73,13 @@ class SyncManager(
 
     private suspend fun pullAllInternal() {
         ensureDatabaseReady()
-        AppLogger.d("SyncManager", "Iniciando fase PULL para tablas: profiles, courses, students...")
         val tables = listOf("profiles", "courses", "students", "attendance", "justifications", "grades")
         
         tables.forEach { table ->
             try {
-                AppLogger.d("SyncManager", "[TRACE] Intentando pullTable para: $table")
                 pullTable(table)
             } catch (e: Exception) {
-                AppLogger.e("SyncManager", "Fallo en tabla $table: ${e.message}")
+                AppLogger.e("SyncManager", "Pull failed for table $table: ${e.message}")
                 runCatching { bridge.recordSyncError(e.message, table) }
             }
         }
@@ -97,10 +88,7 @@ class SyncManager(
     private suspend fun pullTable(tableName: String) {
         val lastPullAt: Long? = bridge.getLastPullAt(tableName)
         val isFirstPull = lastPullAt == null || lastPullAt <= 0
-        
         val lastPullIso = if (!isFirstPull) epochMsToIso(lastPullAt!!) else "1970-01-01T00:00:00Z"
-
-        AppLogger.d("SyncManager", "PULL $tableName. First=$isFirstPull, Since=$lastPullIso")
 
         val query = supabase.from(tableName).select {
             if (!isFirstPull) {
@@ -111,14 +99,7 @@ class SyncManager(
         when (tableName) {
             "students" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.StudentSyncDto>()
-                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para students")
-                
-                if (remote.isEmpty()) {
-                    AppLogger.w("SyncManager", "ADVERTENCIA: students devolvió 0 filas. Verifica RLS en Supabase.")
-                }
-
                 remote.forEach { dto ->
-                    AppLogger.d("SyncManager", "Insertando local student: ${dto.fullName} (ID=${dto.id}, Parent=${dto.parentId})")
                     try {
                         bridge.insertOrReplaceStudent(
                             dto.id, dto.fullName, dto.studentRut, dto.courseId, dto.parentId,
@@ -126,17 +107,13 @@ class SyncManager(
                             com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt),
                             com.tuapp.libreta.data.util.sqlDateToEpochMs(dto.updatedAt)
                         )
-                        AppLogger.d("SyncManager", "INSERT ÉXITO: student ${dto.fullName}")
                     } catch (e: Exception) {
-                        AppLogger.e("SyncManager", "INSERT FALLO: student ${dto.fullName}: ${e.message}")
+                        AppLogger.e("SyncManager", "Failed to save student locally: ${dto.id}")
                     }
                 }
-                val count = bridge.countStudents()
-                AppLogger.d("SyncManager", "VERIFICACIÓN POST-PULL: Conteo en StudentEntity = $count")
             }
             "profiles" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.ProfileSyncDto>()
-                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para profiles")
                 remote.forEach { dto ->
                     bridge.insertOrReplaceProfile(
                         dto.id, dto.fullName, dto.role, 1, 0, SyncStatus.SYNCED.name, 
@@ -147,7 +124,6 @@ class SyncManager(
             }
             "courses" -> {
                 val remote = query.decodeList<com.tuapp.libreta.data.remote.dto.CourseSyncDto>()
-                AppLogger.d("SyncManager", "HTTP Supabase -> Recibidas ${remote.size} filas para courses")
                 remote.forEach { dto ->
                     bridge.insertOrReplaceCourse(
                         dto.id, dto.name, dto.description, dto.subject, dto.grade, dto.section, 

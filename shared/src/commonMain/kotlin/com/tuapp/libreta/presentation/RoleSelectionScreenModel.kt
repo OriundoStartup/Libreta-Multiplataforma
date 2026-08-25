@@ -41,7 +41,6 @@ class RoleSelectionScreenModel(
     fun checkExistingProfile(forceShowSelection: Boolean = false) {
         screenModelScope.launch {
             val user = authService.currentUser() ?: run {
-                AppLogger.d("RoleSelection", "No current user. Navigating back to Login.")
                 _state.value = RoleSelectionUiState.Error("Debes iniciar sesión primero.")
                 return@launch
             }
@@ -51,11 +50,7 @@ class RoleSelectionScreenModel(
             val students = studentRepository.getStudentsByParent(uid).firstOrNull() ?: emptyList()
 
             if (role != null && !forceShowSelection) {
-                // Seguridad: Solo auto-redirigir si el rol es PARENT con alumnos, 
-                // o si es TEACHER confirmado (asumimos que si ya es Teacher, es por algo).
-                // Pero ahora que el default es NULL, esto solo afectará a usuarios establecidos.
                 if ((role == UserRole.TEACHER) || (role == UserRole.PARENT && students.isNotEmpty())) {
-                    AppLogger.d("RoleSelection", "Rol establecido detectado ($role). Saltando selección.")
                     authService.refreshProfile()
                     _state.value = RoleSelectionUiState.Success(role, uid)
                     return@launch
@@ -89,7 +84,6 @@ class RoleSelectionScreenModel(
             }
 
             try {
-                AppLogger.d("RoleSelection", "Confirming role: $role with code: $code")
                 withTimeout(15_000) {
                     when (role) {
                         UserRole.TEACHER -> {
@@ -111,8 +105,6 @@ class RoleSelectionScreenModel(
                                 val course = coursesRepository.getCourseByInviteCode(code).getOrNull()
                                     ?: throw Exception("Código de invitación inválido.")
                                 
-                                AppLogger.d("RoleSelection", "Vinculando apoderado a curso: ${course.name}")
-                                
                                 // 1. Actualizar Rol
                                 authService.updateRole(role)
                                 
@@ -123,7 +115,6 @@ class RoleSelectionScreenModel(
                                 ).getOrThrow()
                                 
                                 // 3. Sincronización en segundo plano (No bloquea la entrada)
-                                AppLogger.d("RoleSelection", "Disparando sincronización en background...")
                                 screenModelScope.launch { syncManager.syncAll() }
 
                             } else {
@@ -137,8 +128,6 @@ class RoleSelectionScreenModel(
                     }
 
                     // 4. Refresco y Notificación
-                    AppLogger.d("RoleSelection", "Finalizando registro y refrescando sesión...")
-                    
                     // Forzar el refresco del flujo global para que el Guardian reaccione
                     authService.refreshProfile()
                     

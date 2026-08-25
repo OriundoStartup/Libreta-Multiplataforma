@@ -67,7 +67,8 @@ class SupabaseAuthService(
     ) { status, trigger -> status to trigger }
         .flatMapLatest { (status, _) ->
             kotlinx.coroutines.flow.flow {
-                AppLogger.d("AuthService", "Processing session status: $status")
+                // Log redactado para producción: No exponemos el objeto status/session completo
+                AppLogger.d("AuthService", "Processing session status update.")
                 when (status) {
                     is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
                         // Invalida explícitamente el cache en desconexión
@@ -99,41 +100,35 @@ class SupabaseAuthService(
                             
                             // Emisión optimista inmediata SOLO si el usuario es el mismo
                             if (_cachedUserId == user.id && _cachedRole != null) {
-                                AppLogger.d("AuthService", "DEBUG-SESSION: Emitiendo desde CACHE | UID=${user.id} | Email=${user.email} | Role=$_cachedRole")
                                 emit(SessionStatus.Authenticated(user, _cachedRole))
                             }
                             
                             // Si no hay rol en caché (ej. tras limpieza), forzamos Loading mientras consultamos la DB
                             if (_cachedRole == null) {
-                                AppLogger.d("AuthService", "DEBUG-SESSION: Cache vacío para ${user.email} (UID=${user.id}), forzando Loading...")
+                                AppLogger.d("AuthService", "Cache vacío para ${user.email}, consultando...")
                                 emit(SessionStatus.Loading)
                             }
                             
                             val role = try {
                                 kotlinx.coroutines.withTimeout(5000) { 
-                                    AppLogger.d("AuthService", "DEBUG-SESSION: Consultando DB para UID=${user.id}...")
                                     val dbRole = getUserRole(user.id)
                                     val now = currentEpochMs()
                                     
-                                    AppLogger.d("AuthService", "DEBUG-SESSION: DB respondió role=$dbRole para UID=${user.id}")
-
                                     // CAPA 2 REFINADA: Solo ignora null si estamos dentro de la ventana de 5s 
                                     // tras un updateRole exitoso. Un null fuera de esta ventana es legítimo.
                                     if (dbRole == null && _cachedRole != null && (now - _lastUpdateTimestamp) < 5000 && _cachedUserId == user.id) {
-                                        AppLogger.d("AuthService", "DEBUG-SESSION: Usando blindaje transitorio ($_cachedRole)")
                                         _cachedRole
                                     } else {
                                         dbRole
                                     }
                                 }
                             } catch (e: Exception) {
-                                AppLogger.e("AuthService", "DEBUG-SESSION: Fallo al obtener rol: ${e.message}")
+                                AppLogger.e("AuthService", "Fallo al obtener rol: ${e.message}")
                                 if (_cachedUserId == user.id) _cachedRole else null
                             }
                             
                             _cachedRole = role
                             _cachedUserId = user.id
-                            AppLogger.d("AuthService", "DEBUG-SESSION: EMISIÓN FINAL FLOW | Email=${user.email} | Role=$role")
                             emit(SessionStatus.Authenticated(user, role))
                         } else {
                             emit(SessionStatus.NotAuthenticated)
@@ -179,10 +174,6 @@ class SupabaseAuthService(
                 }
                 .decodeSingleOrNull<ProfileSupabaseDto>()
             
-            AppLogger.d("AuthService", "DEBUG-DB-FETCH: UID=$userId | Email=${response?.email} | Role=${response?.role}")
-            if (response == null) {
-                AppLogger.w("AuthService", "DEBUG-DB-FETCH: No profile found for UID=$userId")
-            }
             response
         } catch (e: Exception) {
             AppLogger.e("getProfile", "Error al obtener perfil para $userId: ${e.message}")
