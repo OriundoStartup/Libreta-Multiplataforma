@@ -61,7 +61,7 @@ fun MessageSupabaseDto.toDomain() = Message(
     id = id.toUuidOrNull(),
     senderId = senderId?.toUuidOrNull() ?: UuidString("00000000-0000-0000-0000-000000000000"),
     receiverId = receiverId.toUuidOrNull(),
-    content = messageText ?: "",
+    content = content ?: "",
     createdAt = createdAt,
     readAt = readAt
 )
@@ -70,7 +70,7 @@ fun CommunicationSupabaseDto.toDomain() = Message(
     id         = id.toUuidOrNull(),
     senderId   = UuidString(senderId),
     receiverId = null,
-    content    = messageText,
+    content    = content,
     createdAt  = createdAt
 )
 

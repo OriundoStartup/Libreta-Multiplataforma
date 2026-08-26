@@ -61,6 +61,9 @@ class MessageScreenModel(
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     private var conversationJob: Job? = null
 
     fun loadInbox() {
@@ -112,12 +115,18 @@ class MessageScreenModel(
         
         screenModelScope.launch {
             _sending.value = true
+            _error.value = null
             sendMessageUseCase(receiverId, content)
                 .onFailure {
                     AppLogger.e("MessageScreenModel", "Error enviando mensaje: ${it.message}")
+                    _error.value = "Error al enviar: ${it.message}"
                 }
             _sending.value = false
         }
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 
     override fun onDispose() {

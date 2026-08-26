@@ -31,6 +31,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -69,11 +72,20 @@ data class MessageDetailScreen(
         val model: MessageScreenModel = koinScreenModel()
         val conversationState by model.conversation.collectAsState()
         val sending by model.sending.collectAsState()
+        val error by model.error.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
         var messageText by remember { mutableStateOf("") }
         val listState = rememberLazyListState()
 
         LaunchedEffect(Unit) {
             model.openConversation(contactId)
+        }
+
+        LaunchedEffect(error) {
+            error?.let {
+                snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+                model.clearError()
+            }
         }
 
         Scaffold(
@@ -94,6 +106,7 @@ data class MessageDetailScreen(
                     }
                 )
             },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 MessageInput(
                     value = messageText,

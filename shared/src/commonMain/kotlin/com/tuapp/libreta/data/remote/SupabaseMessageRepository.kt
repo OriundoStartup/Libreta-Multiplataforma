@@ -90,7 +90,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
                 MessageThread(
                     contactId   = UuidString(contactId),
                     contactName = profile?.fullName ?: "Usuario",
-                    lastMessage = lastMsg.messageText ?: "",
+                    lastMessage = lastMsg.content ?: "",
                     unread      = unreadCount > 0,
                     isLastMessageMine = isMine
                 )
@@ -135,9 +135,12 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
             val dto = MessageSupabaseDto(
                 senderId    = currentUser.id,
                 receiverId  = receiverId,
-                messageText = content.trim()
+                content     = content.trim()
             )
             supabase.from("messages").insert(dto)
+            AppLogger.d("MessageRepository", "Message sent successfully to $receiverId")
+        }.onFailure { e ->
+            AppLogger.e("MessageRepository", "Error sending message: ${e.message}")
         }
     }
 
@@ -182,7 +185,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
         val dto = MessageSupabaseDto(
             senderId    = senderId.value,
             studentId   = studentId.value,
-            messageText = content,
+            content     = content,
             isInternal  = true
         )
         supabase.from("messages").insert(dto)
@@ -192,7 +195,7 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
         val dto = MessageSupabaseDto(
             senderId    = message.senderId.value,
             receiverId  = message.receiverId?.value,
-            messageText = message.content
+            content     = message.content
         )
         supabase.from("messages").insert(dto)
     }

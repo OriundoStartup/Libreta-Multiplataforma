@@ -18,7 +18,7 @@ class SupabaseCommunicationRepository(private val supabase: SupabaseClient) : Co
             CommunicationSupabaseDto(
                 senderId    = senderId.value,
                 courseId    = classId.value,
-                messageText = content,
+                content     = content,
                 category    = "INFO",
                 isInternal  = false
             )

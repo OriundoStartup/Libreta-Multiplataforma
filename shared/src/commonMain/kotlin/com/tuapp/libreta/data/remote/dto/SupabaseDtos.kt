@@ -120,7 +120,7 @@ data class CommunicationSupabaseDto(
     val id: String? = null,
     @SerialName("sender_id") val senderId: String,
     @SerialName("course_id") val courseId: String,
-    @SerialName("message_text") val messageText: String, // schema real usa message_text
+    @SerialName("content") val content: String, // Cambiado de message_text a content
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -139,7 +139,7 @@ data class MessageSupabaseDto(
     @SerialName("student_id") val studentId: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("course_id") val courseId: String? = null,
-    @SerialName("message_text") val messageText: String? = null, // schema real usa message_text
+    @SerialName("content") val content: String? = null, // Cambiado de message_text a content
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val category: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
