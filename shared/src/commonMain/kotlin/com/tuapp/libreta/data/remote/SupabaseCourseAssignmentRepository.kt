@@ -29,24 +29,20 @@ class SupabaseCourseAssignmentRepository(private val supabase: SupabaseClient) :
     }
 
     override suspend fun assignByCode(code: String, teacherId: UuidString): Result<Unit> = runCatching {
-        // 1. Buscar código válido para profesores
+        // 1. Buscar código válido
         val invite = supabase.from("invitation_codes")
             .select { filter { 
                 eq("code", code.uppercase())
-                eq("target_role", "TEACHER")
             } }
             .decodeSingleOrNull<InvitationCodeSupabaseDto>() ?: throw Exception("Código inválido o expirado")
 
-        val courseId = invite.courseId ?: throw Exception("Código no tiene curso asociado")
+        // El esquema actual no tiene course_id en invitation_codes. 
+        // Usamos student_id como fallback o arrojamos error si no es un flujo soportado.
+        val studentId = invite.studentId ?: throw Exception("Código no tiene alumno/curso asociado")
 
-        // 2. Asignar profesor al curso
-        supabase.from("course_assignments").upsert(
-            CourseAssignmentSupabaseDto(
-                teacherId = teacherId.value,
-                courseId  = courseId,
-                schoolId  = null // Podría heredarse del curso original si se desea
-            )
-        )
+        // 2. Asignar profesor al curso (vía el curso del alumno del código)
+        // Por ahora lanzamos error ya que el flujo de invitar colegas no está alineado con el esquema 3NF
+        throw Exception("El flujo de invitación para profesores no está habilitado en este esquema.")
     }
 
     override suspend fun assign(assignment: CourseAssignment) {
@@ -63,16 +59,7 @@ class SupabaseCourseAssignmentRepository(private val supabase: SupabaseClient) :
     }
 
     override suspend fun generateColleagueInvite(courseId: UuidString, schoolId: UuidString, issuedByTeacherId: UuidString): String {
-        val code = (1..8).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
-        supabase.from("invitation_codes").insert(
-            InvitationCodeSupabaseDto(
-                code        = code,
-                courseId    = courseId.value,
-                teacherId   = issuedByTeacherId.value,
-                targetRole  = "TEACHER",
-                expiresAt   = epochMsToIso(currentEpochMs() + 48 * 3600 * 1000L)
-            )
-        )
-        return code
+        // Fallback: Este flujo requiere columnas nuevas en DB.
+        throw Exception("El flujo de invitación para colegas requiere actualización de esquema en la tabla invitation_codes.")
     }
 }

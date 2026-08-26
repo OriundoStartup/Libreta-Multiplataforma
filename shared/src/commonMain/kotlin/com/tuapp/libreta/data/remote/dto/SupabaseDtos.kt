@@ -90,11 +90,9 @@ data class InvitationCodeSupabaseDto(
     val id: String? = null,
     val code: String,
     @SerialName("student_id") val studentId: String? = null,
-    @SerialName("course_id") val courseId: String? = null,
     @SerialName("teacher_id") val teacherId: String,
     @SerialName("claimed_by") val claimedBy: String? = null,
-    @SerialName("expires_at") val expiresAt: String? = null,
-    @SerialName("target_role") val targetRole: String = "PARENT"
+    @SerialName("expires_at") val expiresAt: String? = null
 )
 
 @Serializable
