@@ -71,15 +71,19 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
 
             // Batch fetch profiles to avoid N+1
             val contactIds = grouped.keys.toList()
+            AppLogger.d("MessageRepository", "Resolving names for contacts: $contactIds")
+
             val profiles = if (contactIds.isNotEmpty()) {
-                supabase.from("profiles")
+                val response = supabase.from("profiles")
                     .select(columns = Columns.raw("id,full_name")) {
                         filter {
                             isIn("id", contactIds)
                         }
                     }
                     .decodeList<ProfileSupabaseDto>()
-                    .associateBy { it.id ?: "" }
+                
+                AppLogger.d("MessageRepository", "Resolved ${response.size} profiles: ${response.map { "${it.id}: ${it.fullName}" }}")
+                response.associateBy { it.id ?: "" }
             } else emptyMap()
 
             grouped.map { (contactId, msgs) ->
@@ -87,6 +91,11 @@ class SupabaseMessageRepository(private val supabase: SupabaseClient) : MessageR
                 val isMine     = lastMsg.senderId == currentUserId
                 val unreadCount = msgs.count { it.receiverId == currentUserId && it.readAt == null }
                 val profile    = profiles[contactId]
+                
+                if (profile == null) {
+                    AppLogger.w("MessageRepository", "Profile not resolved for ID: $contactId")
+                }
+
                 MessageThread(
                     contactId   = UuidString(contactId),
                     contactName = profile?.fullName ?: "Usuario",
