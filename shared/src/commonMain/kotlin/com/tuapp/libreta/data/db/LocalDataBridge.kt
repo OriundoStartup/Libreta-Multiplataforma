@@ -33,7 +33,8 @@ expect class LocalDataBridge(
     suspend fun setLastPullAt(tableName: String, timestamp: Long)
     suspend fun recordSyncError(errorMessage: String?, tableName: String)
     suspend fun deleteAllSyncMetadata()
-    suspend fun getUnsyncedStudentEntities(): List<StudentEntity>
+    suspend fun getUnsyncedStudentEntities(): List<com.tuapp.libreta.db.StudentEntity>
+    suspend fun getUnsyncedAttendanceEntities(): List<com.tuapp.libreta.db.AttendanceEntity>
     
     // Diagnóstico
     suspend fun countStudents(): Long

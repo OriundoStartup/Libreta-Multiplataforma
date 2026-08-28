@@ -50,6 +50,7 @@ class SyncManager(
 
             try {
                 syncStudents()
+                syncAttendance()
                 pullAllInternal()
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Global sync failed: ${e.message}")
@@ -182,6 +183,40 @@ class SyncManager(
                 }
             } catch (e: Exception) {
                 AppLogger.e("SyncManager", "Bulk upsert students failed: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun syncAttendance() {
+        val pending = bridge.getUnsyncedAttendanceEntities()
+        if (pending.isEmpty()) return
+
+        AppLogger.d("SyncManager", "Pushing ${pending.size} pending attendance records...")
+
+        val (toUpsert, _) = pending.partition { it.sync_status != SyncStatus.PENDING_DELETE.name }
+
+        if (toUpsert.isNotEmpty()) {
+            val dtos = toUpsert.map { entity ->
+                mapOf(
+                    "id" to entity.id,
+                    "student_id" to entity.student_id,
+                    "date" to entity.date,
+                    "status" to entity.status,
+                    "updated_at" to epochMsToIso(entity.updated_at)
+                )
+            }
+            try {
+                supabase.from("attendance").upsert(dtos)
+                toUpsert.forEach { entity ->
+                    queries.insertOrReplaceAttendance(
+                        entity.id, entity.student_id, entity.date, entity.status,
+                        entity.server_version, entity.is_deleted, SyncStatus.SYNCED.name,
+                        entity.created_at, entity.updated_at
+                    )
+                }
+                AppLogger.d("SyncManager", "Successfully synced ${toUpsert.size} attendance records.")
+            } catch (e: Exception) {
+                AppLogger.e("SyncManager", "Bulk upsert attendance failed: ${e.message}")
             }
         }
     }

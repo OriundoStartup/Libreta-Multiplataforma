@@ -2,6 +2,7 @@ package com.tuapp.libreta.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.tuapp.libreta.data.util.AppLogger
 import com.tuapp.libreta.data.util.UuidString
 import com.tuapp.libreta.domain.model.Attendance
 import com.tuapp.libreta.domain.model.AttendanceStatus
@@ -36,6 +37,7 @@ data class AttendanceStudent(
 class AttendanceScreenModel(
     private val studentRepo: StudentRepository,
     private val attendanceRepo: AttendanceRepository,
+    private val syncManager: com.tuapp.libreta.data.sync.SyncManager,
     private val courseId: UuidString,
     private val courseName: String
 ) : ScreenModel {
@@ -109,6 +111,21 @@ class AttendanceScreenModel(
                 status = status
             )
             attendanceRepo.save(attendance)
+        }
+    }
+
+    fun saveAndSync(onComplete: () -> Unit) {
+        screenModelScope.launch {
+            _state.value = AttendanceUiState.Loading
+            AppLogger.d("Attendance", "Iniciando sincronización de asistencia...")
+            try {
+                syncManager.syncAll()
+                AppLogger.d("Attendance", "Sincronización completada con éxito.")
+                onComplete()
+            } catch (e: Exception) {
+                AppLogger.e("Attendance", "Fallo al sincronizar tras guardar: ${e.message}")
+                _state.value = AttendanceUiState.Error("Guardado localmente, pero falló la subida: ${e.message}")
+            }
         }
     }
 

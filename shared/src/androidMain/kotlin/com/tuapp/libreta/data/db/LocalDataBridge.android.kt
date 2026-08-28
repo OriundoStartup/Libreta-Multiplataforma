@@ -55,8 +55,11 @@ actual class LocalDataBridge actual constructor(
         syncQueries.deleteAllSyncMetadata()
     }
 
-    actual suspend fun getUnsyncedStudentEntities(): List<StudentEntity> =
+    actual suspend fun getUnsyncedStudentEntities(): List<com.tuapp.libreta.db.StudentEntity> =
         queries.getUnsyncedStudentEntities().executeAsList()
+
+    actual suspend fun getUnsyncedAttendanceEntities(): List<com.tuapp.libreta.db.AttendanceEntity> =
+        queries.getUnsyncedAttendanceEntities().executeAsList()
 
     actual suspend fun countStudents(): Long = queries.countStudents().executeAsOne()
 }

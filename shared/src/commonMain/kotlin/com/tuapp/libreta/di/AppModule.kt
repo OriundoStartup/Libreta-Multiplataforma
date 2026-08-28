@@ -96,7 +96,7 @@ val appModule = module {
     factory { NoticeListScreenModel(get()) }
     factory { StatsScreenModel(get()) }
     factory { GradeScreenModel(get(), get(), get()) }
-    factory { params -> AttendanceScreenModel(get(), get(), params.get(), params.get()) }
+    factory { params -> AttendanceScreenModel(get(), get(), get(), params.get(), params.get()) }
     factory { params -> AttendanceHistoryScreenModel(get(), params.get<String>(), params.get<String>()) }
     factory { params ->
         StudentDetailScreenModel(get(), get(), get(), get(), get(), params.get(), params.get(), params.get(), params.get()) 

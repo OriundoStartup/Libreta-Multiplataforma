@@ -128,7 +128,11 @@ data class AttendanceScreen(
                                 AttendanceSummary(s.students)
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
-                                    onClick = { navigator.pop() },
+                                    onClick = {
+                                        model.saveAndSync {
+                                            navigator.pop()
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {

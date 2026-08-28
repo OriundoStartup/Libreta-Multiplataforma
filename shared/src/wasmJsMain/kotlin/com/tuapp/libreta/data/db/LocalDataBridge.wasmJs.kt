@@ -90,12 +90,27 @@ actual class LocalDataBridge actual constructor(
         driver.execute(null, "DELETE FROM SyncMetadata", 0).await()
     }
 
-    actual suspend fun getUnsyncedStudentEntities(): List<StudentEntity> {
+    actual suspend fun getUnsyncedStudentEntities(): List<com.tuapp.libreta.db.StudentEntity> {
         val sql = "SELECT * FROM StudentEntity WHERE sync_status != 'SYNCED'"
-        val result = mutableListOf<StudentEntity>()
+        val result = mutableListOf<com.tuapp.libreta.db.StudentEntity>()
         driver.executeQuery(null, sql, { cursor -> QueryResult.AsyncValue {
             while (cursor.next().await()) {
-                result.add(StudentEntity(cursor.getString(0)!!, cursor.getString(1)!!, cursor.getString(2), cursor.getString(3)!!, cursor.getString(4)!!, cursor.getLong(5)!!, cursor.getLong(6)!!, cursor.getString(7)!!, cursor.getLong(8)!!, cursor.getLong(9)!!))
+                result.add(com.tuapp.libreta.db.StudentEntity(cursor.getString(0)!!, cursor.getString(1)!!, cursor.getString(2), cursor.getString(3)!!, cursor.getString(4)!!, cursor.getLong(5)!!, cursor.getLong(6)!!, cursor.getString(7)!!, cursor.getLong(8)!!, cursor.getLong(9)!!))
+            }
+        } }, 0).await()
+        return result
+    }
+
+    actual suspend fun getUnsyncedAttendanceEntities(): List<com.tuapp.libreta.db.AttendanceEntity> {
+        val sql = "SELECT * FROM AttendanceEntity WHERE sync_status != 'SYNCED'"
+        val result = mutableListOf<com.tuapp.libreta.db.AttendanceEntity>()
+        driver.executeQuery(null, sql, { cursor -> QueryResult.AsyncValue {
+            while (cursor.next().await()) {
+                result.add(com.tuapp.libreta.db.AttendanceEntity(
+                    cursor.getString(0)!!, cursor.getString(1)!!, cursor.getString(2)!!, 
+                    cursor.getString(3)!!, cursor.getLong(4)!!, cursor.getLong(5)!!, 
+                    cursor.getString(6)!!, cursor.getLong(7)!!, cursor.getLong(8)!!
+                ))
             }
         } }, 0).await()
         return result
