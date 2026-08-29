@@ -1,13 +1,11 @@
-val isVercel = System.getenv("VERCEL") != null
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    if (!isVercel) {
-        alias(libs.plugins.androidApplication)
-    }
+    alias(libs.plugins.androidApplication) apply (System.getenv("VERCEL") == null)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
+
+val isVercel = System.getenv("VERCEL") != null
 
 kotlin {
     jvmToolchain(17)
