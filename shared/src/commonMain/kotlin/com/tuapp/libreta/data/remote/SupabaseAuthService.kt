@@ -122,6 +122,8 @@ class SupabaseAuthService(
                                         dbRole
                                     }
                                 }
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 AppLogger.e("AuthService", "Fallo al obtener rol: ${e.message}")
                                 if (_cachedUserId == user.id) _cachedRole else null
@@ -175,6 +177,9 @@ class SupabaseAuthService(
                 .decodeSingleOrNull<ProfileSupabaseDto>()
             
             response
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Rethrow para cumplir con la cooperación de coroutines, pero sin loguear error
+            throw e
         } catch (e: Exception) {
             AppLogger.e("getProfile", "Error al obtener perfil para $userId: ${e.message}")
             null

@@ -28,7 +28,8 @@ data class StudentSummary(
     val courseId: UuidString,
     val name: String,
     val rut: String?,
-    val attendancePercent: Int,
+    val attendancePercent: Int?, // Cambiado a nullable
+    val totalAttendanceDays: Int, // Agregado para dar contexto
     val lastNote: String,
     val pendingMessages: Int
 )
@@ -93,9 +94,13 @@ class ParentDashboardScreenModel(
             return
         }
 
-        // DISPARAR PULL: Traer datos nuevos antes de mostrar la lista local
+        // DISPARAR PULL: "Fire and forget" - No bloquea la carga local
         screenModelScope.launch { 
-            syncManager.pullAll() 
+            try {
+                syncManager.pullAll() 
+            } catch (e: Exception) {
+                AppLogger.e("ParentDashboard", "Background pullAll failed: ${e.message}")
+            }
         }
 
         loadJob = studentRepo.getStudentsByParent(userId)
@@ -113,14 +118,15 @@ class ParentDashboardScreenModel(
                     
                     val parentProfile = ParentProfile(parentName)
 
-                    // 1. Mostrar estado inicial de ÉXITO con datos básicos
+                    // 1. Mostrar estado inicial con nulo en asistencia para evitar "100% optimista"
                     val initialSummaries = students.map { student ->
                         StudentSummary(
                             id = student.id,
                             courseId = student.courseId,
                             name = student.fullName,
                             rut = student.studentRut,
-                            attendancePercent = 100,
+                            attendancePercent = null, // Nulo indica "Cargando"
+                            totalAttendanceDays = 0,
                             lastNote = "Cargando...",
                             pendingMessages = 0
                         )
@@ -175,6 +181,7 @@ class ParentDashboardScreenModel(
                         name = student.fullName,
                         rut = student.studentRut,
                         attendancePercent = present * 100 / total,
+                        totalAttendanceDays = total,
                         lastNote = "Sin anotaciones recientes",
                         pendingMessages = msgsCount
                     )

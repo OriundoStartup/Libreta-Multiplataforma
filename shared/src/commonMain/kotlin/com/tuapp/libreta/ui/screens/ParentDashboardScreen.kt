@@ -229,9 +229,12 @@ data class ParentDashboardScreen(val parentId: String) : Screen {
                             // 3. Status Cards (Resumen del Alumno) - AHORA ARRIBA
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    val attendanceValue = if (student.attendancePercent != null) 
+                                        "${student.attendancePercent}%" else "--%"
+                                    
                                     StatusCard(
                                         icon = Icons.Default.CheckCircle,
-                                        value = "${student.attendancePercent}%",
+                                        value = attendanceValue,
                                         label = "Asistencia",
                                         containerColor = StatusTheme.successBackground,
                                         contentColor = StatusTheme.successContent,
@@ -396,10 +399,16 @@ private fun StudentMainCard(
                     
                     Spacer(Modifier.height(4.dp))
                     
+                    val attendanceValue = if (student.attendancePercent != null) 
+                        "${student.attendancePercent}%" else "--%"
+                    
+                    val progressValue = (student.attendancePercent ?: 0) / 100f
+
                     LinearProgressIndicator(
-                        progress = { student.attendancePercent / 100f },
+                        progress = { progressValue },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)),
                         color = when {
+                            student.attendancePercent == null -> MaterialTheme.colorScheme.surfaceContainerHigh
                             student.attendancePercent >= 85 -> Color(0xFF2E7D32)
                             student.attendancePercent >= 70 -> Color(0xFFF57F17)
                             else -> Color(0xFFC62828)
@@ -407,8 +416,14 @@ private fun StudentMainCard(
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
                     
+                    val contextText = if (student.attendancePercent != null) {
+                        if (student.totalAttendanceDays < 5) 
+                            "• ${student.totalAttendanceDays} día(s) registrado(s)" 
+                        else "• Alumno Regular"
+                    } else "• Calculando..."
+
                     Text(
-                        text = "Alumno Regular • ${student.attendancePercent}% Asistencia",
+                        text = "$attendanceValue Asistencia $contextText",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
